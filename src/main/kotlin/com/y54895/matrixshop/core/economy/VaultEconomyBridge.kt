@@ -44,7 +44,7 @@ object VaultEconomyBridge {
         return invokeBoolean(provider, "has", player, amount)
     }
 
-    fun withdraw(player: Player, amount: Double): Boolean {
+    fun withdraw(player: OfflinePlayer, amount: Double): Boolean {
         if (amount <= 0) {
             return true
         }

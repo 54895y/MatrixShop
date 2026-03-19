@@ -54,6 +54,15 @@ object MatrixShopCommands {
         ) { sender, args ->
             handleAuctionAlias(sender, args)
         }
+        simpleCommand(
+            name = "chestshop",
+            aliases = listOf("cshop"),
+            description = "MatrixShop chest shop command",
+            usage = "/chestshop",
+            permission = "matrixshop.chestshop.use"
+        ) { sender, args ->
+            handleChestShopAlias(sender, args)
+        }
     }
 
     private fun handleMain(sender: ProxyCommandSender, args: Array<String>) {
@@ -76,7 +85,7 @@ object MatrixShopCommands {
             "cart" -> handleCart(player, args.drop(1))
             "record" -> handleRecord(player, args.drop(1))
             "transaction", "trade" -> handleTransaction(player, args.drop(1))
-            "chestshop" -> Texts.send(player, "&e${args[0]} module scaffold exists, implementation is still pending.")
+            "chestshop" -> handleChestShop(player, args.drop(1))
             else -> sendPlayerHelp(player)
         }
     }
@@ -296,6 +305,30 @@ object MatrixShopCommands {
         }
     }
 
+    private fun handleChestShop(player: Player, args: List<String>) {
+        if (args.isEmpty() || args[0].equals("open", true)) {
+            ModuleRegistry.chestShop.open(player)
+            return
+        }
+        when (args[0].lowercase()) {
+            "create" -> ModuleRegistry.chestShop.create(
+                player = player,
+                modeRaw = args.getOrNull(1),
+                firstPrice = args.getOrNull(2)?.toDoubleOrNull(),
+                secondPrice = args.getOrNull(3)?.toDoubleOrNull(),
+                amountRaw = args.getOrNull(4)?.toIntOrNull()
+            )
+            "edit" -> ModuleRegistry.chestShop.openEdit(player)
+            "stock" -> ModuleRegistry.chestShop.openStock(player, args.getOrNull(1)?.toIntOrNull() ?: 1)
+            "history" -> ModuleRegistry.chestShop.openHistory(player, args.getOrNull(1)?.toIntOrNull() ?: 1)
+            "remove" -> ModuleRegistry.chestShop.remove(player)
+            "price" -> ModuleRegistry.chestShop.setPrice(player, args.getOrNull(1), args.getOrNull(2)?.toDoubleOrNull())
+            "amount" -> ModuleRegistry.chestShop.setAmount(player, args.getOrNull(1)?.toIntOrNull())
+            "mode" -> ModuleRegistry.chestShop.setMode(player, args.getOrNull(1))
+            else -> Texts.send(player, "&cUnknown chest shop subcommand.")
+        }
+    }
+
     private fun handleTradeAlias(sender: ProxyCommandSender, args: Array<String>) {
         val player = sender.castSafely<Player>()
         if (player == null) {
@@ -312,6 +345,15 @@ object MatrixShopCommands {
             return
         }
         handleAuction(player, args.toList())
+    }
+
+    private fun handleChestShopAlias(sender: ProxyCommandSender, args: Array<String>) {
+        val player = sender.castSafely<Player>()
+        if (player == null) {
+            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
+            return
+        }
+        handleChestShop(player, args.toList())
     }
 
     private fun handleAdmin(sender: ProxyCommandSender, args: Array<String>) {
@@ -352,6 +394,9 @@ object MatrixShopCommands {
             &7/matrixshop global_market open &8- &fOpen GlobalMarket
             &7/matrixshop global_market upload <price> [amount] &8- &fList to GlobalMarket
             &7/matrixshop global_market manage &8- &fManage your GlobalMarket listings
+            &7/chestshop create <buy|sell|dual> <price> [sell-price] [amount] &8- &fCreate a chest shop from the target chest
+            &7/chestshop open|edit|stock|history &8- &fOpen the target chest shop views
+            &7/chestshop price <buy|sell> <value> / amount <number> / mode <type> &8- &fManage your chest shop
             &7/matrixshop cart open &8- &fOpen cart
             &7/matrixshop cart checkout [valid_only] &8- &fCheckout the cart
             &7/matrixshop record open [keyword] &8- &fOpen ledger records

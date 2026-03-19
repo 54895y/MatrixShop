@@ -1,0 +1,56 @@
+Title:
+  - '&8Edit ChestShop &7{shop-id}'
+
+layout:
+  - '#########'
+  - '#P#M#A#S#'
+  - '###i#####'
+  - '#L#H#O#D#'
+  - '#########'
+  - '####R####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'P':
+    material: 'GOLD_NUGGET'
+    name: '&ePrice'
+    lore:
+      - '&7Use /chestshop price <buy|sell> <value>'
+  'M':
+    material: 'COMPASS'
+    name: '&fCycle Mode'
+    lore:
+      - '&7Current: &f{mode}'
+  'A':
+    material: 'REDSTONE'
+    name: '&fCycle Amount'
+    lore:
+      - '&7Current: &f{amount}'
+  'S':
+    material: 'SIGN'
+    name: '&fRescan Signs'
+    lore:
+      - '&7Refresh nearby signs'
+  'i':
+    material: 'AIR'
+    mode: 'preview'
+  'L':
+    material: 'CHEST'
+    name: '&fStock'
+  'H':
+    material: 'PAPER'
+    name: '&fHistory'
+  'O':
+    material: 'EMERALD'
+    name: '&fOpen Buyer View'
+  'D':
+    material: 'BARRIER'
+    name: '&cRemove Shop'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'

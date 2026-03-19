@@ -3,7 +3,7 @@ modules:
   player-shop: true
   global-market: true
   auction: true
-  chestshop: false
+  chestshop: true
   transaction: true
   cart: true
   record: true
