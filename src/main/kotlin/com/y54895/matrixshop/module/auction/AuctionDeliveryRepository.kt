@@ -18,7 +18,6 @@ object AuctionDeliveryRepository {
             file.createNewFile()
         }
         if (DatabaseManager.isJdbcAvailable()) {
-            initializeJdbc()
             migrateFileToJdbcIfNeeded()
         }
     }
@@ -102,26 +101,6 @@ object AuctionDeliveryRepository {
         } ?: false
         if (!success) {
             saveAllFile(entries)
-        }
-    }
-
-    private fun initializeJdbc() {
-        DatabaseManager.withConnection { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS auction_deliveries (
-                        id VARCHAR(64) PRIMARY KEY,
-                        owner_id VARCHAR(64) NOT NULL,
-                        owner_name VARCHAR(64) NOT NULL,
-                        money DOUBLE NOT NULL,
-                        item_blob TEXT NOT NULL,
-                        message TEXT NOT NULL,
-                        created_at BIGINT NOT NULL
-                    )
-                    """.trimIndent()
-                )
-            }
         }
     }
 

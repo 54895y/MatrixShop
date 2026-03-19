@@ -18,7 +18,6 @@ object ChestShopRepository {
             file.createNewFile()
         }
         if (DatabaseManager.isJdbcAvailable()) {
-            initializeJdbc()
             migrateFileToJdbcIfNeeded()
         }
     }
@@ -231,64 +230,6 @@ object ChestShopRepository {
         } ?: false
         if (!success) {
             saveAllFile(shops)
-        }
-    }
-
-    private fun initializeJdbc() {
-        DatabaseManager.withConnection { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS chest_shops (
-                        id VARCHAR(64) PRIMARY KEY,
-                        owner_id VARCHAR(64) NOT NULL,
-                        owner_name VARCHAR(64) NOT NULL,
-                        primary_world VARCHAR(128) NOT NULL,
-                        primary_x INT NOT NULL,
-                        primary_y INT NOT NULL,
-                        primary_z INT NOT NULL,
-                        secondary_world VARCHAR(128) NOT NULL,
-                        secondary_x INT NOT NULL,
-                        secondary_y INT NOT NULL,
-                        secondary_z INT NOT NULL,
-                        mode VARCHAR(16) NOT NULL,
-                        buy_price DOUBLE NOT NULL,
-                        sell_price DOUBLE NOT NULL,
-                        trade_amount INT NOT NULL,
-                        item_blob TEXT NOT NULL,
-                        created_at BIGINT NOT NULL
-                    )
-                    """.trimIndent()
-                )
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS chest_shop_signs (
-                        shop_id VARCHAR(64) NOT NULL,
-                        sign_index INT NOT NULL,
-                        world VARCHAR(128) NOT NULL,
-                        x INT NOT NULL,
-                        y INT NOT NULL,
-                        z INT NOT NULL,
-                        PRIMARY KEY (shop_id, sign_index)
-                    )
-                    """.trimIndent()
-                )
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS chest_shop_history (
-                        shop_id VARCHAR(64) NOT NULL,
-                        history_index INT NOT NULL,
-                        type VARCHAR(32) NOT NULL,
-                        actor VARCHAR(64) NOT NULL,
-                        amount INT NOT NULL,
-                        money DOUBLE NOT NULL,
-                        created_at BIGINT NOT NULL,
-                        note TEXT NOT NULL,
-                        PRIMARY KEY (shop_id, history_index)
-                    )
-                    """.trimIndent()
-                )
-            }
         }
     }
 

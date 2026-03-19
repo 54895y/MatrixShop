@@ -16,7 +16,6 @@ object CartRepository {
     fun initialize() {
         folder.mkdirs()
         if (DatabaseManager.isJdbcAvailable()) {
-            initializeJdbc()
             migrateFilesToJdbcIfNeeded()
         }
     }
@@ -124,35 +123,6 @@ object CartRepository {
         } ?: false
         if (!success) {
             saveFile(store)
-        }
-    }
-
-    private fun initializeJdbc() {
-        DatabaseManager.withConnection { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS cart_entries (
-                        owner_id VARCHAR(64) NOT NULL,
-                        id VARCHAR(64) NOT NULL,
-                        source_module VARCHAR(64) NOT NULL,
-                        source_id VARCHAR(128) NOT NULL,
-                        name VARCHAR(255) NOT NULL,
-                        currency VARCHAR(32) NOT NULL,
-                        snapshot_price DOUBLE NOT NULL,
-                        amount INT NOT NULL,
-                        owner_name VARCHAR(64) NOT NULL,
-                        item_blob TEXT NOT NULL,
-                        editable_amount BOOLEAN NOT NULL,
-                        protected_on_clear BOOLEAN NOT NULL,
-                        watch_only BOOLEAN NOT NULL,
-                        created_at BIGINT NOT NULL,
-                        metadata_blob TEXT NOT NULL,
-                        PRIMARY KEY (owner_id, id)
-                    )
-                    """.trimIndent()
-                )
-            }
         }
     }
 

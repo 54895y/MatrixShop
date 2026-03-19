@@ -17,9 +17,9 @@ object MatrixShop : Plugin() {
             ConfigFiles.ensureDefaults()
             ConfigFiles.reload()
             RecordService.initialize()
+            DatabaseManager.syncSchema()
             VaultEconomyBridge.reload()
             ModuleRegistry.reload()
-            DatabaseManager.syncSchema()
             MatrixShopCommands.register()
             info("MatrixShop enabled. Modules=${ModuleRegistry.enabledSummary()}")
         }.onFailure {
@@ -31,8 +31,8 @@ object MatrixShop : Plugin() {
     fun reloadPlugin() {
         ConfigFiles.reload()
         RecordService.initialize()
+        DatabaseManager.syncSchema()
         VaultEconomyBridge.reload()
         ModuleRegistry.reload()
-        DatabaseManager.syncSchema()
     }
 }

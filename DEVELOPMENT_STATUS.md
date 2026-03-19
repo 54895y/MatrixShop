@@ -43,6 +43,8 @@ This file is the handoff note for each development round.
 - Added startup and reload-time schema sync after module initialization
 - Added `/matrixshopadmin sync` for manual schema synchronization
 - Added runtime table/index bootstrap for JDBC backends
+- Moved plugin startup order to `RecordService -> schema sync -> module reload`
+- Removed duplicate runtime `CREATE TABLE IF NOT EXISTS` blocks from JDBC repositories
 
 ## Validation
 
@@ -63,7 +65,7 @@ This file is the handoff note for each development round.
 
 - Review whether `SystemShop` needs database-backed cache/index support or should remain purely config-driven
 - Add more focused admin diagnostics for data-layer health and migration state
-- Consider whether repository-local `CREATE TABLE IF NOT EXISTS` should now be reduced after central schema sync is in place
+- Decide whether repository-local migration triggers should also be centralized, not only table creation
 
 ### Medium Priority
 

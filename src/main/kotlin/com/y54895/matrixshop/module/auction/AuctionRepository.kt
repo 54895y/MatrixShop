@@ -18,7 +18,6 @@ object AuctionRepository {
             file.createNewFile()
         }
         if (DatabaseManager.isJdbcAvailable()) {
-            initializeJdbc()
             migrateFileToJdbcIfNeeded()
         }
     }
@@ -166,47 +165,6 @@ object AuctionRepository {
         } ?: false
         if (!success) {
             saveAllFile(listings)
-        }
-    }
-
-    private fun initializeJdbc() {
-        DatabaseManager.withConnection { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS auction_listings (
-                        id VARCHAR(64) PRIMARY KEY,
-                        owner_id VARCHAR(64) NOT NULL,
-                        owner_name VARCHAR(64) NOT NULL,
-                        mode VARCHAR(16) NOT NULL,
-                        item_blob TEXT NOT NULL,
-                        start_price DOUBLE NOT NULL,
-                        buyout_price DOUBLE NOT NULL,
-                        end_price DOUBLE NOT NULL,
-                        current_bid DOUBLE NOT NULL,
-                        highest_bidder_id VARCHAR(64) NOT NULL,
-                        highest_bidder_name VARCHAR(64) NOT NULL,
-                        created_at BIGINT NOT NULL,
-                        expire_at BIGINT NOT NULL,
-                        extend_count INT NOT NULL,
-                        deposit_paid DOUBLE NOT NULL
-                    )
-                    """.trimIndent()
-                )
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS auction_bids (
-                        listing_id VARCHAR(64) NOT NULL,
-                        bid_index INT NOT NULL,
-                        bidder_id VARCHAR(64) NOT NULL,
-                        bidder_name VARCHAR(64) NOT NULL,
-                        amount DOUBLE NOT NULL,
-                        created_at BIGINT NOT NULL,
-                        PRIMARY KEY (listing_id, bid_index)
-                    )
-                    """.trimIndent()
-                )
-            }
         }
     }
 

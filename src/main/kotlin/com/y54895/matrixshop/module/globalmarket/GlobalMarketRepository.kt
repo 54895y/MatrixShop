@@ -18,7 +18,6 @@ object GlobalMarketRepository {
             file.createNewFile()
         }
         if (DatabaseManager.isJdbcAvailable()) {
-            initializeJdbc()
             migrateFileToJdbcIfNeeded()
         }
     }
@@ -112,27 +111,6 @@ object GlobalMarketRepository {
         } ?: false
         if (!success) {
             saveAllFile(listings)
-        }
-    }
-
-    private fun initializeJdbc() {
-        DatabaseManager.withConnection { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS global_market_listings (
-                        id VARCHAR(64) PRIMARY KEY,
-                        owner_id VARCHAR(64) NOT NULL,
-                        owner_name VARCHAR(64) NOT NULL,
-                        price DOUBLE NOT NULL,
-                        currency VARCHAR(32) NOT NULL,
-                        item_blob TEXT NOT NULL,
-                        created_at BIGINT NOT NULL,
-                        expire_at BIGINT NOT NULL
-                    )
-                    """.trimIndent()
-                )
-            }
         }
     }
 
