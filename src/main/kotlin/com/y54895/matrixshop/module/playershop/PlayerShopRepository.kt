@@ -1,6 +1,8 @@
 package com.y54895.matrixshop.module.playershop
 
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.database.DatabaseManager
+import com.y54895.matrixshop.core.database.ItemStackCodec
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.UUID
@@ -12,10 +14,182 @@ object PlayerShopRepository {
 
     fun initialize() {
         folder.mkdirs()
+        if (DatabaseManager.isJdbcAvailable()) {
+            initializeJdbc()
+        }
     }
 
     fun load(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
         initialize()
+        return if (DatabaseManager.isJdbcAvailable()) {
+            loadJdbc(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+        } else {
+            loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+        }
+    }
+
+    fun save(store: PlayerShopStore) {
+        initialize()
+        if (DatabaseManager.isJdbcAvailable()) {
+            saveJdbc(store)
+        } else {
+            saveFile(store)
+        }
+    }
+
+    fun nextFreeSlot(store: PlayerShopStore): Int? {
+        val occupied = store.listings.map { it.slotIndex }.toHashSet()
+        return (0 until store.unlockedSlots).firstOrNull { it !in occupied }
+    }
+
+    private fun loadJdbc(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
+        DatabaseManager.withConnection { connection ->
+            val store = connection.prepareStatement(
+                """
+                SELECT owner_name, unlocked_slots
+                FROM player_shop_stores
+                WHERE owner_id = ?
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, ownerId.toString())
+                statement.executeQuery().use { result ->
+                    if (result.next()) {
+                        PlayerShopStore(
+                            ownerId = ownerId,
+                            ownerName = result.getString("owner_name").ifBlank { ownerName },
+                            unlockedSlots = result.getInt("unlocked_slots").coerceAtLeast(1).coerceAtMost(maxUnlockedSlots)
+                        )
+                    } else {
+                        val migrated = migrateSingleFileToJdbc(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+                        migrated ?: PlayerShopStore(
+                            ownerId = ownerId,
+                            ownerName = ownerName,
+                            unlockedSlots = defaultUnlockedSlots.coerceAtLeast(1).coerceAtMost(maxUnlockedSlots)
+                        )
+                    }
+                }
+            }
+            connection.prepareStatement(
+                """
+                SELECT id, slot_index, price, currency, item_blob, created_at
+                FROM player_shop_listings
+                WHERE owner_id = ?
+                ORDER BY slot_index ASC
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, ownerId.toString())
+                statement.executeQuery().use { result ->
+                    while (result.next()) {
+                        val item = ItemStackCodec.decode(result.getString("item_blob")) ?: continue
+                        store.listings += PlayerShopListing(
+                            id = result.getString("id"),
+                            slotIndex = result.getInt("slot_index"),
+                            price = result.getDouble("price"),
+                            currency = result.getString("currency"),
+                            item = item,
+                            createdAt = result.getLong("created_at")
+                        )
+                    }
+                }
+            }
+            store
+        }?.let { return it }
+        return loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+    }
+
+    private fun saveJdbc(store: PlayerShopStore) {
+        val success = DatabaseManager.withConnection { connection ->
+            val previousAutoCommit = connection.autoCommit
+            connection.autoCommit = false
+            try {
+                connection.prepareStatement(
+                    """
+                    REPLACE INTO player_shop_stores (owner_id, owner_name, unlocked_slots)
+                    VALUES (?, ?, ?)
+                    """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, store.ownerId.toString())
+                    statement.setString(2, store.ownerName)
+                    statement.setInt(3, store.unlockedSlots)
+                    statement.executeUpdate()
+                }
+                connection.prepareStatement("DELETE FROM player_shop_listings WHERE owner_id = ?").use { delete ->
+                    delete.setString(1, store.ownerId.toString())
+                    delete.executeUpdate()
+                }
+                connection.prepareStatement(
+                    """
+                    INSERT INTO player_shop_listings (
+                        id, owner_id, slot_index, price, currency, item_blob, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """.trimIndent()
+                ).use { insert ->
+                    store.listings.sortedBy { it.slotIndex }.forEach { listing ->
+                        insert.setString(1, listing.id)
+                        insert.setString(2, store.ownerId.toString())
+                        insert.setInt(3, listing.slotIndex)
+                        insert.setDouble(4, listing.price)
+                        insert.setString(5, listing.currency)
+                        insert.setString(6, ItemStackCodec.encode(listing.item))
+                        insert.setLong(7, listing.createdAt)
+                        insert.addBatch()
+                    }
+                    insert.executeBatch()
+                }
+                connection.commit()
+                connection.autoCommit = previousAutoCommit
+                true
+            } catch (ex: Exception) {
+                runCatching { connection.rollback() }
+                connection.autoCommit = previousAutoCommit
+                false
+            }
+        } ?: false
+        if (!success) {
+            saveFile(store)
+        }
+    }
+
+    private fun initializeJdbc() {
+        DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeUpdate(
+                    """
+                    CREATE TABLE IF NOT EXISTS player_shop_stores (
+                        owner_id VARCHAR(64) PRIMARY KEY,
+                        owner_name VARCHAR(64) NOT NULL,
+                        unlocked_slots INT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    CREATE TABLE IF NOT EXISTS player_shop_listings (
+                        id VARCHAR(64) PRIMARY KEY,
+                        owner_id VARCHAR(64) NOT NULL,
+                        slot_index INT NOT NULL,
+                        price DOUBLE NOT NULL,
+                        currency VARCHAR(32) NOT NULL,
+                        item_blob TEXT NOT NULL,
+                        created_at BIGINT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+    }
+
+    private fun migrateSingleFileToJdbc(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore? {
+        val file = storeFile(ownerId)
+        if (!file.exists()) {
+            return null
+        }
+        val store = loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+        saveJdbc(store)
+        return store
+    }
+
+    private fun loadFile(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
         val file = storeFile(ownerId)
         if (!file.exists()) {
             return PlayerShopStore(ownerId, ownerName, defaultUnlockedSlots.coerceAtLeast(1).coerceAtMost(maxUnlockedSlots))
@@ -42,8 +216,7 @@ object PlayerShopRepository {
         return store
     }
 
-    fun save(store: PlayerShopStore) {
-        initialize()
+    private fun saveFile(store: PlayerShopStore) {
         val yaml = YamlConfiguration()
         yaml.set("owner-id", store.ownerId.toString())
         yaml.set("owner-name", store.ownerName)
@@ -57,11 +230,6 @@ object PlayerShopRepository {
             yaml.set("$base.created-at", listing.createdAt)
         }
         yaml.save(storeFile(store.ownerId))
-    }
-
-    fun nextFreeSlot(store: PlayerShopStore): Int? {
-        val occupied = store.listings.map { it.slotIndex }.toHashSet()
-        return (0 until store.unlockedSlots).firstOrNull { it !in occupied }
     }
 
     private fun storeFile(ownerId: UUID): File {
