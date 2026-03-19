@@ -1,0 +1,9 @@
+Enabled: true
+
+Unlock:
+  Base: 21
+  Max: 100
+
+Search:
+  enable: true
+  condition: "perm shop.vip"

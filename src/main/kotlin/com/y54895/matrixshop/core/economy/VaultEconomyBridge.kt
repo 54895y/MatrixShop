@@ -48,26 +48,65 @@ object VaultEconomyBridge {
         if (amount <= 0) {
             return true
         }
-        val provider = economy ?: return false
-        val response = runCatching {
-            provider.javaClass.methods.firstOrNull {
-                it.name == "withdrawPlayer" && it.parameterTypes.size == 2
-            }?.invoke(provider, player, amount)
-        }.getOrNull() ?: return false
-        return invokeBoolean(response, "transactionSuccess")
+        val response = invokeEconomy("withdrawPlayer", player, amount) ?: return false
+        return transactionSuccess(response)
+    }
+
+    fun deposit(player: OfflinePlayer, amount: Double): Boolean {
+        if (amount <= 0) {
+            return true
+        }
+        val response = invokeEconomy("depositPlayer", player, amount) ?: return false
+        return transactionSuccess(response)
     }
 
     private fun invokeDouble(target: Any, methodName: String, vararg args: Any): Double {
-        val method = target.javaClass.methods.firstOrNull {
-            it.name == methodName && it.parameterTypes.size == args.size
-        } ?: return 0.0
-        return (method.invoke(target, *args) as? Number)?.toDouble() ?: 0.0
+        return (invokeTarget(target, methodName, *args) as? Number)?.toDouble() ?: 0.0
     }
 
     private fun invokeBoolean(target: Any, methodName: String, vararg args: Any): Boolean {
-        val method = target.javaClass.methods.firstOrNull {
+        return invokeTarget(target, methodName, *args) as? Boolean ?: false
+    }
+
+    private fun invokeEconomy(methodName: String, vararg args: Any): Any? {
+        val provider = economy ?: return null
+        return invokeTarget(provider, methodName, *args)
+    }
+
+    private fun invokeTarget(target: Any, methodName: String, vararg args: Any): Any? {
+        val methods = target.javaClass.methods.filter {
             it.name == methodName && it.parameterTypes.size == args.size
-        } ?: return false
-        return method.invoke(target, *args) as? Boolean ?: false
+        }
+        methods.forEach { method ->
+            val adapted = adaptArguments(method.parameterTypes, args) ?: return@forEach
+            val result = runCatching { method.invoke(target, *adapted) }.getOrNull()
+            if (result != null) {
+                return result
+            }
+        }
+        return null
+    }
+
+    private fun adaptArguments(types: Array<Class<*>>, args: Array<out Any>): Array<Any?>? {
+        val adapted = arrayOfNulls<Any>(args.size)
+        for (index in args.indices) {
+            val arg = args[index]
+            val type = types[index]
+            adapted[index] = when {
+                type.isInstance(arg) -> arg
+                arg is OfflinePlayer && type == String::class.java -> arg.name ?: return null
+                arg is Player && type == String::class.java -> arg.name
+                arg is Number && (type == Double::class.java || type == java.lang.Double.TYPE) -> arg.toDouble()
+                else -> return null
+            }
+        }
+        return adapted
+    }
+
+    private fun transactionSuccess(response: Any): Boolean {
+        return when (response) {
+            is Boolean -> response
+            else -> invokeBoolean(response, "transactionSuccess")
+        }
     }
 }

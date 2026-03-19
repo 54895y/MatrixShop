@@ -1,5 +1,6 @@
 modules:
   system-shop: true
+  player-shop: true
   auction: false
   chestshop: false
   transaction: false

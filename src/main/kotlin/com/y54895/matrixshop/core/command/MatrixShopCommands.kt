@@ -52,6 +52,7 @@ object MatrixShopCommands {
             "help" -> sendPlayerHelp(player)
             "open" -> ModuleRegistry.systemShop.openMain(player)
             "system" -> handleSystem(player, args.drop(1))
+            "player_shop", "playershop" -> handlePlayerShop(player, args.drop(1))
             "cart", "auction", "transaction", "record", "chestshop" -> Texts.send(player, "&e${args[0]} 模块骨架已创建，业务实现将在后续迭代中补全。")
             else -> sendPlayerHelp(player)
         }
@@ -95,6 +96,30 @@ object MatrixShopCommands {
         }
     }
 
+    private fun handlePlayerShop(player: Player, args: List<String>) {
+        if (args.isEmpty()) {
+            ModuleRegistry.playerShop.openShop(player, player.uniqueId, player.name)
+            return
+        }
+        when (args[0].lowercase()) {
+            "open" -> {
+                val targetName = args.getOrNull(1) ?: player.name
+                ModuleRegistry.playerShop.openShop(player, targetName)
+            }
+            "edit" -> ModuleRegistry.playerShop.openEdit(player)
+            "upload" -> {
+                val price = args.getOrNull(1)?.toDoubleOrNull()
+                if (price == null) {
+                    Texts.send(player, "&c用法: /matrixshop player_shop upload <price> [amount]")
+                    return
+                }
+                val amount = args.getOrNull(2)?.toIntOrNull()
+                ModuleRegistry.playerShop.uploadFromHand(player, price, amount)
+            }
+            else -> Texts.send(player, "&c未知的玩家商店子命令。")
+        }
+    }
+
     private fun handleAdmin(sender: ProxyCommandSender, args: Array<String>) {
         val commandSender = sender.castSafely<CommandSender>() ?: return
         if (args.isEmpty()) {
@@ -122,6 +147,9 @@ object MatrixShopCommands {
             &8[&bMatrixShop&8] &f玩家命令
             &7/matrixshop &8- &f打开系统商店主界面
             &7/matrixshop system open <id> &8- &f打开指定系统商店分类
+            &7/matrixshop player_shop open [player] &8- &f打开玩家商店
+            &7/matrixshop player_shop edit &8- &f管理自己的玩家商店
+            &7/matrixshop player_shop upload <price> [amount] &8- &f上架主手物品
             &7/matrixshop help &8- &f查看帮助
             """.trimIndent()
         )
