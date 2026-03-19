@@ -16,6 +16,31 @@ object PlayerShopRepository {
         folder.mkdirs()
     }
 
+    fun migrateLegacyToJdbcIfNeeded(defaultUnlockedSlots: Int, maxUnlockedSlots: Int) {
+        initialize()
+        if (!DatabaseManager.isJdbcAvailable()) {
+            return
+        }
+        val count = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM player_shop_stores").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
+            }
+        } ?: return
+        if (count > 0) {
+            return
+        }
+        folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
+            ?.forEach { file ->
+                val ownerId = runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull() ?: return@forEach
+                val yaml = YamlConfiguration.loadConfiguration(file)
+                val ownerName = yaml.getString("owner-name", ownerId.toString()).orEmpty().ifBlank { ownerId.toString() }
+                val store = loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+                saveJdbc(store)
+            }
+    }
+
     fun load(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
         initialize()
         return if (DatabaseManager.isJdbcAvailable()) {
@@ -57,8 +82,7 @@ object PlayerShopRepository {
                             unlockedSlots = result.getInt("unlocked_slots").coerceAtLeast(1).coerceAtMost(maxUnlockedSlots)
                         )
                     } else {
-                        val migrated = migrateSingleFileToJdbc(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
-                        migrated ?: PlayerShopStore(
+                        PlayerShopStore(
                             ownerId = ownerId,
                             ownerName = ownerName,
                             unlockedSlots = defaultUnlockedSlots.coerceAtLeast(1).coerceAtMost(maxUnlockedSlots)
@@ -145,16 +169,6 @@ object PlayerShopRepository {
         if (!success) {
             saveFile(store)
         }
-    }
-
-    private fun migrateSingleFileToJdbc(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore? {
-        val file = storeFile(ownerId)
-        if (!file.exists()) {
-            return null
-        }
-        val store = loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
-        saveJdbc(store)
-        return store
     }
 
     private fun loadFile(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {

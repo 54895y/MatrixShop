@@ -17,8 +17,26 @@ object AuctionDeliveryRepository {
         if (!file.exists()) {
             file.createNewFile()
         }
-        if (DatabaseManager.isJdbcAvailable()) {
-            migrateFileToJdbcIfNeeded()
+    }
+
+    fun migrateLegacyToJdbcIfNeeded() {
+        initialize()
+        if (!DatabaseManager.isJdbcAvailable()) {
+            return
+        }
+        val count = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM auction_deliveries").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
+            }
+        } ?: return
+        if (count > 0) {
+            return
+        }
+        val entries = loadAllFile()
+        if (entries.isNotEmpty()) {
+            saveAllJdbc(entries)
         }
     }
 
@@ -101,23 +119,6 @@ object AuctionDeliveryRepository {
         } ?: false
         if (!success) {
             saveAllFile(entries)
-        }
-    }
-
-    private fun migrateFileToJdbcIfNeeded() {
-        val count = DatabaseManager.withConnection { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeQuery("SELECT COUNT(*) FROM auction_deliveries").use { result ->
-                    if (result.next()) result.getInt(1) else 0
-                }
-            }
-        } ?: return
-        if (count > 0) {
-            return
-        }
-        val entries = loadAllFile()
-        if (entries.isNotEmpty()) {
-            saveAllJdbc(entries)
         }
     }
 

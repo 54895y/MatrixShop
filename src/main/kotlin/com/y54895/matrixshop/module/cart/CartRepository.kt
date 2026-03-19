@@ -15,9 +15,29 @@ object CartRepository {
 
     fun initialize() {
         folder.mkdirs()
-        if (DatabaseManager.isJdbcAvailable()) {
-            migrateFilesToJdbcIfNeeded()
+    }
+
+    fun migrateLegacyToJdbcIfNeeded() {
+        initialize()
+        if (!DatabaseManager.isJdbcAvailable()) {
+            return
         }
+        val count = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM cart_entries").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
+            }
+        } ?: return
+        if (count > 0) {
+            return
+        }
+        folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
+            ?.forEach { file ->
+                val ownerId = runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull() ?: return@forEach
+                val store = loadFile(ownerId)
+                saveJdbc(store)
+            }
     }
 
     fun load(ownerId: UUID): CartStore {
@@ -124,25 +144,6 @@ object CartRepository {
         if (!success) {
             saveFile(store)
         }
-    }
-
-    private fun migrateFilesToJdbcIfNeeded() {
-        val count = DatabaseManager.withConnection { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeQuery("SELECT COUNT(*) FROM cart_entries").use { result ->
-                    if (result.next()) result.getInt(1) else 0
-                }
-            }
-        } ?: return
-        if (count > 0) {
-            return
-        }
-        folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
-            ?.forEach { file ->
-                val ownerId = runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull() ?: return@forEach
-                val store = loadFile(ownerId)
-                saveJdbc(store)
-            }
     }
 
     private fun loadFile(ownerId: UUID): CartStore {

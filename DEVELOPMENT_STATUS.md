@@ -45,6 +45,8 @@ This file is the handoff note for each development round.
 - Added runtime table/index bootstrap for JDBC backends
 - Moved plugin startup order to `RecordService -> schema sync -> module reload`
 - Removed duplicate runtime `CREATE TABLE IF NOT EXISTS` blocks from JDBC repositories
+- Added centralized legacy file import service for JDBC migration
+- Removed repository-local automatic legacy imports from `initialize()` and `loadJdbc()`
 
 ## Validation
 
@@ -56,6 +58,7 @@ This file is the handoff note for each development round.
 - `SystemShop` is still config-driven and does not use JDBC runtime storage
 - Database access still uses direct JDBC helpers; there is no shared transaction helper yet
 - Schema migration now exists, but there is still no richer multi-step migration history or rollback support
+- Legacy file import is now centralized before module reload, but `Record` still keeps its own import path inside `RecordService`
 - Redis is config-visible only; actual sync/invalidation transport is not implemented
 - Runtime behavior has been validated by build only, not by live server testing
 
@@ -65,7 +68,7 @@ This file is the handoff note for each development round.
 
 - Review whether `SystemShop` needs database-backed cache/index support or should remain purely config-driven
 - Add more focused admin diagnostics for data-layer health and migration state
-- Decide whether repository-local migration triggers should also be centralized, not only table creation
+- Decide whether `Record` legacy import should also be surfaced through the same migration-status path
 
 ### Medium Priority
 
