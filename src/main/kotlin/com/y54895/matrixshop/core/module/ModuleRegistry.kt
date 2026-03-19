@@ -1,6 +1,7 @@
 package com.y54895.matrixshop.core.module
 
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.module.auction.AuctionModule
 import com.y54895.matrixshop.module.cart.CartModule
 import com.y54895.matrixshop.module.globalmarket.GlobalMarketModule
 import com.y54895.matrixshop.module.playershop.PlayerShopModule
@@ -18,6 +19,7 @@ interface MatrixModule {
 
 object ModuleRegistry {
 
+    val auction = AuctionModule
     val systemShop = SystemShopModule
     val playerShop = PlayerShopModule
     val cart = CartModule
@@ -26,13 +28,13 @@ object ModuleRegistry {
     val transaction = TransactionModule
 
     private val modules = listOf<MatrixModule>(
+        auction,
         systemShop,
         playerShop,
         cart,
         globalMarket,
         record,
         transaction,
-        StubModule("auction", "Auction"),
         StubModule("chestshop", "ChestShop")
     )
 

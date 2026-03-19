@@ -1,0 +1,32 @@
+Title:
+  - '&8My Bids &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '####I####'
+  - 'P###R###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'I':
+    material: 'GOLD_INGOT'
+    name: '&6My Bid History'
+    lore:
+      - '&7Tracked auctions: &f{size}'
+  'R':
+    material: 'ARROW'
+    name: '&aBack to Hall'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'

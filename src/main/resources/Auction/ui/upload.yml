@@ -1,0 +1,56 @@
+Title:
+  - '&8Auction Upload'
+
+layout:
+  - '#########'
+  - '###i#####'
+  - '##M#T#D##'
+  - '##P#B#S##'
+  - '####R####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'i':
+    material: 'AIR'
+    name: '&f{item}'
+  'M':
+    material: 'PAPER'
+    name: '&fMode'
+    lore:
+      - '&7Use: /auction upload english <start> [buyout] [duration]'
+      - '&7Use: /auction upload dutch <start> <end> [duration]'
+  'T':
+    material: 'WATCH'
+    name: '&fDuration'
+    lore:
+      - '&7Default: &f{default-duration}'
+      - '&7Range: &f{min-duration} - {max-duration}'
+  'D':
+    material: 'GOLD_NUGGET'
+    name: '&fDeposit'
+    lore:
+      - '&7Listing deposit applies from settings'
+  'P':
+    material: 'PAPER'
+    name: '&fPrice'
+    lore:
+      - '&7Values are entered with command arguments'
+  'B':
+    material: 'BOOK'
+    name: '&fBuyout / End'
+    lore:
+      - '&7English uses buyout'
+      - '&7Dutch uses end price'
+  'S':
+    material: 'CHEST'
+    name: '&fSource'
+    lore:
+      - '&7The item in your main hand is listed'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'

@@ -2,7 +2,7 @@ modules:
   system-shop: true
   player-shop: true
   global-market: true
-  auction: false
+  auction: true
   chestshop: false
   transaction: true
   cart: true

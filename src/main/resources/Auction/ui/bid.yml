@@ -1,0 +1,54 @@
+Title:
+  - '&8Confirm Bid'
+
+layout:
+  - '#########'
+  - '###i#####'
+  - '##1#2#3##'
+  - '##4#5#6##'
+  - '##A#C#I##'
+  - '###R#####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'i':
+    material: 'AIR'
+    name: '&fBid Menu'
+  '1':
+    material: 'GOLD_NUGGET'
+    name: '&e{bid-1}'
+  '2':
+    material: 'GOLD_NUGGET'
+    name: '&e{bid-2}'
+  '3':
+    material: 'GOLD_NUGGET'
+    name: '&e{bid-3}'
+  '4':
+    material: 'GOLD_INGOT'
+    name: '&e{bid-4}'
+  '5':
+    material: 'GOLD_INGOT'
+    name: '&e{bid-5}'
+  '6':
+    material: 'GOLD_BLOCK'
+    name: '&e{bid-6}'
+  'A':
+    material: 'EMERALD'
+    name: '&aAuto Next Bid'
+    lore:
+      - '&7Use the next minimum bid'
+  'C':
+    material: 'EMERALD_BLOCK'
+    name: '&aBuyout'
+    lore:
+      - '&7Use buyout if available'
+  'I':
+    material: 'PAPER'
+    name: '&fInfo'
+    lore:
+      - '&7Command: /auction bid <id> [price]'
+  'R':
+    material: 'ARROW'
+    name: '&aBack'

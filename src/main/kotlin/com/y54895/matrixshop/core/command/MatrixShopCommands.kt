@@ -45,6 +45,15 @@ object MatrixShopCommands {
         ) { sender, args ->
             handleTradeAlias(sender, args)
         }
+        simpleCommand(
+            name = "auction",
+            aliases = listOf("ah"),
+            description = "MatrixShop auction command",
+            usage = "/auction",
+            permission = "matrixshop.auction.use"
+        ) { sender, args ->
+            handleAuctionAlias(sender, args)
+        }
     }
 
     private fun handleMain(sender: ProxyCommandSender, args: Array<String>) {
@@ -60,13 +69,14 @@ object MatrixShopCommands {
         when (args[0].lowercase()) {
             "help" -> sendPlayerHelp(player)
             "open" -> ModuleRegistry.systemShop.openMain(player)
+            "auction" -> handleAuction(player, args.drop(1))
             "system" -> handleSystem(player, args.drop(1))
             "player_shop", "playershop" -> handlePlayerShop(player, args.drop(1))
             "global_market", "globalmarket", "market" -> handleGlobalMarket(player, args.drop(1))
             "cart" -> handleCart(player, args.drop(1))
             "record" -> handleRecord(player, args.drop(1))
             "transaction", "trade" -> handleTransaction(player, args.drop(1))
-            "auction", "chestshop" -> Texts.send(player, "&e${args[0]} module scaffold exists, implementation is still pending.")
+            "chestshop" -> Texts.send(player, "&e${args[0]} module scaffold exists, implementation is still pending.")
             else -> sendPlayerHelp(player)
         }
     }
@@ -210,6 +220,63 @@ object MatrixShopCommands {
         }
     }
 
+    private fun handleAuction(player: Player, args: List<String>) {
+        if (args.isEmpty() || args[0].equals("open", true)) {
+            ModuleRegistry.auction.openAuction(player)
+            return
+        }
+        when (args[0].lowercase()) {
+            "upload" -> {
+                if (args.size == 1) {
+                    ModuleRegistry.auction.openUpload(player)
+                    return
+                }
+                ModuleRegistry.auction.uploadFromHand(
+                    player = player,
+                    modeRaw = args.getOrNull(1),
+                    startPrice = args.getOrNull(2)?.toDoubleOrNull(),
+                    secondPrice = args.getOrNull(3)?.toDoubleOrNull(),
+                    durationSeconds = args.getOrNull(4)?.toIntOrNull()
+                )
+            }
+            "detail" -> {
+                val id = args.getOrNull(1)
+                if (id.isNullOrBlank()) {
+                    Texts.send(player, "&cUsage: /auction detail <id>")
+                    return
+                }
+                ModuleRegistry.auction.openDetail(player, id)
+            }
+            "bid" -> {
+                val id = args.getOrNull(1)
+                if (id.isNullOrBlank()) {
+                    Texts.send(player, "&cUsage: /auction bid <id> [price]")
+                    return
+                }
+                ModuleRegistry.auction.bid(player, id, args.getOrNull(2)?.toDoubleOrNull())
+            }
+            "buyout" -> {
+                val id = args.getOrNull(1)
+                if (id.isNullOrBlank()) {
+                    Texts.send(player, "&cUsage: /auction buyout <id>")
+                    return
+                }
+                ModuleRegistry.auction.buyout(player, id)
+            }
+            "my_items", "manage" -> ModuleRegistry.auction.openManage(player)
+            "my_bids", "bids" -> ModuleRegistry.auction.openBids(player)
+            "remove" -> {
+                val id = args.getOrNull(1)
+                if (id.isNullOrBlank()) {
+                    Texts.send(player, "&cUsage: /auction remove <id>")
+                    return
+                }
+                ModuleRegistry.auction.remove(player, id)
+            }
+            else -> Texts.send(player, "&cUnknown auction subcommand.")
+        }
+    }
+
     private fun handleTransaction(player: Player, args: List<String>) {
         if (args.isEmpty() || args[0].equals("open", true)) {
             ModuleRegistry.transaction.open(player)
@@ -238,6 +305,15 @@ object MatrixShopCommands {
         handleTransaction(player, args.toList())
     }
 
+    private fun handleAuctionAlias(sender: ProxyCommandSender, args: Array<String>) {
+        val player = sender.castSafely<Player>()
+        if (player == null) {
+            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
+            return
+        }
+        handleAuction(player, args.toList())
+    }
+
     private fun handleAdmin(sender: ProxyCommandSender, args: Array<String>) {
         val commandSender = sender.castSafely<CommandSender>() ?: return
         if (args.isEmpty()) {
@@ -264,6 +340,11 @@ object MatrixShopCommands {
             """
             &8[&bMatrixShop&8] &fPlayer Commands
             &7/matrixshop &8- &fOpen SystemShop
+            &7/auction open &8- &fOpen the auction hall
+            &7/auction upload <english|dutch> <start> [buyout|end] [duration] &8- &fList the main-hand item
+            &7/auction bid <id> [price] &8- &fPlace an auction bid
+            &7/auction buyout <id> &8- &fBuy at buyout or current Dutch price
+            &7/auction my_items|my_bids &8- &fOpen your auction views
             &7/matrixshop system open <id> &8- &fOpen a system category
             &7/matrixshop player_shop open [player] &8- &fOpen a player shop
             &7/matrixshop player_shop edit &8- &fManage your player shop
