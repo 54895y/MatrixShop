@@ -1,0 +1,40 @@
+Title:
+  - '&8Record Detail'
+
+layout:
+  - '#########'
+  - '###I#S###'
+  - '###E#L###'
+  - '####R####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'I':
+    material: 'PAPER'
+    name: '&f{module} &7/ &b{type}'
+    lore:
+      - '&7Time: &f{time}'
+      - '&7ID: &f{record-id}'
+  'S':
+    material: 'EMERALD'
+    name: '&aIncome Stats'
+    lore:
+      - '&7Open income statistics'
+  'E':
+    material: 'REDSTONE'
+    name: '&cExpense Stats'
+    lore:
+      - '&7Open expense statistics'
+  'L':
+    material: 'BOOK'
+    name: '&fBack to Ledger'
+    lore:
+      - '&7Return to the record list'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'

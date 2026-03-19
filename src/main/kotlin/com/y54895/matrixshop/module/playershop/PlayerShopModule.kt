@@ -209,10 +209,20 @@ object PlayerShopModule : MatrixModule {
             Texts.send(sellerPlayer, "&a你的商品已售出: &f${itemDisplayName(target.item)} &7- &e${trimDouble(target.price)}")
         }
         RecordService.append(
-            "player_shop",
-            "purchase",
-            viewer.name,
-            "seller=${store.ownerName};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
+            module = "player_shop",
+            type = "purchase",
+            actor = viewer.name,
+            target = store.ownerName,
+            moneyChange = -target.price,
+            detail = "seller=${store.ownerName};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
+        )
+        RecordService.append(
+            module = "player_shop",
+            type = "sale",
+            actor = store.ownerName,
+            target = viewer.name,
+            moneyChange = target.price,
+            detail = "buyer=${viewer.name};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
         )
         if (reopenAfterSuccess) {
             openShop(viewer, store.ownerId, store.ownerName)

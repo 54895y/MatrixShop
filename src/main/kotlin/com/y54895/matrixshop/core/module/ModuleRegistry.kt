@@ -4,6 +4,7 @@ import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.module.cart.CartModule
 import com.y54895.matrixshop.module.globalmarket.GlobalMarketModule
 import com.y54895.matrixshop.module.playershop.PlayerShopModule
+import com.y54895.matrixshop.module.record.RecordModule
 import com.y54895.matrixshop.module.stub.StubModule
 import com.y54895.matrixshop.module.systemshop.SystemShopModule
 
@@ -20,16 +21,17 @@ object ModuleRegistry {
     val playerShop = PlayerShopModule
     val cart = CartModule
     val globalMarket = GlobalMarketModule
+    val record = RecordModule
 
     private val modules = listOf<MatrixModule>(
         systemShop,
         playerShop,
         cart,
         globalMarket,
+        record,
         StubModule("auction", "Auction"),
         StubModule("chestshop", "ChestShop"),
-        StubModule("transaction", "Transaction"),
-        StubModule("record", "Record")
+        StubModule("transaction", "Transaction")
     )
 
     fun all(): List<MatrixModule> {

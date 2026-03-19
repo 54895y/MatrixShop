@@ -41,7 +41,7 @@ object MatrixShopCommands {
     private fun handleMain(sender: ProxyCommandSender, args: Array<String>) {
         val player = sender.castSafely<Player>()
         if (player == null) {
-            sender.sendMessage(Texts.prefixed("&c该命令只能由玩家执行。"))
+            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
             return
         }
         if (args.isEmpty()) {
@@ -55,7 +55,8 @@ object MatrixShopCommands {
             "player_shop", "playershop" -> handlePlayerShop(player, args.drop(1))
             "global_market", "globalmarket", "market" -> handleGlobalMarket(player, args.drop(1))
             "cart" -> handleCart(player, args.drop(1))
-            "auction", "transaction", "record", "chestshop" -> Texts.send(player, "&e${args[0]} 模块骨架已创建，业务实现将在后续迭代中补全。")
+            "record" -> handleRecord(player, args.drop(1))
+            "auction", "transaction", "chestshop" -> Texts.send(player, "&e${args[0]} module scaffold exists, implementation is still pending.")
             else -> sendPlayerHelp(player)
         }
     }
@@ -77,7 +78,7 @@ object MatrixShopCommands {
 
     private fun handleConfirm(player: Player, args: List<String>) {
         if (args.isEmpty()) {
-            Texts.send(player, "&c缺少 confirm 子命令。")
+            Texts.send(player, "&cMissing confirm subcommand.")
             return
         }
         when (args[0].lowercase()) {
@@ -85,17 +86,17 @@ object MatrixShopCommands {
             "cart" -> ModuleRegistry.cart.addCurrentSystemSelection(player)
             "amount" -> {
                 if (args.getOrNull(1)?.equals("add", true) != true) {
-                    Texts.send(player, "&c用法: /matrixshop system confirm amount add <number>")
+                    Texts.send(player, "&cUsage: /matrixshop system confirm amount add <number>")
                     return
                 }
                 val delta = args.getOrNull(2)?.toIntOrNull()
                 if (delta == null) {
-                    Texts.send(player, "&c数量必须是整数。")
+                    Texts.send(player, "&cAmount must be an integer.")
                     return
                 }
                 ModuleRegistry.systemShop.adjustConfirmAmount(player, delta)
             }
-            else -> Texts.send(player, "&e当前仅实现了购买确认和数量调整。")
+            else -> Texts.send(player, "&eOnly buy, cart and amount are implemented in this confirm flow.")
         }
     }
 
@@ -110,7 +111,7 @@ object MatrixShopCommands {
             "remove" -> {
                 val index = args.getOrNull(1)?.toIntOrNull()
                 if (index == null) {
-                    Texts.send(player, "&c用法: /matrixshop cart remove <slot>")
+                    Texts.send(player, "&cUsage: /matrixshop cart remove <slot>")
                     return
                 }
                 ModuleRegistry.cart.remove(player, index)
@@ -120,12 +121,12 @@ object MatrixShopCommands {
                 val index = args.getOrNull(1)?.toIntOrNull()
                 val amount = args.getOrNull(2)?.toIntOrNull()
                 if (index == null || amount == null) {
-                    Texts.send(player, "&c用法: /matrixshop cart amount <slot> <number>")
+                    Texts.send(player, "&cUsage: /matrixshop cart amount <slot> <number>")
                     return
                 }
                 ModuleRegistry.cart.changeAmount(player, index, amount)
             }
-            else -> Texts.send(player, "&c未知的购物车子命令。")
+            else -> Texts.send(player, "&cUnknown cart subcommand.")
         }
     }
 
@@ -145,7 +146,7 @@ object MatrixShopCommands {
                 ModuleRegistry.globalMarket.uploadFromHand(player, price, amount)
             }
             "manage" -> ModuleRegistry.globalMarket.openManage(player)
-            else -> Texts.send(player, "&c未知的全球市场子命令。")
+            else -> Texts.send(player, "&cUnknown global market subcommand.")
         }
     }
 
@@ -163,13 +164,39 @@ object MatrixShopCommands {
             "upload" -> {
                 val price = args.getOrNull(1)?.toDoubleOrNull()
                 if (price == null) {
-                    Texts.send(player, "&c用法: /matrixshop player_shop upload <price> [amount]")
+                    Texts.send(player, "&cUsage: /matrixshop player_shop upload <price> [amount]")
                     return
                 }
                 val amount = args.getOrNull(2)?.toIntOrNull()
                 ModuleRegistry.playerShop.uploadFromHand(player, price, amount)
             }
-            else -> Texts.send(player, "&c未知的玩家商店子命令。")
+            else -> Texts.send(player, "&cUnknown player shop subcommand.")
+        }
+    }
+
+    private fun handleRecord(player: Player, args: List<String>) {
+        if (args.isEmpty() || args[0].equals("open", true)) {
+            val keyword = args.drop(1).joinToString(" ").ifBlank { null }
+            ModuleRegistry.record.open(player, keyword)
+            return
+        }
+        when (args[0].lowercase()) {
+            "detail" -> {
+                val recordId = args.getOrNull(1)
+                if (recordId.isNullOrBlank()) {
+                    Texts.send(player, "&cUsage: /matrixshop record detail <id>")
+                    return
+                }
+                ModuleRegistry.record.openDetail(player, recordId)
+            }
+            "income" -> ModuleRegistry.record.openIncome(player)
+            "expense" -> ModuleRegistry.record.openExpense(player)
+            "search" -> {
+                val keyword = args.drop(1).joinToString(" ").ifBlank { null }
+                ModuleRegistry.record.open(player, keyword)
+            }
+            "stats" -> ModuleRegistry.record.openIncome(player)
+            else -> Texts.send(player, "&cUnknown record subcommand.")
         }
     }
 
@@ -182,11 +209,11 @@ object MatrixShopCommands {
         when (args[0].lowercase()) {
             "reload" -> {
                 MatrixShop.reloadPlugin()
-                Texts.send(commandSender, "&a配置与模块已重载。")
+                Texts.send(commandSender, "&aConfiguration and modules reloaded.")
             }
             "status" -> {
-                Texts.send(commandSender, "&f数据目录: &7${ConfigFiles.dataFolder().absolutePath}")
-                Texts.send(commandSender, "&f经济提供者: &7${VaultEconomyBridge.providerName()}")
+                Texts.send(commandSender, "&fData folder: &7${ConfigFiles.dataFolder().absolutePath}")
+                Texts.send(commandSender, "&fEconomy provider: &7${VaultEconomyBridge.providerName()}")
                 ModuleRegistry.moduleStates().forEach { Texts.sendRaw(commandSender, it) }
             }
             else -> sendAdminHelp(commandSender)
@@ -197,18 +224,21 @@ object MatrixShopCommands {
         Texts.sendRaw(
             player,
             """
-            &8[&bMatrixShop&8] &f玩家命令
-            &7/matrixshop &8- &f打开系统商店主界面
-            &7/matrixshop system open <id> &8- &f打开指定系统商店分类
-            &7/matrixshop player_shop open [player] &8- &f打开玩家商店
-            &7/matrixshop player_shop edit &8- &f管理自己的玩家商店
-            &7/matrixshop player_shop upload <price> [amount] &8- &f上架主手物品
-            &7/matrixshop global_market open &8- &f打开全球市场
-            &7/matrixshop global_market upload <price> [amount] &8- &f上架主手物品到全球市场
-            &7/matrixshop global_market manage &8- &f管理自己的全球市场上架
-            &7/matrixshop cart open &8- &f打开购物车
-            &7/matrixshop cart checkout &8- &f结算购物车
-            &7/matrixshop help &8- &f查看帮助
+            &8[&bMatrixShop&8] &fPlayer Commands
+            &7/matrixshop &8- &fOpen SystemShop
+            &7/matrixshop system open <id> &8- &fOpen a system category
+            &7/matrixshop player_shop open [player] &8- &fOpen a player shop
+            &7/matrixshop player_shop edit &8- &fManage your player shop
+            &7/matrixshop player_shop upload <price> [amount] &8- &fList the main-hand item
+            &7/matrixshop global_market open &8- &fOpen GlobalMarket
+            &7/matrixshop global_market upload <price> [amount] &8- &fList to GlobalMarket
+            &7/matrixshop global_market manage &8- &fManage your GlobalMarket listings
+            &7/matrixshop cart open &8- &fOpen cart
+            &7/matrixshop cart checkout [valid_only] &8- &fCheckout the cart
+            &7/matrixshop record open [keyword] &8- &fOpen ledger records
+            &7/matrixshop record detail <id> &8- &fOpen one record detail
+            &7/matrixshop record income &8- &fOpen income statistics
+            &7/matrixshop record expense &8- &fOpen expense statistics
             """.trimIndent()
         )
     }
@@ -217,9 +247,9 @@ object MatrixShopCommands {
         Texts.sendRaw(
             sender,
             """
-            &8[&bMatrixShop&8] &f管理员命令
-            &7/matrixshopadmin reload &8- &f重载配置与模块
-            &7/matrixshopadmin status &8- &f查看模块与经济状态
+            &8[&bMatrixShop&8] &fAdmin Commands
+            &7/matrixshopadmin reload &8- &fReload configuration and modules
+            &7/matrixshopadmin status &8- &fShow module and economy status
             """.trimIndent()
         )
     }

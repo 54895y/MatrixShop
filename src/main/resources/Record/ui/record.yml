@@ -1,0 +1,51 @@
+Title:
+  - '&8Ledger &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##I#E#K##'
+  - 'P###R###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'I':
+    material: 'EMERALD'
+    name: '&aIncome'
+    lore:
+      - '&7Total income: &a{income-total}'
+      - '&7Open income statistics'
+  'E':
+    material: 'REDSTONE'
+    name: '&cExpense'
+    lore:
+      - '&7Total expense: &c{expense-total}'
+      - '&7Open expense statistics'
+  'K':
+    material: 'BOOK'
+    name: '&fLedger Info'
+    lore:
+      - '&7Visible entries: &f{size}'
+      - '&7Keyword: &f{keyword}'
+      - '&7Left click a record for detail'
+      - '&7Command search:'
+      - '&f/matrixshop record search <keyword>'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'

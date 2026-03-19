@@ -1,0 +1,35 @@
+Title:
+  - '&8Expense Stats &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '###T#L###'
+  - 'P###X###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'T':
+    material: 'REDSTONE'
+    name: '&cExpense Summary'
+    lore:
+      - '&7Total expense: &c{total}'
+      - '&7Entries: &f{count}'
+  'L':
+    material: 'BOOK'
+    name: '&fBack to Ledger'
+  'X':
+    material: 'EMERALD'
+    name: '&aSwitch to Income'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'

@@ -167,7 +167,8 @@ object SystemShopModule : MatrixModule {
         RecordService.append(
             module = "system_shop",
             type = "purchase",
-            player = player.name,
+            actor = player.name,
+            moneyChange = -total,
             detail = "category=${category.id};product=${product.id};amount=$safeAmount;total=${trimDouble(total)}"
         )
         return ModuleOperationResult(true, "")

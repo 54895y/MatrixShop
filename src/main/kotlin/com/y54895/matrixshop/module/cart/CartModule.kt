@@ -235,7 +235,12 @@ object CartModule : MatrixModule {
         }
         CartRepository.save(store)
         Texts.send(player, "&a购物车结算完成。成功: &f$success &a失效/未处理: &f$invalid")
-        RecordService.append("cart", "checkout", player.name, "success=$success;invalid=$invalid")
+        RecordService.append(
+            module = "cart",
+            type = "checkout",
+            actor = player.name,
+            detail = "success=$success;invalid=$invalid;remaining=${store.entries.size}"
+        )
     }
 
     fun validate(entry: CartEntry): CartValidation {

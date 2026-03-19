@@ -183,10 +183,20 @@ object GlobalMarketModule : MatrixModule {
             Texts.send(it, "&a你的全球市场商品已售出: &f${itemDisplayName(listing.item)} &7- &e${trimDouble(sellerIncome)}")
         }
         RecordService.append(
-            "global_market",
-            "purchase",
-            player.name,
-            "seller=${listing.ownerName};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
+            module = "global_market",
+            type = "purchase",
+            actor = player.name,
+            target = listing.ownerName,
+            moneyChange = -listing.price,
+            detail = "seller=${listing.ownerName};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
+        )
+        RecordService.append(
+            module = "global_market",
+            type = "sale",
+            actor = listing.ownerName,
+            target = player.name,
+            moneyChange = sellerIncome,
+            detail = "buyer=${player.name};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
         )
         if (reopenAfterSuccess) {
             openMarket(player)
