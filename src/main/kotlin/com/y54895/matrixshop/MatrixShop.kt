@@ -2,6 +2,7 @@ package com.y54895.matrixshop
 
 import com.y54895.matrixshop.core.command.MatrixShopCommands
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.record.RecordService
@@ -18,6 +19,7 @@ object MatrixShop : Plugin() {
             RecordService.initialize()
             VaultEconomyBridge.reload()
             ModuleRegistry.reload()
+            DatabaseManager.syncSchema()
             MatrixShopCommands.register()
             info("MatrixShop enabled. Modules=${ModuleRegistry.enabledSummary()}")
         }.onFailure {
@@ -31,5 +33,6 @@ object MatrixShop : Plugin() {
         RecordService.initialize()
         VaultEconomyBridge.reload()
         ModuleRegistry.reload()
+        DatabaseManager.syncSchema()
     }
 }

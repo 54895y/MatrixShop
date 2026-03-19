@@ -8,6 +8,7 @@ object PermissionNodes {
 
     const val ADMIN = "matrixshop.admin"
     const val ADMIN_RELOAD = "matrixshop.admin.reload"
+    const val ADMIN_SYNC = "matrixshop.admin.sync"
     const val ADMIN_STATUS = "matrixshop.admin.status"
     const val ADMIN_MODULE = "matrixshop.admin.module"
     const val ADMIN_RECORD_VIEW_OTHERS = "matrixshop.admin.record.view.others"

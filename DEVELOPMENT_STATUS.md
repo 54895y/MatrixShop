@@ -39,6 +39,10 @@ This file is the handoff note for each development round.
 - Added backend target description and known-table counting in `DatabaseManager`
 - Expanded `/matrixshopadmin status` to show configured backend, active backend, target, schema version, Redis toggle, and table counts
 - Rewrote this handoff document into stable ASCII Markdown
+- Added schema migration runner with versioned database sync
+- Added startup and reload-time schema sync after module initialization
+- Added `/matrixshopadmin sync` for manual schema synchronization
+- Added runtime table/index bootstrap for JDBC backends
 
 ## Validation
 
@@ -49,7 +53,7 @@ This file is the handoff note for each development round.
 
 - `SystemShop` is still config-driven and does not use JDBC runtime storage
 - Database access still uses direct JDBC helpers; there is no shared transaction helper yet
-- Schema versioning exists, but there is no forward migration runner yet
+- Schema migration now exists, but there is still no richer multi-step migration history or rollback support
 - Redis is config-visible only; actual sync/invalidation transport is not implemented
 - Runtime behavior has been validated by build only, not by live server testing
 
@@ -57,9 +61,9 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
-- Add clearer database schema migration flow on top of the new schema-version metadata
 - Review whether `SystemShop` needs database-backed cache/index support or should remain purely config-driven
 - Add more focused admin diagnostics for data-layer health and migration state
+- Consider whether repository-local `CREATE TABLE IF NOT EXISTS` should now be reduced after central schema sync is in place
 
 ### Medium Priority
 

@@ -508,6 +508,20 @@ object MatrixShopCommands {
                 MatrixShop.reloadPlugin()
                 Texts.send(commandSender, "&aConfiguration and modules reloaded.")
             }
+            "sync" -> {
+                if (!Permissions.require(commandSender, PermissionNodes.ADMIN_SYNC)) {
+                    return
+                }
+                val result = DatabaseManager.syncSchema()
+                if (result.success) {
+                    Texts.send(
+                        commandSender,
+                        "&a${result.message} &7(version ${result.startedVersion ?: "file"} -> ${result.finalVersion ?: "file"})"
+                    )
+                } else {
+                    Texts.send(commandSender, "&c${result.message}")
+                }
+            }
             "status" -> {
                 if (!Permissions.require(commandSender, PermissionNodes.ADMIN_STATUS)) {
                     return
@@ -524,8 +538,15 @@ object MatrixShopCommands {
                         diagnostics.schemaVersion?.let { "$it/${diagnostics.expectedSchemaVersion}" } ?: "file-backend"
                     }"
                 )
+                Texts.send(commandSender, "&fData schema state: &7${if (diagnostics.schemaCurrent) "current" else "pending"}")
                 Texts.send(commandSender, "&fRedis notify: &7${if (diagnostics.redisEnabled) "enabled" else "disabled"}")
                 Texts.send(commandSender, "&fRecord backend: &7${com.y54895.matrixshop.core.record.RecordService.backendName()}")
+                if (diagnostics.pendingMigrations.isNotEmpty()) {
+                    Texts.send(commandSender, "&fPending migrations: &7${diagnostics.pendingMigrations.joinToString(", ")}")
+                }
+                if (diagnostics.lastMigration.isNotBlank()) {
+                    Texts.send(commandSender, "&fLast migration: &7${diagnostics.lastMigration}")
+                }
                 if (diagnostics.failureReason.isNotBlank()) {
                     Texts.send(commandSender, "&fData backend reason: &7${diagnostics.failureReason}")
                 }
@@ -575,6 +596,7 @@ object MatrixShopCommands {
     private fun sendAdminHelp(sender: CommandSender) {
         val lines = mutableListOf("&8[&bMatrixShop&8] &fAdmin Commands")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_RELOAD), "&7/matrixshopadmin reload &8- &fReload configuration and modules")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_SYNC), "&7/matrixshopadmin sync &8- &fRun database schema sync")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), "&7/matrixshopadmin status &8- &fShow module, economy and data-layer status")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module list &8- &fShow module states")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module <enable|disable|toggle> <id> &8- &fChange one module state")
