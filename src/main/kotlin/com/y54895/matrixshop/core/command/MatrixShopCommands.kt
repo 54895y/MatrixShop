@@ -2,6 +2,7 @@ package com.y54895.matrixshop.core.command
 
 import com.y54895.matrixshop.MatrixShop
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.permission.PermissionNodes
@@ -511,12 +512,30 @@ object MatrixShopCommands {
                 if (!Permissions.require(commandSender, PermissionNodes.ADMIN_STATUS)) {
                     return
                 }
+                val diagnostics = DatabaseManager.diagnostics()
                 Texts.send(commandSender, "&fData folder: &7${ConfigFiles.dataFolder().absolutePath}")
                 Texts.send(commandSender, "&fEconomy provider: &7${VaultEconomyBridge.providerName()}")
+                Texts.send(commandSender, "&fConfigured data backend: &7${diagnostics.configuredBackend}")
+                Texts.send(commandSender, "&fActive data backend: &7${diagnostics.activeBackend}")
+                Texts.send(commandSender, "&fData target: &7${diagnostics.target}")
+                Texts.send(
+                    commandSender,
+                    "&fData schema: &7${
+                        diagnostics.schemaVersion?.let { "$it/${diagnostics.expectedSchemaVersion}" } ?: "file-backend"
+                    }"
+                )
+                Texts.send(commandSender, "&fRedis notify: &7${if (diagnostics.redisEnabled) "enabled" else "disabled"}")
                 Texts.send(commandSender, "&fRecord backend: &7${com.y54895.matrixshop.core.record.RecordService.backendName()}")
-                val recordBackendReason = com.y54895.matrixshop.core.record.RecordService.backendFailureReason()
-                if (recordBackendReason.isNotBlank()) {
-                    Texts.send(commandSender, "&fRecord backend reason: &7$recordBackendReason")
+                if (diagnostics.failureReason.isNotBlank()) {
+                    Texts.send(commandSender, "&fData backend reason: &7${diagnostics.failureReason}")
+                }
+                if (diagnostics.tableCounts.isNotEmpty()) {
+                    Texts.send(
+                        commandSender,
+                        "&fData tables: &7${
+                            diagnostics.tableCounts.entries.joinToString(", ") { (table, count) -> "$table=$count" }
+                        }"
+                    )
                 }
                 ModuleRegistry.moduleStates().forEach { Texts.sendRaw(commandSender, it) }
             }
@@ -556,7 +575,7 @@ object MatrixShopCommands {
     private fun sendAdminHelp(sender: CommandSender) {
         val lines = mutableListOf("&8[&bMatrixShop&8] &fAdmin Commands")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_RELOAD), "&7/matrixshopadmin reload &8- &fReload configuration and modules")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), "&7/matrixshopadmin status &8- &fShow module and economy status")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), "&7/matrixshopadmin status &8- &fShow module, economy and data-layer status")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module list &8- &fShow module states")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module <enable|disable|toggle> <id> &8- &fChange one module state")
         Texts.sendRaw(sender, lines.joinToString("\n"))
