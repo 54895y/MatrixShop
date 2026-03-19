@@ -20,9 +20,11 @@
 - Summary:
   - `Record` 已切到 JDBC 优先 / 文件回退
   - `AuctionRepository` 已切到 JDBC 优先 / 文件回退
+  - `AuctionDeliveryRepository` 已切到 JDBC 优先 / 文件回退
   - `GlobalMarketRepository` 已切到 JDBC 优先 / 文件回退
   - `PlayerShopRepository` 已切到 JDBC 优先 / 文件回退
   - `CartRepository` 已切到 JDBC 优先 / 文件回退
+  - `ChestShopRepository` 已切到 JDBC 优先 / 文件回退
   - `ItemStackCodec` 已补上，用于数据库中的物品序列化
   - `StringMapCodec` 已补上，用于购物车元数据序列化
 
@@ -52,8 +54,8 @@
 - `GlobalMarketRepository`: JDBC 优先，文件回退
 - `PlayerShopRepository`: JDBC 优先，文件回退
 - `CartRepository`: JDBC 优先，文件回退
-- `ChestShopRepository`: 仍为文件仓库
-- `AuctionDeliveryRepository`: 仍为文件仓库
+- `ChestShopRepository`: JDBC 优先，文件回退
+- `AuctionDeliveryRepository`: JDBC 优先，文件回退
 
 ## 本次完成
 
@@ -62,14 +64,16 @@
 - 将 `CartRepository` 迁移到 JDBC 优先 / 文件回退
 - 将 `PlayerShopRepository` 迁移到 JDBC 优先 / 文件回退
 - 补充 `StringMapCodec`，用于购物车元数据持久化
+- 将 `AuctionDeliveryRepository` 迁移到 JDBC 优先 / 文件回退
+- 将 `ChestShopRepository` 迁移到 JDBC 优先 / 文件回退
 
 ## 下一步任务
 
 ### 最高优先级
 
-- 迁移 `AuctionDeliveryRepository`
-- 迁移 `ChestShopRepository`
 - 继续补充更多后台数据层状态输出
+- 评估 `SystemShop` 是否需要保持纯静态配置，还是增加数据库层缓存/索引
+- 为数据库表增加更明确的 schema/version 管理
 
 ### 第二优先级
 
