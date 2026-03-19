@@ -4,6 +4,8 @@ import com.y54895.matrixshop.MatrixShop
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.module.ModuleRegistry
+import com.y54895.matrixshop.core.permission.PermissionNodes
+import com.y54895.matrixshop.core.permission.Permissions
 import com.y54895.matrixshop.core.text.Texts
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
@@ -31,8 +33,7 @@ object MatrixShopCommands {
             name = "matrixshopadmin",
             aliases = listOf("msa"),
             description = "MatrixShop admin command",
-            usage = "/matrixshopadmin",
-            permission = "matrixshop.admin"
+            usage = "/matrixshopadmin"
         ) { sender, args ->
             handleAdmin(sender, args)
         }
@@ -72,7 +73,9 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            ModuleRegistry.systemShop.openMain(player)
+            if (Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
+                ModuleRegistry.systemShop.openMain(player)
+            }
             return
         }
         when (args[0].lowercase()) {
@@ -91,6 +94,9 @@ object MatrixShopCommands {
     }
 
     private fun handleSystem(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
+            return
+        }
         if (args.isEmpty()) {
             ModuleRegistry.systemShop.openMain(player)
             return
@@ -106,13 +112,21 @@ object MatrixShopCommands {
     }
 
     private fun handleConfirm(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
+            return
+        }
         if (args.isEmpty()) {
             Texts.send(player, "&cMissing confirm subcommand.")
             return
         }
         when (args[0].lowercase()) {
             "action", "buy" -> ModuleRegistry.systemShop.confirmPurchase(player)
-            "cart" -> ModuleRegistry.cart.addCurrentSystemSelection(player)
+            "cart" -> {
+                if (!Permissions.require(player, PermissionNodes.CART_USE)) {
+                    return
+                }
+                ModuleRegistry.cart.addCurrentSystemSelection(player)
+            }
             "amount" -> {
                 if (args.getOrNull(1)?.equals("add", true) != true) {
                     Texts.send(player, "&cUsage: /matrixshop system confirm amount add <number>")
@@ -130,14 +144,30 @@ object MatrixShopCommands {
     }
 
     private fun handleCart(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.CART_USE)) {
+            return
+        }
         if (args.isEmpty() || args[0].equals("open", true)) {
             ModuleRegistry.cart.open(player)
             return
         }
         when (args[0].lowercase()) {
-            "checkout" -> ModuleRegistry.cart.checkout(player, args.getOrNull(1)?.equals("valid_only", true) == true)
-            "clear" -> ModuleRegistry.cart.clear(player)
+            "checkout" -> {
+                if (!Permissions.require(player, PermissionNodes.CART_CHECKOUT)) {
+                    return
+                }
+                ModuleRegistry.cart.checkout(player, args.getOrNull(1)?.equals("valid_only", true) == true)
+            }
+            "clear" -> {
+                if (!Permissions.require(player, PermissionNodes.CART_CLEAR)) {
+                    return
+                }
+                ModuleRegistry.cart.clear(player)
+            }
             "remove" -> {
+                if (!Permissions.require(player, PermissionNodes.CART_CLEAR)) {
+                    return
+                }
                 val index = args.getOrNull(1)?.toIntOrNull()
                 if (index == null) {
                     Texts.send(player, "&cUsage: /matrixshop cart remove <slot>")
@@ -145,8 +175,16 @@ object MatrixShopCommands {
                 }
                 ModuleRegistry.cart.remove(player, index)
             }
-            "remove_invalid" -> ModuleRegistry.cart.removeInvalid(player)
+            "remove_invalid" -> {
+                if (!Permissions.require(player, PermissionNodes.CART_CLEAR)) {
+                    return
+                }
+                ModuleRegistry.cart.removeInvalid(player)
+            }
             "amount" -> {
+                if (!Permissions.require(player, PermissionNodes.CART_USE)) {
+                    return
+                }
                 val index = args.getOrNull(1)?.toIntOrNull()
                 val amount = args.getOrNull(2)?.toIntOrNull()
                 if (index == null || amount == null) {
@@ -160,12 +198,18 @@ object MatrixShopCommands {
     }
 
     private fun handleGlobalMarket(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.GLOBALMARKET_USE)) {
+            return
+        }
         if (args.isEmpty() || args[0].equals("open", true)) {
             ModuleRegistry.globalMarket.openMarket(player)
             return
         }
         when (args[0].lowercase()) {
             "upload" -> {
+                if (!Permissions.require(player, PermissionNodes.GLOBALMARKET_SELL)) {
+                    return
+                }
                 val price = args.getOrNull(1)?.toDoubleOrNull()
                 if (price == null) {
                     ModuleRegistry.globalMarket.openUpload(player)
@@ -174,12 +218,20 @@ object MatrixShopCommands {
                 val amount = args.getOrNull(2)?.toIntOrNull()
                 ModuleRegistry.globalMarket.uploadFromHand(player, price, amount)
             }
-            "manage" -> ModuleRegistry.globalMarket.openManage(player)
+            "manage" -> {
+                if (!Permissions.require(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN)) {
+                    return
+                }
+                ModuleRegistry.globalMarket.openManage(player)
+            }
             else -> Texts.send(player, "&cUnknown global market subcommand.")
         }
     }
 
     private fun handlePlayerShop(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.PLAYERSHOP_USE)) {
+            return
+        }
         if (args.isEmpty()) {
             ModuleRegistry.playerShop.openShop(player, player.uniqueId, player.name)
             return
@@ -189,8 +241,16 @@ object MatrixShopCommands {
                 val targetName = args.getOrNull(1) ?: player.name
                 ModuleRegistry.playerShop.openShop(player, targetName)
             }
-            "edit" -> ModuleRegistry.playerShop.openEdit(player)
+            "edit" -> {
+                if (!Permissions.require(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN)) {
+                    return
+                }
+                ModuleRegistry.playerShop.openEdit(player)
+            }
             "upload" -> {
+                if (!Permissions.require(player, PermissionNodes.PLAYERSHOP_SELL)) {
+                    return
+                }
                 val price = args.getOrNull(1)?.toDoubleOrNull()
                 if (price == null) {
                     Texts.send(player, "&cUsage: /matrixshop player_shop upload <price> [amount]")
@@ -204,6 +264,9 @@ object MatrixShopCommands {
     }
 
     private fun handleRecord(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.RECORD_USE)) {
+            return
+        }
         if (args.isEmpty() || args[0].equals("open", true)) {
             val keyword = args.drop(1).joinToString(" ").ifBlank { null }
             ModuleRegistry.record.open(player, keyword)
@@ -211,6 +274,9 @@ object MatrixShopCommands {
         }
         when (args[0].lowercase()) {
             "detail" -> {
+                if (!Permissions.require(player, PermissionNodes.RECORD_DETAIL_SELF)) {
+                    return
+                }
                 val recordId = args.getOrNull(1)
                 if (recordId.isNullOrBlank()) {
                     Texts.send(player, "&cUsage: /matrixshop record detail <id>")
@@ -218,24 +284,45 @@ object MatrixShopCommands {
                 }
                 ModuleRegistry.record.openDetail(player, recordId)
             }
-            "income" -> ModuleRegistry.record.openIncome(player)
-            "expense" -> ModuleRegistry.record.openExpense(player)
+            "income" -> {
+                if (!Permissions.require(player, PermissionNodes.RECORD_STATS_SELF)) {
+                    return
+                }
+                ModuleRegistry.record.openIncome(player)
+            }
+            "expense" -> {
+                if (!Permissions.require(player, PermissionNodes.RECORD_STATS_SELF)) {
+                    return
+                }
+                ModuleRegistry.record.openExpense(player)
+            }
             "search" -> {
                 val keyword = args.drop(1).joinToString(" ").ifBlank { null }
                 ModuleRegistry.record.open(player, keyword)
             }
-            "stats" -> ModuleRegistry.record.openIncome(player)
+            "stats" -> {
+                if (!Permissions.require(player, PermissionNodes.RECORD_STATS_SELF)) {
+                    return
+                }
+                ModuleRegistry.record.openIncome(player)
+            }
             else -> Texts.send(player, "&cUnknown record subcommand.")
         }
     }
 
     private fun handleAuction(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.AUCTION_USE)) {
+            return
+        }
         if (args.isEmpty() || args[0].equals("open", true)) {
             ModuleRegistry.auction.openAuction(player)
             return
         }
         when (args[0].lowercase()) {
             "upload" -> {
+                if (!Permissions.require(player, PermissionNodes.AUCTION_SELL)) {
+                    return
+                }
                 if (args.size == 1) {
                     ModuleRegistry.auction.openUpload(player)
                     return
@@ -257,6 +344,9 @@ object MatrixShopCommands {
                 ModuleRegistry.auction.openDetail(player, id)
             }
             "bid" -> {
+                if (!Permissions.require(player, PermissionNodes.AUCTION_BID)) {
+                    return
+                }
                 val id = args.getOrNull(1)
                 if (id.isNullOrBlank()) {
                     Texts.send(player, "&cUsage: /auction bid <id> [price]")
@@ -265,6 +355,9 @@ object MatrixShopCommands {
                 ModuleRegistry.auction.bid(player, id, args.getOrNull(2)?.toDoubleOrNull())
             }
             "buyout" -> {
+                if (!Permissions.require(player, PermissionNodes.AUCTION_BUYOUT)) {
+                    return
+                }
                 val id = args.getOrNull(1)
                 if (id.isNullOrBlank()) {
                     Texts.send(player, "&cUsage: /auction buyout <id>")
@@ -272,9 +365,17 @@ object MatrixShopCommands {
                 }
                 ModuleRegistry.auction.buyout(player, id)
             }
-            "my_items", "manage" -> ModuleRegistry.auction.openManage(player)
+            "my_items", "manage" -> {
+                if (!Permissions.require(player, PermissionNodes.AUCTION_MANAGE_OWN)) {
+                    return
+                }
+                ModuleRegistry.auction.openManage(player)
+            }
             "my_bids", "bids" -> ModuleRegistry.auction.openBids(player)
             "remove" -> {
+                if (!Permissions.require(player, PermissionNodes.AUCTION_MANAGE_OWN)) {
+                    return
+                }
                 val id = args.getOrNull(1)
                 if (id.isNullOrBlank()) {
                     Texts.send(player, "&cUsage: /auction remove <id>")
@@ -287,6 +388,9 @@ object MatrixShopCommands {
     }
 
     private fun handleTransaction(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.TRANSACTION_USE)) {
+            return
+        }
         if (args.isEmpty() || args[0].equals("open", true)) {
             ModuleRegistry.transaction.open(player)
             return
@@ -306,25 +410,58 @@ object MatrixShopCommands {
     }
 
     private fun handleChestShop(player: Player, args: List<String>) {
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_USE)) {
+            return
+        }
         if (args.isEmpty() || args[0].equals("open", true)) {
             ModuleRegistry.chestShop.open(player)
             return
         }
         when (args[0].lowercase()) {
-            "create" -> ModuleRegistry.chestShop.create(
-                player = player,
-                modeRaw = args.getOrNull(1),
-                firstPrice = args.getOrNull(2)?.toDoubleOrNull(),
-                secondPrice = args.getOrNull(3)?.toDoubleOrNull(),
-                amountRaw = args.getOrNull(4)?.toIntOrNull()
-            )
-            "edit" -> ModuleRegistry.chestShop.openEdit(player)
+            "create" -> {
+                if (!Permissions.require(player, PermissionNodes.CHESTSHOP_CREATE)) {
+                    return
+                }
+                ModuleRegistry.chestShop.create(
+                    player = player,
+                    modeRaw = args.getOrNull(1),
+                    firstPrice = args.getOrNull(2)?.toDoubleOrNull(),
+                    secondPrice = args.getOrNull(3)?.toDoubleOrNull(),
+                    amountRaw = args.getOrNull(4)?.toIntOrNull()
+                )
+            }
+            "edit" -> {
+                if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
+                    return
+                }
+                ModuleRegistry.chestShop.openEdit(player)
+            }
             "stock" -> ModuleRegistry.chestShop.openStock(player, args.getOrNull(1)?.toIntOrNull() ?: 1)
             "history" -> ModuleRegistry.chestShop.openHistory(player, args.getOrNull(1)?.toIntOrNull() ?: 1)
-            "remove" -> ModuleRegistry.chestShop.remove(player)
-            "price" -> ModuleRegistry.chestShop.setPrice(player, args.getOrNull(1), args.getOrNull(2)?.toDoubleOrNull())
-            "amount" -> ModuleRegistry.chestShop.setAmount(player, args.getOrNull(1)?.toIntOrNull())
-            "mode" -> ModuleRegistry.chestShop.setMode(player, args.getOrNull(1))
+            "remove" -> {
+                if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
+                    return
+                }
+                ModuleRegistry.chestShop.remove(player)
+            }
+            "price" -> {
+                if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
+                    return
+                }
+                ModuleRegistry.chestShop.setPrice(player, args.getOrNull(1), args.getOrNull(2)?.toDoubleOrNull())
+            }
+            "amount" -> {
+                if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
+                    return
+                }
+                ModuleRegistry.chestShop.setAmount(player, args.getOrNull(1)?.toIntOrNull())
+            }
+            "mode" -> {
+                if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
+                    return
+                }
+                ModuleRegistry.chestShop.setMode(player, args.getOrNull(1))
+            }
             else -> Texts.send(player, "&cUnknown chest shop subcommand.")
         }
     }
@@ -358,68 +495,116 @@ object MatrixShopCommands {
 
     private fun handleAdmin(sender: ProxyCommandSender, args: Array<String>) {
         val commandSender = sender.castSafely<CommandSender>() ?: return
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
             sendAdminHelp(commandSender)
             return
         }
         when (args[0].lowercase()) {
             "reload" -> {
+                if (!Permissions.require(commandSender, PermissionNodes.ADMIN_RELOAD)) {
+                    return
+                }
                 MatrixShop.reloadPlugin()
                 Texts.send(commandSender, "&aConfiguration and modules reloaded.")
             }
             "status" -> {
+                if (!Permissions.require(commandSender, PermissionNodes.ADMIN_STATUS)) {
+                    return
+                }
                 Texts.send(commandSender, "&fData folder: &7${ConfigFiles.dataFolder().absolutePath}")
                 Texts.send(commandSender, "&fEconomy provider: &7${VaultEconomyBridge.providerName()}")
                 ModuleRegistry.moduleStates().forEach { Texts.sendRaw(commandSender, it) }
             }
+            "module" -> handleAdminModule(commandSender, args.drop(1))
             else -> sendAdminHelp(commandSender)
         }
     }
 
     private fun sendPlayerHelp(player: Player) {
-        Texts.sendRaw(
-            player,
-            """
-            &8[&bMatrixShop&8] &fPlayer Commands
-            &7/matrixshop &8- &fOpen SystemShop
-            &7/auction open &8- &fOpen the auction hall
-            &7/auction upload <english|dutch> <start> [buyout|end] [duration] &8- &fList the main-hand item
-            &7/auction bid <id> [price] &8- &fPlace an auction bid
-            &7/auction buyout <id> &8- &fBuy at buyout or current Dutch price
-            &7/auction my_items|my_bids &8- &fOpen your auction views
-            &7/matrixshop system open <id> &8- &fOpen a system category
-            &7/matrixshop player_shop open [player] &8- &fOpen a player shop
-            &7/matrixshop player_shop edit &8- &fManage your player shop
-            &7/matrixshop player_shop upload <price> [amount] &8- &fList the main-hand item
-            &7/matrixshop global_market open &8- &fOpen GlobalMarket
-            &7/matrixshop global_market upload <price> [amount] &8- &fList to GlobalMarket
-            &7/matrixshop global_market manage &8- &fManage your GlobalMarket listings
-            &7/chestshop create <buy|sell|dual> <price> [sell-price] [amount] &8- &fCreate a chest shop from the target chest
-            &7/chestshop open|edit|stock|history &8- &fOpen the target chest shop views
-            &7/chestshop price <buy|sell> <value> / amount <number> / mode <type> &8- &fManage your chest shop
-            &7/matrixshop cart open &8- &fOpen cart
-            &7/matrixshop cart checkout [valid_only] &8- &fCheckout the cart
-            &7/matrixshop record open [keyword] &8- &fOpen ledger records
-            &7/matrixshop record detail <id> &8- &fOpen one record detail
-            &7/matrixshop record income &8- &fOpen income statistics
-            &7/matrixshop record expense &8- &fOpen expense statistics
-            &7/trade request <player> &8- &fSend a face-to-face trade request
-            &7/trade accept [player] &8- &fAccept a pending trade request
-            &7/trade money <amount> &8- &fSet your money offer
-            &7/trade exp <amount> &8- &fSet your exp offer
-            &7/trade ready|confirm|cancel|logs &8- &fControl the active trade
-            """.trimIndent()
-        )
+        val lines = mutableListOf("&8[&bMatrixShop&8] &fPlayer Commands")
+        addHelp(lines, ModuleRegistry.isEnabled("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/matrixshop &8- &fOpen SystemShop")
+        addHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), "&7/auction open &8- &fOpen the auction hall")
+        addHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), "&7/auction upload <english|dutch> <start> [buyout|end] [duration] &8- &fList the main-hand item")
+        addHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), "&7/auction bid <id> [price] &8- &fPlace an auction bid")
+        addHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BUYOUT), "&7/auction buyout <id> &8- &fBuy at buyout or current Dutch price")
+        addHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_MANAGE_OWN), "&7/auction my_items|my_bids &8- &fOpen your auction views")
+        addHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), "&7/matrixshop player_shop open [player] &8- &fOpen a player shop")
+        addHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN), "&7/matrixshop player_shop edit &8- &fManage your player shop")
+        addHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_SELL), "&7/matrixshop player_shop upload <price> [amount] &8- &fList the main-hand item")
+        addHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), "&7/matrixshop global_market open &8- &fOpen GlobalMarket")
+        addHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), "&7/matrixshop global_market upload <price> [amount] &8- &fList to GlobalMarket")
+        addHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), "&7/matrixshop global_market manage &8- &fManage your GlobalMarket listings")
+        addHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), "&7/chestshop create <buy|sell|dual> <price> [sell-price] [amount] &8- &fCreate a chest shop from the target chest")
+        addHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), "&7/chestshop open|stock|history &8- &fOpen the target chest shop views")
+        addHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), "&7/chestshop edit|remove|price|amount|mode &8- &fManage your chest shop")
+        addHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), "&7/matrixshop cart open &8- &fOpen cart")
+        addHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), "&7/matrixshop cart checkout [valid_only] &8- &fCheckout the cart")
+        addHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), "&7/matrixshop record open [keyword] &8- &fOpen ledger records")
+        addHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), "&7/matrixshop record detail <id> &8- &fOpen one record detail")
+        addHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), "&7/matrixshop record income|expense|stats &8- &fOpen ledger statistics")
+        addHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), "&7/trade request <player> &8- &fSend a face-to-face trade request")
+        addHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), "&7/trade accept [player] / ready / confirm / cancel / logs &8- &fControl the active trade")
+        addHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), "&7/trade money <amount> / exp <amount> &8- &fSet your money or exp offer")
+        Texts.sendRaw(player, lines.joinToString("\n"))
     }
 
     private fun sendAdminHelp(sender: CommandSender) {
-        Texts.sendRaw(
-            sender,
-            """
-            &8[&bMatrixShop&8] &fAdmin Commands
-            &7/matrixshopadmin reload &8- &fReload configuration and modules
-            &7/matrixshopadmin status &8- &fShow module and economy status
-            """.trimIndent()
-        )
+        val lines = mutableListOf("&8[&bMatrixShop&8] &fAdmin Commands")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_RELOAD), "&7/matrixshopadmin reload &8- &fReload configuration and modules")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), "&7/matrixshopadmin status &8- &fShow module and economy status")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module list &8- &fShow module states")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module <enable|disable|toggle> <id> &8- &fChange one module state")
+        Texts.sendRaw(sender, lines.joinToString("\n"))
+    }
+
+    private fun handleAdminModule(sender: CommandSender, args: List<String>) {
+        if (!Permissions.require(sender, PermissionNodes.ADMIN_MODULE)) {
+            return
+        }
+        if (args.isEmpty() || args[0].equals("list", true)) {
+            Texts.send(sender, "&fModules:")
+            ModuleRegistry.all().forEach { module ->
+                Texts.sendRaw(sender, "&7- &f${module.id}: ${if (module.isEnabled()) "&aenabled" else "&cdisabled"}")
+            }
+            return
+        }
+        val action = args[0].lowercase()
+        val moduleId = resolveModuleId(args.getOrNull(1))
+        if (moduleId == null) {
+            Texts.send(sender, "&cUsage: /matrixshopadmin module <enable|disable|toggle> <id>")
+            return
+        }
+        val enabled = when (action) {
+            "enable", "on" -> true
+            "disable", "off" -> false
+            "toggle" -> !ConfigFiles.isModuleEnabled(moduleId, true)
+            else -> {
+                Texts.send(sender, "&cUsage: /matrixshopadmin module <enable|disable|toggle> <id>")
+                return
+            }
+        }
+        ConfigFiles.setModuleEnabled(moduleId, enabled)
+        MatrixShop.reloadPlugin()
+        Texts.send(sender, "&aModule &f$moduleId &ahas been set to &f${if (enabled) "enabled" else "disabled"}&a.")
+    }
+
+    private fun resolveModuleId(raw: String?): String? {
+        return when (raw?.lowercase()) {
+            "system", "systemshop", "system-shop" -> "system-shop"
+            "playershop", "player_shop", "player-shop" -> "player-shop"
+            "globalmarket", "global_market", "global-market", "market" -> "global-market"
+            "auction" -> "auction"
+            "chestshop", "chest-shop" -> "chestshop"
+            "transaction", "trade" -> "transaction"
+            "cart" -> "cart"
+            "record", "records" -> "record"
+            else -> null
+        }
+    }
+
+    private fun addHelp(lines: MutableList<String>, visible: Boolean, line: String) {
+        if (visible) {
+            lines += line
+        }
     }
 }

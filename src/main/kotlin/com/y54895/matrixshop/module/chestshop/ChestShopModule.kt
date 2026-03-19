@@ -7,6 +7,8 @@ import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.module.MatrixModule
+import com.y54895.matrixshop.core.permission.PermissionNodes
+import com.y54895.matrixshop.core.permission.Permissions
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
 import org.bukkit.Bukkit
@@ -65,6 +67,9 @@ object ChestShopModule : MatrixModule {
         if (!ensureReady(player)) {
             return
         }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_USE)) {
+            return
+        }
         val shop = resolveContextShop(player) ?: run {
             openCreate(player)
             Texts.send(player, "&eLook at a chest shop chest or sign, then use /chestshop open.")
@@ -75,6 +80,9 @@ object ChestShopModule : MatrixModule {
 
     fun openCreate(player: Player) {
         if (!ensureReady(player)) {
+            return
+        }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_CREATE)) {
             return
         }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
@@ -97,6 +105,9 @@ object ChestShopModule : MatrixModule {
         if (!ensureReady(player)) {
             return
         }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
+            return
+        }
         val shop = resolveContextShop(player) ?: run {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
@@ -112,6 +123,9 @@ object ChestShopModule : MatrixModule {
         if (!ensureReady(player)) {
             return
         }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_USE)) {
+            return
+        }
         val shop = resolveContextShop(player) ?: run {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
@@ -123,6 +137,9 @@ object ChestShopModule : MatrixModule {
         if (!ensureReady(player)) {
             return
         }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_USE)) {
+            return
+        }
         val shop = resolveContextShop(player) ?: run {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
@@ -132,6 +149,9 @@ object ChestShopModule : MatrixModule {
 
     fun create(player: Player, modeRaw: String?, firstPrice: Double?, secondPrice: Double?, amountRaw: Int?) {
         if (!ensureReady(player)) {
+            return
+        }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_CREATE)) {
             return
         }
         val mode = parseMode(modeRaw) ?: run {
@@ -213,6 +233,9 @@ object ChestShopModule : MatrixModule {
         if (!ensureReady(player)) {
             return
         }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
+            return
+        }
         val shop = resolveContextShop(player) ?: run {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
@@ -237,6 +260,9 @@ object ChestShopModule : MatrixModule {
 
     fun setPrice(player: Player, sideRaw: String?, value: Double?) {
         if (!ensureReady(player)) {
+            return
+        }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
             return
         }
         val shop = resolveContextShop(player) ?: run {
@@ -279,6 +305,9 @@ object ChestShopModule : MatrixModule {
         if (!ensureReady(player)) {
             return
         }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
+            return
+        }
         val shop = resolveContextShop(player) ?: run {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
@@ -301,6 +330,9 @@ object ChestShopModule : MatrixModule {
 
     fun setMode(player: Player, modeRaw: String?) {
         if (!ensureReady(player)) {
+            return
+        }
+        if (!Permissions.require(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) {
             return
         }
         val shop = resolveContextShop(player) ?: run {
@@ -327,7 +359,7 @@ object ChestShopModule : MatrixModule {
     }
 
     fun handleChestInteract(player: Player, block: Block): Boolean {
-        if (!ensureReady(player) || !settings.openGuiOnChestRightClick) {
+        if (!ensureReady(player) || !settings.openGuiOnChestRightClick || !Permissions.has(player, PermissionNodes.CHESTSHOP_USE)) {
             return false
         }
         val shop = findShopByBlock(block) ?: return false
@@ -341,7 +373,7 @@ object ChestShopModule : MatrixModule {
     }
 
     fun handleSignInteract(player: Player, block: Block): Boolean {
-        if (!ensureReady(player) || !settings.openGuiOnSignRightClick) {
+        if (!ensureReady(player) || !settings.openGuiOnSignRightClick || !Permissions.has(player, PermissionNodes.CHESTSHOP_USE)) {
             return false
         }
         val shop = findShopBySign(block) ?: return false
@@ -737,7 +769,8 @@ object ChestShopModule : MatrixModule {
     }
 
     private fun canManage(player: Player, shop: ChestShopShop): Boolean {
-        return shop.ownerId == player.uniqueId || player.hasPermission("matrixshop.admin.chestshop.manage.others")
+        return (shop.ownerId == player.uniqueId && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN)) ||
+            Permissions.has(player, PermissionNodes.ADMIN_CHESTSHOP_MANAGE_OTHERS)
     }
 
     private fun resolveContextShop(player: Player): ChestShopShop? {

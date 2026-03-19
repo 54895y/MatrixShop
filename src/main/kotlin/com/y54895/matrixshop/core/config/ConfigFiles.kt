@@ -48,6 +48,11 @@ object ConfigFiles {
         return module.getBoolean("modules.$path", defaultValue)
     }
 
+    fun setModuleEnabled(path: String, enabled: Boolean) {
+        module.set("modules.$path", enabled)
+        module.save(File(dataFolder(), "module.yml"))
+    }
+
     fun defaultSystemCategory(): String {
         return config.getString("system-shop.default-category", "weapon").orEmpty().ifBlank { "weapon" }
     }
