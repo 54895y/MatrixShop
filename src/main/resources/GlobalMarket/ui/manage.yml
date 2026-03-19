@@ -1,0 +1,39 @@
+Title:
+  - '&8我的全球上架 &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##U#I#B##'
+  - 'P#######N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'U':
+    material: 'CHEST'
+    name: '&a上架帮助'
+  'I':
+    material: 'PAPER'
+    name: '&f当前上架'
+    lore:
+      - '&7数量: &f{listed}'
+      - '&c左键商品可下架返还'
+  'B':
+    material: 'BARRIER'
+    name: '&c返回市场'
+    actions:
+      left:
+        - 'back'
+  'P':
+    material: 'ARROW'
+    name: '&a上一页'
+  'N':
+    material: 'ARROW'
+    name: '&a下一页'

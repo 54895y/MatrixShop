@@ -8,6 +8,7 @@ import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.module.globalmarket.GlobalMarketModule
 import com.y54895.matrixshop.module.playershop.PlayerShopModule
 import com.y54895.matrixshop.module.systemshop.SystemShopModule
 import org.bukkit.Material
@@ -112,6 +113,34 @@ object CartModule : MatrixModule {
         Texts.send(player, "&a已加入购物车: &f${selection.listing.item.itemMeta?.displayName ?: selection.listing.item.type.name}")
     }
 
+    fun addGlobalMarketListing(player: Player, listingId: String) {
+        val listing = GlobalMarketModule.selection(listingId)
+        if (listing == null) {
+            Texts.send(player, "&c该全球市场商品已失效。")
+            return
+        }
+        val store = CartRepository.load(player.uniqueId)
+        store.entries += CartEntry(
+            id = "cart-${System.currentTimeMillis().toString(36)}",
+            sourceModule = "global_market",
+            sourceId = listing.id,
+            name = listing.item.itemMeta?.displayName ?: listing.item.type.name,
+            currency = listing.currency,
+            snapshotPrice = listing.price,
+            amount = listing.item.amount,
+            ownerName = listing.ownerName,
+            item = listing.item.clone(),
+            editableAmount = false,
+            metadata = linkedMapOf(
+                "listing-id" to listing.id,
+                "owner-id" to listing.ownerId.toString(),
+                "owner-name" to listing.ownerName
+            )
+        )
+        CartRepository.save(store)
+        Texts.send(player, "&a已加入购物车: &f${listing.item.itemMeta?.displayName ?: listing.item.type.name}")
+    }
+
     fun remove(player: Player, index: Int) {
         val store = CartRepository.load(player.uniqueId)
         val entry = orderedEntries(store).getOrNull(index - 1)
@@ -190,6 +219,11 @@ object CartModule : MatrixModule {
                     entry.metadata["listing-id"].orEmpty(),
                     false
                 )
+                "global_market" -> GlobalMarketModule.purchaseDirect(
+                    player,
+                    entry.metadata["listing-id"].orEmpty(),
+                    false
+                )
                 else -> com.y54895.matrixshop.module.systemshop.ModuleOperationResult(false, "&c不支持的购物车来源。")
             }
             if (result.success) {
@@ -221,6 +255,11 @@ object CartModule : MatrixModule {
                     entry.metadata["owner-name"].orEmpty(),
                     entry.metadata["listing-id"].orEmpty()
                 )
+                if (result.success) CartValidation(true, "valid", "")
+                else CartValidation(false, "invalid", Texts.color(result.message))
+            }
+            "global_market" -> {
+                val result = GlobalMarketModule.validateListing(entry.metadata["listing-id"].orEmpty())
                 if (result.success) CartValidation(true, "valid", "")
                 else CartValidation(false, "invalid", Texts.color(result.message))
             }

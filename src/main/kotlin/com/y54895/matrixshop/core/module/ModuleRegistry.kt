@@ -2,6 +2,7 @@ package com.y54895.matrixshop.core.module
 
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.module.cart.CartModule
+import com.y54895.matrixshop.module.globalmarket.GlobalMarketModule
 import com.y54895.matrixshop.module.playershop.PlayerShopModule
 import com.y54895.matrixshop.module.stub.StubModule
 import com.y54895.matrixshop.module.systemshop.SystemShopModule
@@ -18,11 +19,13 @@ object ModuleRegistry {
     val systemShop = SystemShopModule
     val playerShop = PlayerShopModule
     val cart = CartModule
+    val globalMarket = GlobalMarketModule
 
     private val modules = listOf<MatrixModule>(
         systemShop,
         playerShop,
         cart,
+        globalMarket,
         StubModule("auction", "Auction"),
         StubModule("chestshop", "ChestShop"),
         StubModule("transaction", "Transaction"),

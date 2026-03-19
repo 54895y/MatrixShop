@@ -1,6 +1,7 @@
 modules:
   system-shop: true
   player-shop: true
+  global-market: true
   auction: false
   chestshop: false
   transaction: false

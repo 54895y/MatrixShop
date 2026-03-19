@@ -53,6 +53,7 @@ object MatrixShopCommands {
             "open" -> ModuleRegistry.systemShop.openMain(player)
             "system" -> handleSystem(player, args.drop(1))
             "player_shop", "playershop" -> handlePlayerShop(player, args.drop(1))
+            "global_market", "globalmarket", "market" -> handleGlobalMarket(player, args.drop(1))
             "cart" -> handleCart(player, args.drop(1))
             "auction", "transaction", "record", "chestshop" -> Texts.send(player, "&e${args[0]} 模块骨架已创建，业务实现将在后续迭代中补全。")
             else -> sendPlayerHelp(player)
@@ -128,6 +129,26 @@ object MatrixShopCommands {
         }
     }
 
+    private fun handleGlobalMarket(player: Player, args: List<String>) {
+        if (args.isEmpty() || args[0].equals("open", true)) {
+            ModuleRegistry.globalMarket.openMarket(player)
+            return
+        }
+        when (args[0].lowercase()) {
+            "upload" -> {
+                val price = args.getOrNull(1)?.toDoubleOrNull()
+                if (price == null) {
+                    ModuleRegistry.globalMarket.openUpload(player)
+                    return
+                }
+                val amount = args.getOrNull(2)?.toIntOrNull()
+                ModuleRegistry.globalMarket.uploadFromHand(player, price, amount)
+            }
+            "manage" -> ModuleRegistry.globalMarket.openManage(player)
+            else -> Texts.send(player, "&c未知的全球市场子命令。")
+        }
+    }
+
     private fun handlePlayerShop(player: Player, args: List<String>) {
         if (args.isEmpty()) {
             ModuleRegistry.playerShop.openShop(player, player.uniqueId, player.name)
@@ -182,6 +203,9 @@ object MatrixShopCommands {
             &7/matrixshop player_shop open [player] &8- &f打开玩家商店
             &7/matrixshop player_shop edit &8- &f管理自己的玩家商店
             &7/matrixshop player_shop upload <price> [amount] &8- &f上架主手物品
+            &7/matrixshop global_market open &8- &f打开全球市场
+            &7/matrixshop global_market upload <price> [amount] &8- &f上架主手物品到全球市场
+            &7/matrixshop global_market manage &8- &f管理自己的全球市场上架
             &7/matrixshop cart open &8- &f打开购物车
             &7/matrixshop cart checkout &8- &f结算购物车
             &7/matrixshop help &8- &f查看帮助

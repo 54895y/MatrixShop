@@ -22,6 +22,7 @@ object ConfigFiles {
         resourceFiles.forEach { releaseResourceFile(it, false) }
         releaseResourceFolder("SystemShop", false)
         releaseResourceFolder("PlayerShop", false)
+        releaseResourceFolder("GlobalMarket", false)
         releaseResourceFolder("Auction", false)
         releaseResourceFolder("ChestShop", false)
         releaseResourceFolder("Transaction", false)
