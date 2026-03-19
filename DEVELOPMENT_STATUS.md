@@ -51,11 +51,15 @@ This file is the handoff note for each development round.
 - Added batch legacy record import for JDBC
 - Expanded admin sync/status output with legacy import summary
 - Persisted last legacy import summary into database metadata
+- Expanded admin status output with migration/import timestamps and totals
+- Ran a live Paper 1.12.2 startup test with the current build
+- Verified `/matrixshopadmin status` and `/matrixshopadmin sync` on live Paper 1.12.2
 
 ## Validation
 
 - Local build passed with `./gradlew.bat build`
-- No Paper runtime integration test has been executed yet
+- Live startup test passed on local `1.12.2paper`
+- Live admin command test passed for `matrixshopadmin status` and `matrixshopadmin sync`
 
 ## Known Boundaries
 
@@ -64,7 +68,7 @@ This file is the handoff note for each development round.
 - Schema migration now exists, but there is still no richer multi-step migration history or rollback support
 - Legacy file import is now centralized before module reload, but per-module import results are only stored as summary metadata
 - Redis is config-visible only; actual sync/invalidation transport is not implemented
-- Runtime behavior has been validated by build only, not by live server testing
+- Test environment currently uses a PlaceholderAPI build that throws `Bukkit.getAsyncScheduler()` on shutdown under Paper 1.12.2; this is external to MatrixShop
 
 ## Next Tasks
 
@@ -73,6 +77,7 @@ This file is the handoff note for each development round.
 - Review whether `SystemShop` needs database-backed cache/index support or should remain purely config-driven
 - Add more focused admin diagnostics for data-layer health and migration state
 - Consider whether legacy import summaries should also expose per-module timestamps and source-file counts
+- Start validating player-side command paths and one complete business flow on live Paper
 
 ### Medium Priority
 

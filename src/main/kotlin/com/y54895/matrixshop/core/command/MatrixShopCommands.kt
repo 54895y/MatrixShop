@@ -13,6 +13,9 @@ import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import taboolib.common.platform.ProxyCommandSender
 import taboolib.common.platform.command.simpleCommand
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 object MatrixShopCommands {
 
@@ -550,8 +553,17 @@ object MatrixShopCommands {
                 if (diagnostics.lastMigration.isNotBlank()) {
                     Texts.send(commandSender, "&fLast migration: &7${diagnostics.lastMigration}")
                 }
+                if (diagnostics.lastMigrationAt.isNotBlank()) {
+                    Texts.send(commandSender, "&fLast migration at: &7${formatEpochMillis(diagnostics.lastMigrationAt)}")
+                }
                 if (diagnostics.lastLegacyImport.isNotBlank()) {
                     Texts.send(commandSender, "&fLast legacy import: &7${diagnostics.lastLegacyImport}")
+                }
+                if (diagnostics.lastLegacyImportAt.isNotBlank()) {
+                    Texts.send(commandSender, "&fLast legacy import at: &7${formatEpochMillis(diagnostics.lastLegacyImportAt)}")
+                }
+                if (diagnostics.lastLegacyImport.isNotBlank()) {
+                    Texts.send(commandSender, "&fLast legacy import total: &7${diagnostics.lastLegacyImportTotal}")
                 }
                 if (diagnostics.failureReason.isNotBlank()) {
                     Texts.send(commandSender, "&fData backend reason: &7${diagnostics.failureReason}")
@@ -658,5 +670,14 @@ object MatrixShopCommands {
         if (visible) {
             lines += line
         }
+    }
+
+    private fun formatEpochMillis(value: String): String {
+        val millis = value.toLongOrNull() ?: return value
+        return runCatching {
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.ofEpochMilli(millis))
+        }.getOrDefault(value)
     }
 }

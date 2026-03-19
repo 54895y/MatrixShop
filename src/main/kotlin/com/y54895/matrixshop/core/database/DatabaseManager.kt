@@ -35,7 +35,10 @@ data class DatabaseDiagnostics(
     val pendingMigrations: List<Int>,
     val redisEnabled: Boolean,
     val lastMigration: String,
+    val lastMigrationAt: String,
     val lastLegacyImport: String,
+    val lastLegacyImportAt: String,
+    val lastLegacyImportTotal: Int,
     val failureReason: String,
     val tableCounts: Map<String, Int>
 )
@@ -254,7 +257,10 @@ object DatabaseManager {
             pendingMigrations = pendingMigrations,
             redisEnabled = isRedisEnabled(),
             lastMigration = readMeta("last_migration").orEmpty(),
+            lastMigrationAt = readMeta("last_migration_at").orEmpty(),
             lastLegacyImport = readMeta("last_legacy_import").orEmpty(),
+            lastLegacyImportAt = readMeta("last_legacy_import_at").orEmpty(),
+            lastLegacyImportTotal = readMeta("last_legacy_import_total")?.toIntOrNull() ?: 0,
             failureReason = failureReason,
             tableCounts = tableCounts()
         )
