@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.chestshop
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.ItemStackCodec
+import com.y54895.matrixshop.core.database.LegacyImportResult
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.UUID
@@ -19,10 +20,10 @@ object ChestShopRepository {
         }
     }
 
-    fun migrateLegacyToJdbcIfNeeded() {
+    fun migrateLegacyToJdbcIfNeeded(): LegacyImportResult {
         initialize()
         if (!DatabaseManager.isJdbcAvailable()) {
-            return
+            return LegacyImportResult("chestshop", "file-backend", 0, "JDBC backend unavailable.")
         }
         val count = DatabaseManager.withConnection { connection ->
             connection.createStatement().use { statement ->
@@ -30,13 +31,26 @@ object ChestShopRepository {
                     if (result.next()) result.getInt(1) else 0
                 }
             }
-        } ?: return
+        } ?: return LegacyImportResult("chestshop", "failed", 0, "Unable to inspect chest_shops.")
         if (count > 0) {
-            return
+            return LegacyImportResult("chestshop", "already-present", 0, "chest_shops already contains $count rows.")
         }
         val shops = loadAllFile()
-        if (shops.isNotEmpty()) {
-            saveAllJdbc(shops)
+        if (shops.isEmpty()) {
+            return LegacyImportResult("chestshop", "no-source", 0, "No legacy chest shops found.")
+        }
+        saveAllJdbc(shops)
+        val imported = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM chest_shops").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
+            }
+        } ?: 0
+        return if (imported > 0) {
+            LegacyImportResult("chestshop", "imported", imported, "Imported $imported chest shops.")
+        } else {
+            LegacyImportResult("chestshop", "failed", 0, "Legacy chest shop import did not write any rows.")
         }
     }
 

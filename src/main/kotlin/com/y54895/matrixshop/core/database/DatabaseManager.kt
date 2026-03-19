@@ -35,6 +35,7 @@ data class DatabaseDiagnostics(
     val pendingMigrations: List<Int>,
     val redisEnabled: Boolean,
     val lastMigration: String,
+    val lastLegacyImport: String,
     val failureReason: String,
     val tableCounts: Map<String, Int>
 )
@@ -199,6 +200,22 @@ object DatabaseManager {
         return failureReason
     }
 
+    fun metaValue(key: String): String? {
+        if (!isJdbcAvailable()) {
+            return null
+        }
+        return readMeta(key)
+    }
+
+    fun setMetaValue(key: String, value: String) {
+        if (!isJdbcAvailable()) {
+            return
+        }
+        withConnection { connection ->
+            upsertMeta(connection, key, value)
+        }
+    }
+
     fun targetDescription(): String {
         ensureInitialized()
         return when (settings.type) {
@@ -237,6 +254,7 @@ object DatabaseManager {
             pendingMigrations = pendingMigrations,
             redisEnabled = isRedisEnabled(),
             lastMigration = readMeta("last_migration").orEmpty(),
+            lastLegacyImport = readMeta("last_legacy_import").orEmpty(),
             failureReason = failureReason,
             tableCounts = tableCounts()
         )

@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.cart
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.ItemStackCodec
+import com.y54895.matrixshop.core.database.LegacyImportResult
 import com.y54895.matrixshop.core.database.StringMapCodec
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
@@ -17,10 +18,10 @@ object CartRepository {
         folder.mkdirs()
     }
 
-    fun migrateLegacyToJdbcIfNeeded() {
+    fun migrateLegacyToJdbcIfNeeded(): LegacyImportResult {
         initialize()
         if (!DatabaseManager.isJdbcAvailable()) {
-            return
+            return LegacyImportResult("cart", "file-backend", 0, "JDBC backend unavailable.")
         }
         val count = DatabaseManager.withConnection { connection ->
             connection.createStatement().use { statement ->
@@ -28,16 +29,31 @@ object CartRepository {
                     if (result.next()) result.getInt(1) else 0
                 }
             }
-        } ?: return
+        } ?: return LegacyImportResult("cart", "failed", 0, "Unable to inspect cart_entries.")
         if (count > 0) {
-            return
+            return LegacyImportResult("cart", "already-present", 0, "cart_entries already contains $count rows.")
         }
-        folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
-            ?.forEach { file ->
-                val ownerId = runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull() ?: return@forEach
-                val store = loadFile(ownerId)
-                saveJdbc(store)
+        val files = folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }.orEmpty().toList()
+        if (files.isEmpty()) {
+            return LegacyImportResult("cart", "no-source", 0, "No legacy cart files found.")
+        }
+        files.forEach { file ->
+            val ownerId = runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull() ?: return@forEach
+            val store = loadFile(ownerId)
+            saveJdbc(store)
+        }
+        val imported = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM cart_entries").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
             }
+        } ?: 0
+        return if (imported > 0) {
+            LegacyImportResult("cart", "imported", imported, "Imported $imported cart entries.")
+        } else {
+            LegacyImportResult("cart", "failed", 0, "Legacy cart import did not write any rows.")
+        }
     }
 
     fun load(ownerId: UUID): CartStore {

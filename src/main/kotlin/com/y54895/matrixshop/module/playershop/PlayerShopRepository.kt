@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.playershop
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.ItemStackCodec
+import com.y54895.matrixshop.core.database.LegacyImportResult
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.UUID
@@ -16,10 +17,10 @@ object PlayerShopRepository {
         folder.mkdirs()
     }
 
-    fun migrateLegacyToJdbcIfNeeded(defaultUnlockedSlots: Int, maxUnlockedSlots: Int) {
+    fun migrateLegacyToJdbcIfNeeded(defaultUnlockedSlots: Int, maxUnlockedSlots: Int): LegacyImportResult {
         initialize()
         if (!DatabaseManager.isJdbcAvailable()) {
-            return
+            return LegacyImportResult("player-shop", "file-backend", 0, "JDBC backend unavailable.")
         }
         val count = DatabaseManager.withConnection { connection ->
             connection.createStatement().use { statement ->
@@ -27,18 +28,33 @@ object PlayerShopRepository {
                     if (result.next()) result.getInt(1) else 0
                 }
             }
-        } ?: return
+        } ?: return LegacyImportResult("player-shop", "failed", 0, "Unable to inspect player_shop_stores.")
         if (count > 0) {
-            return
+            return LegacyImportResult("player-shop", "already-present", 0, "player_shop_stores already contains $count rows.")
         }
-        folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
-            ?.forEach { file ->
-                val ownerId = runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull() ?: return@forEach
-                val yaml = YamlConfiguration.loadConfiguration(file)
-                val ownerName = yaml.getString("owner-name", ownerId.toString()).orEmpty().ifBlank { ownerId.toString() }
-                val store = loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
-                saveJdbc(store)
+        val files = folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }.orEmpty().toList()
+        if (files.isEmpty()) {
+            return LegacyImportResult("player-shop", "no-source", 0, "No legacy player shop files found.")
+        }
+        files.forEach { file ->
+            val ownerId = runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull() ?: return@forEach
+            val yaml = YamlConfiguration.loadConfiguration(file)
+            val ownerName = yaml.getString("owner-name", ownerId.toString()).orEmpty().ifBlank { ownerId.toString() }
+            val store = loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+            saveJdbc(store)
+        }
+        val imported = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM player_shop_stores").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
             }
+        } ?: 0
+        return if (imported > 0) {
+            LegacyImportResult("player-shop", "imported", imported, "Imported $imported player shop stores.")
+        } else {
+            LegacyImportResult("player-shop", "failed", 0, "Legacy player shop import did not write any rows.")
+        }
     }
 
     fun load(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {

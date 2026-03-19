@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.auction
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.ItemStackCodec
+import com.y54895.matrixshop.core.database.LegacyImportResult
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.UUID
@@ -19,10 +20,10 @@ object AuctionDeliveryRepository {
         }
     }
 
-    fun migrateLegacyToJdbcIfNeeded() {
+    fun migrateLegacyToJdbcIfNeeded(): LegacyImportResult {
         initialize()
         if (!DatabaseManager.isJdbcAvailable()) {
-            return
+            return LegacyImportResult("auction-delivery", "file-backend", 0, "JDBC backend unavailable.")
         }
         val count = DatabaseManager.withConnection { connection ->
             connection.createStatement().use { statement ->
@@ -30,13 +31,26 @@ object AuctionDeliveryRepository {
                     if (result.next()) result.getInt(1) else 0
                 }
             }
-        } ?: return
+        } ?: return LegacyImportResult("auction-delivery", "failed", 0, "Unable to inspect auction_deliveries.")
         if (count > 0) {
-            return
+            return LegacyImportResult("auction-delivery", "already-present", 0, "auction_deliveries already contains $count rows.")
         }
         val entries = loadAllFile()
-        if (entries.isNotEmpty()) {
-            saveAllJdbc(entries)
+        if (entries.isEmpty()) {
+            return LegacyImportResult("auction-delivery", "no-source", 0, "No legacy auction deliveries found.")
+        }
+        saveAllJdbc(entries)
+        val imported = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM auction_deliveries").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
+            }
+        } ?: 0
+        return if (imported > 0) {
+            LegacyImportResult("auction-delivery", "imported", imported, "Imported $imported auction deliveries.")
+        } else {
+            LegacyImportResult("auction-delivery", "failed", 0, "Legacy auction delivery import did not write any rows.")
         }
     }
 

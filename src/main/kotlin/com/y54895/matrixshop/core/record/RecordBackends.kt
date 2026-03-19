@@ -145,10 +145,7 @@ object JdbcRecordBackend : RecordBackend {
     private val lock = Any()
 
     override fun initialize() {
-        if (!DatabaseManager.isJdbcAvailable()) {
-            return
-        }
-        migrateLegacyFileIfNeeded()
+        // Legacy import is coordinated by LegacyDataMigrationService.
     }
 
     override fun append(entry: RecordEntry): RecordEntry {
@@ -248,19 +245,46 @@ object JdbcRecordBackend : RecordBackend {
         return DatabaseManager.backendName()
     }
 
-    private fun migrateLegacyFileIfNeeded() {
-        val existingCount = DatabaseManager.withConnection { connection ->
-            connection.createStatement().use { statement ->
-                statement.executeQuery("SELECT COUNT(*) FROM record_entries").use { result ->
-                    if (result.next()) result.getInt(1) else 0
-                }
-            }
-        } ?: 0
-        if (existingCount > 0) {
-            return
+    fun importLegacyEntries(entries: List<RecordEntry>): Int {
+        if (!DatabaseManager.isJdbcAvailable() || entries.isEmpty()) {
+            return 0
         }
-        FileRecordBackend.importableEntries().forEach { entry ->
-            append(entry)
+        return synchronized(lock) {
+            DatabaseManager.withConnection { connection ->
+                val previousAutoCommit = connection.autoCommit
+                connection.autoCommit = false
+                try {
+                    connection.prepareStatement(
+                        """
+                        INSERT INTO record_entries (
+                            id, created_at, module, type, actor, target, money_change, detail, note, admin_reason
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """.trimIndent()
+                    ).use { statement ->
+                        entries.forEach { entry ->
+                            statement.setString(1, entry.id)
+                            statement.setLong(2, entry.createdAt)
+                            statement.setString(3, entry.module)
+                            statement.setString(4, entry.type)
+                            statement.setString(5, entry.actor)
+                            statement.setString(6, entry.target)
+                            statement.setDouble(7, entry.moneyChange)
+                            statement.setString(8, entry.detail)
+                            statement.setString(9, entry.note)
+                            statement.setString(10, entry.adminReason)
+                            statement.addBatch()
+                        }
+                        statement.executeBatch()
+                    }
+                    connection.commit()
+                    connection.autoCommit = previousAutoCommit
+                    entries.size
+                } catch (ex: Exception) {
+                    runCatching { connection.rollback() }
+                    connection.autoCommit = previousAutoCommit
+                    0
+                }
+            } ?: 0
         }
     }
 }

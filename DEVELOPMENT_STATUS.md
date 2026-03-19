@@ -47,6 +47,10 @@ This file is the handoff note for each development round.
 - Removed duplicate runtime `CREATE TABLE IF NOT EXISTS` blocks from JDBC repositories
 - Added centralized legacy file import service for JDBC migration
 - Removed repository-local automatic legacy imports from `initialize()` and `loadJdbc()`
+- Moved `Record` legacy import into the same centralized migration flow
+- Added batch legacy record import for JDBC
+- Expanded admin sync/status output with legacy import summary
+- Persisted last legacy import summary into database metadata
 
 ## Validation
 
@@ -58,7 +62,7 @@ This file is the handoff note for each development round.
 - `SystemShop` is still config-driven and does not use JDBC runtime storage
 - Database access still uses direct JDBC helpers; there is no shared transaction helper yet
 - Schema migration now exists, but there is still no richer multi-step migration history or rollback support
-- Legacy file import is now centralized before module reload, but `Record` still keeps its own import path inside `RecordService`
+- Legacy file import is now centralized before module reload, but per-module import results are only stored as summary metadata
 - Redis is config-visible only; actual sync/invalidation transport is not implemented
 - Runtime behavior has been validated by build only, not by live server testing
 
@@ -68,7 +72,7 @@ This file is the handoff note for each development round.
 
 - Review whether `SystemShop` needs database-backed cache/index support or should remain purely config-driven
 - Add more focused admin diagnostics for data-layer health and migration state
-- Decide whether `Record` legacy import should also be surfaced through the same migration-status path
+- Consider whether legacy import summaries should also expose per-module timestamps and source-file counts
 
 ### Medium Priority
 

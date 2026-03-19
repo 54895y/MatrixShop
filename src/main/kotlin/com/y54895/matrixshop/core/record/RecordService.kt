@@ -1,6 +1,7 @@
 package com.y54895.matrixshop.core.record
 
 import com.y54895.matrixshop.core.database.DatabaseManager
+import com.y54895.matrixshop.core.database.LegacyImportResult
 import java.util.UUID
 
 object RecordService {
@@ -67,6 +68,32 @@ object RecordService {
 
     fun backendFailureReason(): String {
         return DatabaseManager.failureReason()
+    }
+
+    fun migrateLegacyToJdbcIfNeeded(): LegacyImportResult {
+        if (!DatabaseManager.isJdbcAvailable()) {
+            return LegacyImportResult("record", "file-backend", 0, "JDBC backend unavailable.")
+        }
+        val existingCount = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM record_entries").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
+            }
+        } ?: return LegacyImportResult("record", "failed", 0, "Unable to inspect record_entries.")
+        if (existingCount > 0) {
+            return LegacyImportResult("record", "already-present", 0, "record_entries already contains $existingCount rows.")
+        }
+        val entries = FileRecordBackend.importableEntries()
+        if (entries.isEmpty()) {
+            return LegacyImportResult("record", "no-source", 0, "No legacy record.log entries found.")
+        }
+        val imported = JdbcRecordBackend.importLegacyEntries(entries)
+        return if (imported > 0) {
+            LegacyImportResult("record", "imported", imported, "Imported $imported legacy record entries.")
+        } else {
+            LegacyImportResult("record", "failed", 0, "Legacy record import did not write any rows.")
+        }
     }
 
     private fun nextId(): String {

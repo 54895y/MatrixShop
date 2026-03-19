@@ -3,6 +3,7 @@ package com.y54895.matrixshop.core.command
 import com.y54895.matrixshop.MatrixShop
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.database.DatabaseManager
+import com.y54895.matrixshop.core.database.LegacyDataMigrationService
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.permission.PermissionNodes
@@ -512,15 +513,17 @@ object MatrixShopCommands {
                 if (!Permissions.require(commandSender, PermissionNodes.ADMIN_SYNC)) {
                     return
                 }
-                val result = DatabaseManager.syncSchema()
-                if (result.success) {
-                    Texts.send(
-                        commandSender,
-                        "&a${result.message} &7(version ${result.startedVersion ?: "file"} -> ${result.finalVersion ?: "file"})"
-                    )
-                } else {
-                    Texts.send(commandSender, "&c${result.message}")
+                val schemaResult = DatabaseManager.syncSchema()
+                if (!schemaResult.success) {
+                    Texts.send(commandSender, "&c${schemaResult.message}")
+                    return
                 }
+                val legacyResult = LegacyDataMigrationService.migrateAll()
+                Texts.send(
+                    commandSender,
+                    "&a${schemaResult.message} &7(version ${schemaResult.startedVersion ?: "file"} -> ${schemaResult.finalVersion ?: "file"})"
+                )
+                Texts.send(commandSender, "&fLegacy import: &7${legacyResult.message}")
             }
             "status" -> {
                 if (!Permissions.require(commandSender, PermissionNodes.ADMIN_STATUS)) {
@@ -546,6 +549,9 @@ object MatrixShopCommands {
                 }
                 if (diagnostics.lastMigration.isNotBlank()) {
                     Texts.send(commandSender, "&fLast migration: &7${diagnostics.lastMigration}")
+                }
+                if (diagnostics.lastLegacyImport.isNotBlank()) {
+                    Texts.send(commandSender, "&fLast legacy import: &7${diagnostics.lastLegacyImport}")
                 }
                 if (diagnostics.failureReason.isNotBlank()) {
                     Texts.send(commandSender, "&fData backend reason: &7${diagnostics.failureReason}")
@@ -596,7 +602,7 @@ object MatrixShopCommands {
     private fun sendAdminHelp(sender: CommandSender) {
         val lines = mutableListOf("&8[&bMatrixShop&8] &fAdmin Commands")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_RELOAD), "&7/matrixshopadmin reload &8- &fReload configuration and modules")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_SYNC), "&7/matrixshopadmin sync &8- &fRun database schema sync")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_SYNC), "&7/matrixshopadmin sync &8- &fRun schema sync and legacy data import")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), "&7/matrixshopadmin status &8- &fShow module, economy and data-layer status")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module list &8- &fShow module states")
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module <enable|disable|toggle> <id> &8- &fChange one module state")

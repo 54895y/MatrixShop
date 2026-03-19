@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.globalmarket
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.ItemStackCodec
+import com.y54895.matrixshop.core.database.LegacyImportResult
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.UUID
@@ -19,10 +20,10 @@ object GlobalMarketRepository {
         }
     }
 
-    fun migrateLegacyToJdbcIfNeeded() {
+    fun migrateLegacyToJdbcIfNeeded(): LegacyImportResult {
         initialize()
         if (!DatabaseManager.isJdbcAvailable()) {
-            return
+            return LegacyImportResult("global-market", "file-backend", 0, "JDBC backend unavailable.")
         }
         val count = DatabaseManager.withConnection { connection ->
             connection.createStatement().use { statement ->
@@ -30,13 +31,26 @@ object GlobalMarketRepository {
                     if (result.next()) result.getInt(1) else 0
                 }
             }
-        } ?: return
+        } ?: return LegacyImportResult("global-market", "failed", 0, "Unable to inspect global_market_listings.")
         if (count > 0) {
-            return
+            return LegacyImportResult("global-market", "already-present", 0, "global_market_listings already contains $count rows.")
         }
         val fileListings = loadAllFile()
-        if (fileListings.isNotEmpty()) {
-            saveAllJdbc(fileListings)
+        if (fileListings.isEmpty()) {
+            return LegacyImportResult("global-market", "no-source", 0, "No legacy global market listings found.")
+        }
+        saveAllJdbc(fileListings)
+        val imported = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM global_market_listings").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
+            }
+        } ?: 0
+        return if (imported > 0) {
+            LegacyImportResult("global-market", "imported", imported, "Imported $imported global market listings.")
+        } else {
+            LegacyImportResult("global-market", "failed", 0, "Legacy global market import did not write any rows.")
         }
     }
 
