@@ -513,6 +513,11 @@ object MatrixShopCommands {
                 }
                 Texts.send(commandSender, "&fData folder: &7${ConfigFiles.dataFolder().absolutePath}")
                 Texts.send(commandSender, "&fEconomy provider: &7${VaultEconomyBridge.providerName()}")
+                Texts.send(commandSender, "&fRecord backend: &7${com.y54895.matrixshop.core.record.RecordService.backendName()}")
+                val recordBackendReason = com.y54895.matrixshop.core.record.RecordService.backendFailureReason()
+                if (recordBackendReason.isNotBlank()) {
+                    Texts.send(commandSender, "&fRecord backend reason: &7$recordBackendReason")
+                }
                 ModuleRegistry.moduleStates().forEach { Texts.sendRaw(commandSender, it) }
             }
             "module" -> handleAdminModule(commandSender, args.drop(1))
