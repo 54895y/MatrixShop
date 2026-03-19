@@ -1,6 +1,8 @@
 package com.y54895.matrixshop.module.auction
 
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.database.DatabaseManager
+import com.y54895.matrixshop.core.database.ItemStackCodec
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.UUID
@@ -15,10 +17,217 @@ object AuctionRepository {
         if (!file.exists()) {
             file.createNewFile()
         }
+        if (DatabaseManager.isJdbcAvailable()) {
+            initializeJdbc()
+            migrateFileToJdbcIfNeeded()
+        }
     }
 
     fun loadAll(): MutableList<AuctionListing> {
         initialize()
+        return if (DatabaseManager.isJdbcAvailable()) loadAllJdbc() else loadAllFile()
+    }
+
+    fun saveAll(listings: List<AuctionListing>) {
+        initialize()
+        if (DatabaseManager.isJdbcAvailable()) {
+            saveAllJdbc(listings)
+        } else {
+            saveAllFile(listings)
+        }
+    }
+
+    private fun loadAllJdbc(): MutableList<AuctionListing> {
+        DatabaseManager.withConnection { connection ->
+            val bidMap = HashMap<String, MutableList<AuctionBidEntry>>()
+            connection.prepareStatement(
+                """
+                SELECT listing_id, bidder_id, bidder_name, amount, created_at
+                FROM auction_bids
+                ORDER BY listing_id, bid_index ASC
+                """.trimIndent()
+            ).use { statement ->
+                statement.executeQuery().use { result ->
+                    while (result.next()) {
+                        val listingId = result.getString("listing_id")
+                        val bid = AuctionBidEntry(
+                            bidderId = UUID.fromString(result.getString("bidder_id")),
+                            bidderName = result.getString("bidder_name"),
+                            amount = result.getDouble("amount"),
+                            createdAt = result.getLong("created_at")
+                        )
+                        bidMap.computeIfAbsent(listingId) { mutableListOf() }.add(bid)
+                    }
+                }
+            }
+            connection.prepareStatement(
+                """
+                SELECT
+                    id, owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
+                    current_bid, highest_bidder_id, highest_bidder_name, created_at, expire_at, extend_count, deposit_paid
+                FROM auction_listings
+                ORDER BY created_at DESC
+                """.trimIndent()
+            ).use { statement ->
+                statement.executeQuery().use { result ->
+                    val listings = mutableListOf<AuctionListing>()
+                    while (result.next()) {
+                        val item = ItemStackCodec.decode(result.getString("item_blob")) ?: continue
+                        val id = result.getString("id")
+                        listings += AuctionListing(
+                            id = id,
+                            ownerId = UUID.fromString(result.getString("owner_id")),
+                            ownerName = result.getString("owner_name"),
+                            mode = runCatching {
+                                AuctionMode.valueOf(result.getString("mode").uppercase())
+                            }.getOrDefault(AuctionMode.ENGLISH),
+                            item = item,
+                            startPrice = result.getDouble("start_price"),
+                            buyoutPrice = result.getDouble("buyout_price"),
+                            endPrice = result.getDouble("end_price"),
+                            currentBid = result.getDouble("current_bid"),
+                            highestBidderId = result.getString("highest_bidder_id")?.takeIf { it.isNotBlank() }?.let { UUID.fromString(it) },
+                            highestBidderName = result.getString("highest_bidder_name") ?: "",
+                            createdAt = result.getLong("created_at"),
+                            expireAt = result.getLong("expire_at"),
+                            extendCount = result.getInt("extend_count"),
+                            depositPaid = result.getDouble("deposit_paid"),
+                            bidHistory = (bidMap[id] ?: mutableListOf()).toMutableList()
+                        )
+                    }
+                    listings
+                }
+            }
+        }?.let { return it }
+        return loadAllFile()
+    }
+
+    private fun saveAllJdbc(listings: List<AuctionListing>) {
+        val success = DatabaseManager.withConnection { connection ->
+            val previousAutoCommit = connection.autoCommit
+            connection.autoCommit = false
+            try {
+                connection.prepareStatement("DELETE FROM auction_bids").use { it.executeUpdate() }
+                connection.prepareStatement("DELETE FROM auction_listings").use { it.executeUpdate() }
+                connection.prepareStatement(
+                    """
+                    INSERT INTO auction_listings (
+                        id, owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
+                        current_bid, highest_bidder_id, highest_bidder_name, created_at, expire_at, extend_count, deposit_paid
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """.trimIndent()
+                ).use { insertListing ->
+                    connection.prepareStatement(
+                        """
+                        INSERT INTO auction_bids (
+                            listing_id, bid_index, bidder_id, bidder_name, amount, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """.trimIndent()
+                    ).use { insertBid ->
+                        listings.sortedBy { it.createdAt }.forEach { listing ->
+                            insertListing.setString(1, listing.id)
+                            insertListing.setString(2, listing.ownerId.toString())
+                            insertListing.setString(3, listing.ownerName)
+                            insertListing.setString(4, listing.mode.name)
+                            insertListing.setString(5, ItemStackCodec.encode(listing.item))
+                            insertListing.setDouble(6, listing.startPrice)
+                            insertListing.setDouble(7, listing.buyoutPrice)
+                            insertListing.setDouble(8, listing.endPrice)
+                            insertListing.setDouble(9, listing.currentBid)
+                            insertListing.setString(10, listing.highestBidderId?.toString().orEmpty())
+                            insertListing.setString(11, listing.highestBidderName)
+                            insertListing.setLong(12, listing.createdAt)
+                            insertListing.setLong(13, listing.expireAt)
+                            insertListing.setInt(14, listing.extendCount)
+                            insertListing.setDouble(15, listing.depositPaid)
+                            insertListing.addBatch()
+                            listing.bidHistory.sortedBy { it.createdAt }.forEachIndexed { index, bid ->
+                                insertBid.setString(1, listing.id)
+                                insertBid.setInt(2, index)
+                                insertBid.setString(3, bid.bidderId.toString())
+                                insertBid.setString(4, bid.bidderName)
+                                insertBid.setDouble(5, bid.amount)
+                                insertBid.setLong(6, bid.createdAt)
+                                insertBid.addBatch()
+                            }
+                        }
+                        insertListing.executeBatch()
+                        insertBid.executeBatch()
+                    }
+                }
+                connection.commit()
+                connection.autoCommit = previousAutoCommit
+                true
+            } catch (ex: Exception) {
+                runCatching { connection.rollback() }
+                connection.autoCommit = previousAutoCommit
+                false
+            }
+        } ?: false
+        if (!success) {
+            saveAllFile(listings)
+        }
+    }
+
+    private fun initializeJdbc() {
+        DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeUpdate(
+                    """
+                    CREATE TABLE IF NOT EXISTS auction_listings (
+                        id VARCHAR(64) PRIMARY KEY,
+                        owner_id VARCHAR(64) NOT NULL,
+                        owner_name VARCHAR(64) NOT NULL,
+                        mode VARCHAR(16) NOT NULL,
+                        item_blob TEXT NOT NULL,
+                        start_price DOUBLE NOT NULL,
+                        buyout_price DOUBLE NOT NULL,
+                        end_price DOUBLE NOT NULL,
+                        current_bid DOUBLE NOT NULL,
+                        highest_bidder_id VARCHAR(64) NOT NULL,
+                        highest_bidder_name VARCHAR(64) NOT NULL,
+                        created_at BIGINT NOT NULL,
+                        expire_at BIGINT NOT NULL,
+                        extend_count INT NOT NULL,
+                        deposit_paid DOUBLE NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    CREATE TABLE IF NOT EXISTS auction_bids (
+                        listing_id VARCHAR(64) NOT NULL,
+                        bid_index INT NOT NULL,
+                        bidder_id VARCHAR(64) NOT NULL,
+                        bidder_name VARCHAR(64) NOT NULL,
+                        amount DOUBLE NOT NULL,
+                        created_at BIGINT NOT NULL,
+                        PRIMARY KEY (listing_id, bid_index)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+    }
+
+    private fun migrateFileToJdbcIfNeeded() {
+        val count = DatabaseManager.withConnection { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT COUNT(*) FROM auction_listings").use { result ->
+                    if (result.next()) result.getInt(1) else 0
+                }
+            }
+        } ?: return
+        if (count > 0) {
+            return
+        }
+        val fileListings = loadAllFile()
+        if (fileListings.isNotEmpty()) {
+            saveAllJdbc(fileListings)
+        }
+    }
+
+    private fun loadAllFile(): MutableList<AuctionListing> {
         val yaml = YamlConfiguration.loadConfiguration(file)
         val result = mutableListOf<AuctionListing>()
         val section = yaml.getConfigurationSection("listings")
@@ -59,8 +268,7 @@ object AuctionRepository {
         return result
     }
 
-    fun saveAll(listings: List<AuctionListing>) {
-        initialize()
+    private fun saveAllFile(listings: List<AuctionListing>) {
         val yaml = YamlConfiguration()
         listings.sortedBy { it.createdAt }.forEach { listing ->
             val base = "listings.${listing.id}"
