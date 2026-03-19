@@ -31,9 +31,9 @@ data class SystemShopProduct(
         return item
     }
 
-    fun toPurchasedItem(amountToBuy: Int): List<ItemStack> {
+    fun toPurchasedItem(purchaseTimes: Int): List<ItemStack> {
         val stacks = ArrayList<ItemStack>()
-        var remaining = amountToBuy
+        var remaining = amount * purchaseTimes
         val materialValue = Material.matchMaterial(material) ?: Material.STONE
         while (remaining > 0) {
             val take = remaining.coerceAtMost(materialValue.maxStackSize.coerceAtLeast(1))
@@ -48,4 +48,16 @@ data class ConfirmSession(
     val categoryId: String,
     val productId: String,
     var amount: Int
+)
+
+data class SystemShopSelection(
+    val categoryId: String,
+    val productId: String,
+    val product: SystemShopProduct,
+    val amount: Int
+)
+
+data class ModuleOperationResult(
+    val success: Boolean,
+    val message: String
 )

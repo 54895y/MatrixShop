@@ -29,3 +29,9 @@ data class PlayerShopMenus(
     val browse: MenuDefinition,
     val edit: MenuDefinition
 )
+
+data class PlayerShopSelection(
+    val ownerId: UUID,
+    val ownerName: String,
+    val listing: PlayerShopListing
+)

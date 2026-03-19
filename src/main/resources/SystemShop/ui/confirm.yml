@@ -5,7 +5,7 @@ layout:
   - '#########'
   - '###ggg###'
   - '#123A456#'
-  - '###K####R'
+  - '###K##T#R'
   - '####C####'
 
 icons:
@@ -65,6 +65,14 @@ icons:
       - '&7商品: &f{name}'
       - '&7数量: &f{amount}'
       - '&7总价: &e{total-price}'
+  'T':
+    material: 'CHEST'
+    name: '&b加入购物车'
+    lore:
+      - '&7把当前确认单加入购物车'
+    actions:
+      left:
+        - 'matrixshop system confirm cart'
   'C':
     material: 'LIME_WOOL'
     name: '&a确认购买'

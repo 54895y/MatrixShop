@@ -9,6 +9,8 @@ import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.module.cart.CartModule
+import com.y54895.matrixshop.module.systemshop.ModuleOperationResult
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.OfflinePlayer
@@ -132,39 +134,70 @@ object PlayerShopModule : MatrixModule {
         openEdit(player, pageForSlot(slotIndex, goodsPerPage(menus.edit)))
     }
 
-    private fun purchase(viewer: Player, store: PlayerShopStore, listing: PlayerShopListing) {
+    fun selection(ownerId: UUID, ownerName: String, listingId: String): PlayerShopSelection? {
+        val store = loadStore(ownerId, ownerName)
+        val listing = store.listings.firstOrNull { it.id == listingId } ?: return null
+        return PlayerShopSelection(ownerId = ownerId, ownerName = store.ownerName, listing = listing)
+    }
+
+    fun validateListing(ownerId: UUID, ownerName: String, listingId: String): ModuleOperationResult {
+        val selection = selection(ownerId, ownerName, listingId)
+            ?: return ModuleOperationResult(false, "&c该商品已被下架或售出。")
+        return if (selection.listing.item.type == Material.AIR || selection.listing.item.amount <= 0) {
+            ModuleOperationResult(false, "&c该商品数据无效。")
+        } else {
+            ModuleOperationResult(true, "")
+        }
+    }
+
+    fun purchaseDirect(
+        viewer: Player,
+        ownerId: UUID,
+        ownerName: String,
+        listingId: String,
+        reopenAfterSuccess: Boolean = true
+    ): ModuleOperationResult {
+        val store = loadStore(ownerId, ownerName)
+        val listing = store.listings.firstOrNull { it.id == listingId }
+            ?: return ModuleOperationResult(false, "&c该商品已被下架或售出。")
+        return purchase(viewer, store, listing, reopenAfterSuccess)
+    }
+
+    private fun purchase(
+        viewer: Player,
+        store: PlayerShopStore,
+        listing: PlayerShopListing,
+        reopenAfterSuccess: Boolean = true
+    ): ModuleOperationResult {
         if (viewer.uniqueId == store.ownerId) {
             openEdit(viewer, pageForSlot(listing.slotIndex, goodsPerPage(menus.edit)))
-            return
+            return ModuleOperationResult(false, "")
         }
         val refreshed = loadStore(store.ownerId, store.ownerName)
         val target = refreshed.listings.firstOrNull { it.id == listing.id }
         if (target == null) {
             Texts.send(viewer, "&c该商品已被下架或售出。")
-            openShop(viewer, store.ownerId, store.ownerName)
-            return
+            if (reopenAfterSuccess) {
+                openShop(viewer, store.ownerId, store.ownerName)
+            }
+            return ModuleOperationResult(false, "&c该商品已被下架或售出。")
         }
         if (listing.price > 0 && !VaultEconomyBridge.isAvailable()) {
-            Texts.send(viewer, "&c当前未接入 Vault 经济，无法购买玩家商店商品。")
-            return
+            return ModuleOperationResult(false, "&c当前未接入 Vault 经济，无法购买玩家商店商品。")
         }
         if (!canFit(viewer.inventory.contents.filterNotNull(), listOf(target.item))) {
-            Texts.send(viewer, "&c背包空间不足。")
-            return
+            return ModuleOperationResult(false, "&c背包空间不足。")
         }
         if (!VaultEconomyBridge.has(viewer, target.price)) {
-            Texts.send(viewer, "&c余额不足，需要 &e${trimDouble(target.price)} &c金币。")
-            return
+            return ModuleOperationResult(false, "&c余额不足，需要 &e${trimDouble(target.price)} &c金币。")
         }
         if (!VaultEconomyBridge.withdraw(viewer, target.price)) {
-            Texts.send(viewer, "&c扣款失败，购买取消。")
-            return
+            return ModuleOperationResult(false, "&c扣款失败，购买取消。")
         }
         val seller = Bukkit.getOfflinePlayer(store.ownerId)
         if (!VaultEconomyBridge.deposit(seller, target.price)) {
             VaultEconomyBridge.deposit(viewer, target.price)
-            Texts.send(viewer, "&c卖家收款失败，已回退本次交易。")
-            return
+            return ModuleOperationResult(false, "&c卖家收款失败，已回退本次交易。")
         }
         refreshed.listings.remove(target)
         PlayerShopRepository.save(refreshed)
@@ -181,7 +214,10 @@ object PlayerShopModule : MatrixModule {
             viewer.name,
             "seller=${store.ownerName};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
         )
-        openShop(viewer, store.ownerId, store.ownerName)
+        if (reopenAfterSuccess) {
+            openShop(viewer, store.ownerId, store.ownerName)
+        }
+        return ModuleOperationResult(true, "")
     }
 
     private fun removeListing(owner: Player, listingId: String) {
@@ -225,15 +261,18 @@ object PlayerShopModule : MatrixModule {
                 lore = (lore ?: emptyList()) + listOf(
                     Texts.color("&7售价: &e${trimDouble(listing.price)} ${listing.currency}"),
                     Texts.color("&7卖家: &f${store.ownerName}"),
-                    Texts.color(if (ownerView) "&e左键进入编辑页" else "&e左键购买")
+                    Texts.color(if (ownerView) "&e左键进入编辑页" else "&e左键购买"),
+                    Texts.color(if (ownerView) "&7" else "&6右键加入购物车")
                 )
             }
             holder.backingInventory.setItem(slot, item)
-            holder.handlers[slot] = {
+            holder.handlers[slot] = { event ->
                 if (ownerView) {
                     openEdit(viewer, pageForSlot(listing.slotIndex, slots.size))
+                } else if (event.click.isRightClick) {
+                    CartModule.addPlayerShopListing(viewer, store.ownerId.toString(), store.ownerName, listing.id)
                 } else {
-                    purchase(viewer, store, listing)
+                    purchase(viewer, store, listing, true)
                 }
             }
         }

@@ -95,42 +95,82 @@ object SystemShopModule : MatrixModule {
             Texts.send(player, "&c当前没有待确认的购买。")
             return
         }
-        val category = categories[session.categoryId]
-        val product = findProduct(session.categoryId, session.productId)
+        val result = purchaseDirect(player, session.categoryId, session.productId, session.amount, true)
+        if (result.success) {
+            confirmSessions.remove(player.uniqueId)
+        } else if (result.message.isNotBlank()) {
+            Texts.send(player, result.message)
+        }
+    }
+
+    fun currentSelection(player: Player): SystemShopSelection? {
+        val session = confirmSessions[player.uniqueId] ?: return null
+        val product = findProduct(session.categoryId, session.productId) ?: return null
+        return SystemShopSelection(
+            categoryId = session.categoryId,
+            productId = session.productId,
+            product = product,
+            amount = session.amount.coerceIn(1, product.buyMax.coerceAtLeast(1))
+        )
+    }
+
+    fun snapshot(categoryId: String, productId: String): SystemShopProduct? {
+        return findProduct(categoryId, productId)
+    }
+
+    fun validateProduct(categoryId: String, productId: String, amount: Int): ModuleOperationResult {
+        val category = categories[categoryId]
+        val product = findProduct(categoryId, productId)
+        if (category == null || product == null) {
+            return ModuleOperationResult(false, "&c商品已经失效。")
+        }
+        val safeAmount = amount.coerceAtLeast(1)
+        if (safeAmount > product.buyMax.coerceAtLeast(1)) {
+            return ModuleOperationResult(false, "&c数量超过该商品允许的单次上限。")
+        }
+        return ModuleOperationResult(true, "")
+    }
+
+    fun purchaseDirect(
+        player: Player,
+        categoryId: String,
+        productId: String,
+        amount: Int,
+        closeInventoryOnSuccess: Boolean = false
+    ): ModuleOperationResult {
+        val category = categories[categoryId]
+        val product = findProduct(categoryId, productId)
         if (category == null || product == null) {
             confirmSessions.remove(player.uniqueId)
-            Texts.send(player, "&c商品已经失效。")
-            return
+            return ModuleOperationResult(false, "&c商品已经失效。")
         }
-        val amount = session.amount.coerceIn(1, product.buyMax.coerceAtLeast(1))
-        val total = product.price * amount
+        val safeAmount = amount.coerceIn(1, product.buyMax.coerceAtLeast(1))
+        val total = product.price * safeAmount
         if (total > 0 && !VaultEconomyBridge.isAvailable()) {
-            Texts.send(player, "&c当前未接入 Vault 经济，无法完成付费购买。")
-            return
+            return ModuleOperationResult(false, "&c当前未接入 Vault 经济，无法完成付费购买。")
         }
         if (!VaultEconomyBridge.has(player, total)) {
-            Texts.send(player, "&c余额不足，当前需要 &e${trimDouble(total)} &c金币。")
-            return
+            return ModuleOperationResult(false, "&c余额不足，当前需要 &e${trimDouble(total)} &c金币。")
         }
-        val purchaseStacks = product.toPurchasedItem(amount)
+        val purchaseStacks = product.toPurchasedItem(safeAmount)
         if (!canFit(player.inventory.contents.filterNotNull(), purchaseStacks)) {
-            Texts.send(player, "&c背包空间不足，无法放入购买物品。")
-            return
+            return ModuleOperationResult(false, "&c背包空间不足，无法放入购买物品。")
         }
         if (!VaultEconomyBridge.withdraw(player, total)) {
-            Texts.send(player, "&c扣款失败，购买已取消。")
-            return
+            return ModuleOperationResult(false, "&c扣款失败，购买已取消。")
         }
         purchaseStacks.forEach { player.inventory.addItem(it) }
-        confirmSessions.remove(player.uniqueId)
-        player.closeInventory()
-        Texts.send(player, "&a购买成功: &f${product.name} &7x&f$amount &7- &e${trimDouble(total)}")
+        if (closeInventoryOnSuccess) {
+            player.closeInventory()
+        }
+        Texts.send(player, "&a购买成功: &f${product.name} &7x&f$safeAmount &7- &e${trimDouble(total)}")
         RecordService.append(
             module = "system_shop",
             type = "purchase",
             player = player.name,
-            detail = "category=${category.id};product=${product.id};amount=$amount;total=${trimDouble(total)}"
+            detail = "category=${category.id};product=${product.id};amount=$safeAmount;total=${trimDouble(total)}"
         )
+        return ModuleOperationResult(true, "")
     }
 
     fun openConfirm(player: Player, categoryId: String, productId: String) {

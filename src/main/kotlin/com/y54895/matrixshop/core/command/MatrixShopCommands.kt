@@ -53,7 +53,8 @@ object MatrixShopCommands {
             "open" -> ModuleRegistry.systemShop.openMain(player)
             "system" -> handleSystem(player, args.drop(1))
             "player_shop", "playershop" -> handlePlayerShop(player, args.drop(1))
-            "cart", "auction", "transaction", "record", "chestshop" -> Texts.send(player, "&e${args[0]} 模块骨架已创建，业务实现将在后续迭代中补全。")
+            "cart" -> handleCart(player, args.drop(1))
+            "auction", "transaction", "record", "chestshop" -> Texts.send(player, "&e${args[0]} 模块骨架已创建，业务实现将在后续迭代中补全。")
             else -> sendPlayerHelp(player)
         }
     }
@@ -80,6 +81,7 @@ object MatrixShopCommands {
         }
         when (args[0].lowercase()) {
             "action", "buy" -> ModuleRegistry.systemShop.confirmPurchase(player)
+            "cart" -> ModuleRegistry.cart.addCurrentSystemSelection(player)
             "amount" -> {
                 if (args.getOrNull(1)?.equals("add", true) != true) {
                     Texts.send(player, "&c用法: /matrixshop system confirm amount add <number>")
@@ -93,6 +95,36 @@ object MatrixShopCommands {
                 ModuleRegistry.systemShop.adjustConfirmAmount(player, delta)
             }
             else -> Texts.send(player, "&e当前仅实现了购买确认和数量调整。")
+        }
+    }
+
+    private fun handleCart(player: Player, args: List<String>) {
+        if (args.isEmpty() || args[0].equals("open", true)) {
+            ModuleRegistry.cart.open(player)
+            return
+        }
+        when (args[0].lowercase()) {
+            "checkout" -> ModuleRegistry.cart.checkout(player, args.getOrNull(1)?.equals("valid_only", true) == true)
+            "clear" -> ModuleRegistry.cart.clear(player)
+            "remove" -> {
+                val index = args.getOrNull(1)?.toIntOrNull()
+                if (index == null) {
+                    Texts.send(player, "&c用法: /matrixshop cart remove <slot>")
+                    return
+                }
+                ModuleRegistry.cart.remove(player, index)
+            }
+            "remove_invalid" -> ModuleRegistry.cart.removeInvalid(player)
+            "amount" -> {
+                val index = args.getOrNull(1)?.toIntOrNull()
+                val amount = args.getOrNull(2)?.toIntOrNull()
+                if (index == null || amount == null) {
+                    Texts.send(player, "&c用法: /matrixshop cart amount <slot> <number>")
+                    return
+                }
+                ModuleRegistry.cart.changeAmount(player, index, amount)
+            }
+            else -> Texts.send(player, "&c未知的购物车子命令。")
         }
     }
 
@@ -150,6 +182,8 @@ object MatrixShopCommands {
             &7/matrixshop player_shop open [player] &8- &f打开玩家商店
             &7/matrixshop player_shop edit &8- &f管理自己的玩家商店
             &7/matrixshop player_shop upload <price> [amount] &8- &f上架主手物品
+            &7/matrixshop cart open &8- &f打开购物车
+            &7/matrixshop cart checkout &8- &f结算购物车
             &7/matrixshop help &8- &f查看帮助
             """.trimIndent()
         )

@@ -1,0 +1,52 @@
+Title:
+  - '&8购物车 &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##K#V#X##'
+  - 'P#A#C#R#N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'K':
+    material: 'BOOK'
+    name: '&f购物车信息'
+    lore:
+      - '&7条目数: &f{size}'
+      - '&7预计总价: &e{estimate-total}'
+      - '&7拍卖关注数: &f{auction-watch-size}'
+  'V':
+    material: 'HOPPER'
+    name: '&e移除失效条目'
+  'X':
+    material: 'LAVA_BUCKET'
+    name: '&c清空购物车'
+  'A':
+    material: 'PAPER'
+    name: '&b修改数量'
+    lore:
+      - '&7使用命令修改:'
+      - '&f/matrixshop cart amount <slot> <number>'
+  'C':
+    material: 'LIME_WOOL'
+    name: '&a结算购物车'
+  'R':
+    material: 'BARRIER'
+    name: '&c关闭'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&a上一页'
+  'N':
+    material: 'ARROW'
+    name: '&a下一页'
