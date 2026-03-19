@@ -1,0 +1,87 @@
+id: weapon
+
+Title:
+  - '&8武器商店'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '####I####'
+  - '####R####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'I':
+    material: 'BOOK'
+    name: '&f商店说明'
+    lore:
+      - '&7点击商品进入确认界面'
+      - '&7第一版仅实现基础购买流程'
+  'R':
+    material: 'BARRIER'
+    name: '&c返回'
+    actions:
+      left:
+        - 'back'
+
+template:
+  name: '&f{name}'
+  lore:
+    - '&7价格: &e{price} {currency}'
+    - '&7单次上限: &f{limit}'
+    - '&7余额: &f{has_currency}'
+    - ''
+    - '&e左键进入购买确认'
+
+goods:
+  wooden_sword:
+    material: 'WOOD_SWORD'
+    amount: 1
+    price: 25
+    currency: 'vault'
+    buy-max: 16
+    name: '&f木剑'
+    lore:
+      - '&7入门级近战武器'
+  iron_sword:
+    material: 'IRON_SWORD'
+    amount: 1
+    price: 120
+    currency: 'vault'
+    buy-max: 16
+    name: '&f铁剑'
+    lore:
+      - '&7稳定的主力武器'
+  diamond_sword:
+    material: 'DIAMOND_SWORD'
+    amount: 1
+    price: 420
+    currency: 'vault'
+    buy-max: 8
+    name: '&b钻石剑'
+    lore:
+      - '&7高品质近战武器'
+  bow:
+    material: 'BOW'
+    amount: 1
+    price: 180
+    currency: 'vault'
+    buy-max: 8
+    name: '&6弓'
+    lore:
+      - '&7远程作战基础装备'
+  arrow_bundle:
+    material: 'ARROW'
+    amount: 16
+    price: 32
+    currency: 'vault'
+    buy-max: 64
+    name: '&f箭矢 x16'
+    lore:
+      - '&7远程消耗品补给'

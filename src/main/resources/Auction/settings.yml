@@ -1,0 +1,6 @@
+Enabled: false
+Bindings:
+  Commands:
+    Bindings:
+      - 'auction'
+      - 'ah'

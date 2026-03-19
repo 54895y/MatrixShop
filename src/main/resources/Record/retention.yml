@@ -1,0 +1,4 @@
+Retention:
+  record_entries:
+    days: 180
+    archive-before-delete: true

@@ -1,0 +1,8 @@
+debug: false
+
+system-shop:
+  default-category: weapon
+
+messages:
+  no-permission: '&c你没有权限执行这个操作。'
+  player-only: '&c该命令只能由玩家执行。'

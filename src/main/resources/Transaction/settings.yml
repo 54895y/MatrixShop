@@ -1,0 +1,5 @@
+Enabled: false
+Bindings:
+  Commands:
+    Bindings:
+      - 'trade'

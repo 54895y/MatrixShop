@@ -1,0 +1,54 @@
+package com.y54895.matrixshop.core.module
+
+import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.module.stub.StubModule
+import com.y54895.matrixshop.module.systemshop.SystemShopModule
+
+interface MatrixModule {
+    val id: String
+    val displayName: String
+    fun isEnabled(): Boolean
+    fun reload()
+}
+
+object ModuleRegistry {
+
+    val systemShop = SystemShopModule
+
+    private val modules = listOf<MatrixModule>(
+        systemShop,
+        StubModule("auction", "Auction"),
+        StubModule("chestshop", "ChestShop"),
+        StubModule("transaction", "Transaction"),
+        StubModule("cart", "Cart"),
+        StubModule("record", "Record")
+    )
+
+    fun all(): List<MatrixModule> {
+        return modules
+    }
+
+    fun reload() {
+        modules.forEach { module ->
+            if (module.isEnabled()) {
+                module.reload()
+            }
+        }
+    }
+
+    fun enabledSummary(): String {
+        return modules.joinToString(", ") {
+            "${it.id}=${if (it.isEnabled()) "on" else "off"}"
+        }
+    }
+
+    fun moduleStates(): List<String> {
+        return modules.map {
+            "&7- &f${it.displayName}: ${if (it.isEnabled()) "&aenabled" else "&cdisabled"}"
+        }
+    }
+
+    fun isEnabled(moduleId: String): Boolean {
+        return ConfigFiles.isModuleEnabled(moduleId)
+    }
+}

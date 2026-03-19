@@ -1,0 +1,7 @@
+Enabled: true
+
+Entry:
+  Open-Main-On-Command: true
+
+Currency:
+  Default: vault

@@ -1,0 +1,55 @@
+Title:
+  - '&8系统商店'
+
+layout:
+  - '#########'
+  - '#W#F#M#I#'
+  - '#########'
+  - '####R####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'W':
+    material: 'DIAMOND_SWORD'
+    name: '&b武器商店'
+    lore:
+      - '&7购买武器与战斗用品'
+      - ''
+      - '&e左键打开'
+    actions:
+      left:
+        - 'matrixshop system open weapon'
+  'F':
+    material: 'COOKED_BEEF'
+    name: '&6食物商店'
+    lore:
+      - '&7购买食物与生存补给'
+      - ''
+      - '&e左键打开'
+    actions:
+      left:
+        - 'matrixshop system open food'
+  'M':
+    material: 'DIAMOND'
+    name: '&d材料商店'
+    lore:
+      - '&7购买基础材料'
+      - ''
+      - '&e左键打开'
+    actions:
+      left:
+        - 'matrixshop system open material'
+  'I':
+    material: 'PAPER'
+    name: '&f个人信息'
+    lore:
+      - '&7玩家: &f{player}'
+      - '&7余额: &e{money}'
+  'R':
+    material: 'BARRIER'
+    name: '&c关闭'
+    actions:
+      left:
+        - 'close'

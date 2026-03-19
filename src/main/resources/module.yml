@@ -1,0 +1,7 @@
+modules:
+  system-shop: true
+  auction: false
+  chestshop: false
+  transaction: false
+  cart: true
+  record: true

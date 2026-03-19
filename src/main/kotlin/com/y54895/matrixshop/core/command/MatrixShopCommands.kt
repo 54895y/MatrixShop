@@ -1,0 +1,140 @@
+package com.y54895.matrixshop.core.command
+
+import com.y54895.matrixshop.MatrixShop
+import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.module.ModuleRegistry
+import com.y54895.matrixshop.core.text.Texts
+import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
+import taboolib.common.platform.ProxyCommandSender
+import taboolib.common.platform.command.simpleCommand
+
+object MatrixShopCommands {
+
+    private var registered = false
+
+    fun register() {
+        if (registered) {
+            return
+        }
+        registered = true
+        simpleCommand(
+            name = "matrixshop",
+            aliases = listOf("shop", "ms"),
+            description = "MatrixShop player command",
+            usage = "/matrixshop"
+        ) { sender, args ->
+            handleMain(sender, args)
+        }
+        simpleCommand(
+            name = "matrixshopadmin",
+            aliases = listOf("msa"),
+            description = "MatrixShop admin command",
+            usage = "/matrixshopadmin",
+            permission = "matrixshop.admin"
+        ) { sender, args ->
+            handleAdmin(sender, args)
+        }
+    }
+
+    private fun handleMain(sender: ProxyCommandSender, args: Array<String>) {
+        val player = sender.castSafely<Player>()
+        if (player == null) {
+            sender.sendMessage(Texts.prefixed("&c该命令只能由玩家执行。"))
+            return
+        }
+        if (args.isEmpty()) {
+            ModuleRegistry.systemShop.openMain(player)
+            return
+        }
+        when (args[0].lowercase()) {
+            "help" -> sendPlayerHelp(player)
+            "open" -> ModuleRegistry.systemShop.openMain(player)
+            "system" -> handleSystem(player, args.drop(1))
+            "cart", "auction", "transaction", "record", "chestshop" -> Texts.send(player, "&e${args[0]} 模块骨架已创建，业务实现将在后续迭代中补全。")
+            else -> sendPlayerHelp(player)
+        }
+    }
+
+    private fun handleSystem(player: Player, args: List<String>) {
+        if (args.isEmpty()) {
+            ModuleRegistry.systemShop.openMain(player)
+            return
+        }
+        when (args[0].lowercase()) {
+            "open" -> {
+                val id = args.getOrNull(1) ?: ConfigFiles.defaultSystemCategory()
+                ModuleRegistry.systemShop.openCategory(player, id)
+            }
+            "confirm" -> handleConfirm(player, args.drop(1))
+            else -> sendPlayerHelp(player)
+        }
+    }
+
+    private fun handleConfirm(player: Player, args: List<String>) {
+        if (args.isEmpty()) {
+            Texts.send(player, "&c缺少 confirm 子命令。")
+            return
+        }
+        when (args[0].lowercase()) {
+            "action", "buy" -> ModuleRegistry.systemShop.confirmPurchase(player)
+            "amount" -> {
+                if (args.getOrNull(1)?.equals("add", true) != true) {
+                    Texts.send(player, "&c用法: /matrixshop system confirm amount add <number>")
+                    return
+                }
+                val delta = args.getOrNull(2)?.toIntOrNull()
+                if (delta == null) {
+                    Texts.send(player, "&c数量必须是整数。")
+                    return
+                }
+                ModuleRegistry.systemShop.adjustConfirmAmount(player, delta)
+            }
+            else -> Texts.send(player, "&e当前仅实现了购买确认和数量调整。")
+        }
+    }
+
+    private fun handleAdmin(sender: ProxyCommandSender, args: Array<String>) {
+        val commandSender = sender.castSafely<CommandSender>() ?: return
+        if (args.isEmpty()) {
+            sendAdminHelp(commandSender)
+            return
+        }
+        when (args[0].lowercase()) {
+            "reload" -> {
+                MatrixShop.reloadPlugin()
+                Texts.send(commandSender, "&a配置与模块已重载。")
+            }
+            "status" -> {
+                Texts.send(commandSender, "&f数据目录: &7${ConfigFiles.dataFolder().absolutePath}")
+                Texts.send(commandSender, "&f经济提供者: &7${VaultEconomyBridge.providerName()}")
+                ModuleRegistry.moduleStates().forEach { Texts.sendRaw(commandSender, it) }
+            }
+            else -> sendAdminHelp(commandSender)
+        }
+    }
+
+    private fun sendPlayerHelp(player: Player) {
+        Texts.sendRaw(
+            player,
+            """
+            &8[&bMatrixShop&8] &f玩家命令
+            &7/matrixshop &8- &f打开系统商店主界面
+            &7/matrixshop system open <id> &8- &f打开指定系统商店分类
+            &7/matrixshop help &8- &f查看帮助
+            """.trimIndent()
+        )
+    }
+
+    private fun sendAdminHelp(sender: CommandSender) {
+        Texts.sendRaw(
+            sender,
+            """
+            &8[&bMatrixShop&8] &f管理员命令
+            &7/matrixshopadmin reload &8- &f重载配置与模块
+            &7/matrixshopadmin status &8- &f查看模块与经济状态
+            """.trimIndent()
+        )
+    }
+}

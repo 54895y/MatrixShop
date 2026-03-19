@@ -1,0 +1,10 @@
+Enabled: true
+Sources:
+  Checkoutable:
+    - system_shop
+    - player_shop
+    - global_market
+  Auction:
+    Enabled: true
+    Type: watch_only
+    Protected-On-Clear: true
