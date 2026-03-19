@@ -36,6 +36,15 @@ object MatrixShopCommands {
         ) { sender, args ->
             handleAdmin(sender, args)
         }
+        simpleCommand(
+            name = "trade",
+            aliases = listOf("tm"),
+            description = "MatrixShop trade command",
+            usage = "/trade",
+            permission = "matrixshop.transaction.use"
+        ) { sender, args ->
+            handleTradeAlias(sender, args)
+        }
     }
 
     private fun handleMain(sender: ProxyCommandSender, args: Array<String>) {
@@ -56,7 +65,8 @@ object MatrixShopCommands {
             "global_market", "globalmarket", "market" -> handleGlobalMarket(player, args.drop(1))
             "cart" -> handleCart(player, args.drop(1))
             "record" -> handleRecord(player, args.drop(1))
-            "auction", "transaction", "chestshop" -> Texts.send(player, "&e${args[0]} module scaffold exists, implementation is still pending.")
+            "transaction", "trade" -> handleTransaction(player, args.drop(1))
+            "auction", "chestshop" -> Texts.send(player, "&e${args[0]} module scaffold exists, implementation is still pending.")
             else -> sendPlayerHelp(player)
         }
     }
@@ -200,6 +210,34 @@ object MatrixShopCommands {
         }
     }
 
+    private fun handleTransaction(player: Player, args: List<String>) {
+        if (args.isEmpty() || args[0].equals("open", true)) {
+            ModuleRegistry.transaction.open(player)
+            return
+        }
+        when (args[0].lowercase()) {
+            "request" -> ModuleRegistry.transaction.requestTrade(player, args.getOrNull(1))
+            "accept" -> ModuleRegistry.transaction.acceptRequest(player, args.getOrNull(1))
+            "deny" -> ModuleRegistry.transaction.denyRequest(player, args.getOrNull(1))
+            "money" -> ModuleRegistry.transaction.setMoney(player, args.getOrNull(1)?.toDoubleOrNull())
+            "exp" -> ModuleRegistry.transaction.setExp(player, args.getOrNull(1)?.toIntOrNull())
+            "ready" -> ModuleRegistry.transaction.toggleReady(player)
+            "confirm" -> ModuleRegistry.transaction.confirm(player, args.getOrNull(1)?.equals("submit", true) == true)
+            "cancel" -> ModuleRegistry.transaction.cancel(player)
+            "logs" -> ModuleRegistry.transaction.openLogs(player)
+            else -> Texts.send(player, "&cUnknown trade subcommand.")
+        }
+    }
+
+    private fun handleTradeAlias(sender: ProxyCommandSender, args: Array<String>) {
+        val player = sender.castSafely<Player>()
+        if (player == null) {
+            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
+            return
+        }
+        handleTransaction(player, args.toList())
+    }
+
     private fun handleAdmin(sender: ProxyCommandSender, args: Array<String>) {
         val commandSender = sender.castSafely<CommandSender>() ?: return
         if (args.isEmpty()) {
@@ -239,6 +277,11 @@ object MatrixShopCommands {
             &7/matrixshop record detail <id> &8- &fOpen one record detail
             &7/matrixshop record income &8- &fOpen income statistics
             &7/matrixshop record expense &8- &fOpen expense statistics
+            &7/trade request <player> &8- &fSend a face-to-face trade request
+            &7/trade accept [player] &8- &fAccept a pending trade request
+            &7/trade money <amount> &8- &fSet your money offer
+            &7/trade exp <amount> &8- &fSet your exp offer
+            &7/trade ready|confirm|cancel|logs &8- &fControl the active trade
             """.trimIndent()
         )
     }

@@ -1,0 +1,31 @@
+Title:
+  - '&8Trade Request'
+
+layout:
+  - '#########'
+  - '###P#####'
+  - '##A#D#I##'
+  - '#########'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'P':
+    material: 'SKULL_ITEM'
+    name: '&f{requester}'
+    lore:
+      - '&7Sent you a trade request'
+      - '&7Expires in: &f{expire}'
+  'A':
+    material: 'EMERALD'
+    name: '&aAccept'
+  'D':
+    material: 'REDSTONE'
+    name: '&cDeny'
+  'I':
+    material: 'PAPER'
+    name: '&fInfo'
+    lore:
+      - '&7Accept to open the trade view'
+      - '&7Only one active trade per player'

@@ -4,6 +4,6 @@ modules:
   global-market: true
   auction: false
   chestshop: false
-  transaction: false
+  transaction: true
   cart: true
   record: true

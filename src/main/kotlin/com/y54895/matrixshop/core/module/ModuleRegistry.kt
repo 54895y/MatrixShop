@@ -7,6 +7,7 @@ import com.y54895.matrixshop.module.playershop.PlayerShopModule
 import com.y54895.matrixshop.module.record.RecordModule
 import com.y54895.matrixshop.module.stub.StubModule
 import com.y54895.matrixshop.module.systemshop.SystemShopModule
+import com.y54895.matrixshop.module.transaction.TransactionModule
 
 interface MatrixModule {
     val id: String
@@ -22,6 +23,7 @@ object ModuleRegistry {
     val cart = CartModule
     val globalMarket = GlobalMarketModule
     val record = RecordModule
+    val transaction = TransactionModule
 
     private val modules = listOf<MatrixModule>(
         systemShop,
@@ -29,9 +31,9 @@ object ModuleRegistry {
         cart,
         globalMarket,
         record,
+        transaction,
         StubModule("auction", "Auction"),
-        StubModule("chestshop", "ChestShop"),
-        StubModule("transaction", "Transaction")
+        StubModule("chestshop", "ChestShop")
     )
 
     fun all(): List<MatrixModule> {
