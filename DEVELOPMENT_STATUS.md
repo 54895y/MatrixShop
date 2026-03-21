@@ -31,6 +31,18 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added true shop-scoped bindings for `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction`
+- Switched `/ms` routing to resolve shop bindings from `shops/*.yml` before module-level bindings
+- Added shop-bound standalone command registration with duplicate-name protection
+- Changed `/ms help` so the four multi-shop modules now render help entries from `shops/*.yml` bindings instead of only module settings
+- Added `shop_id` to `AuctionListing`, `GlobalMarketListing`, `PlayerShopStore`, and `Transaction` request/session context
+- Migrated JDBC runtime schema to shop-scoped `auction_listings`, `global_market_listings`, and `player_shop_*` tables
+- Added schema migration v3 for upgrading existing databases to shop-scoped tables
+- Updated `AuctionRepository`, `GlobalMarketRepository`, and `PlayerShopRepository` to persist shop-scoped data in JDBC and file backends
+- Changed `AuctionModule`, `GlobalMarketModule`, and `PlayerShopModule` so browse/upload/manage/purchase flows now operate on the selected shop instance
+- Updated `CartModule` to preserve `shop-id` metadata for `player_shop` and `global_market` entries during validation and checkout
+- Added `Transaction/shops/default.yml` and shop-scoped entry handling for trade requests
+- Replaced default `shops/default.yml` packs for `Auction`, `GlobalMarket`, and `PlayerShop` with bindings-enabled shop configs
 - Added `ModuleBindings` so module command keys now come from each module `settings.yml`
 - Updated `/ms` routing to resolve module entry keys from `Bindings.Commands.Bindings`
 - Switched standalone `trade`, `auction`, and `chestshop` command registration to config-driven bindings at startup
@@ -67,6 +79,7 @@ This file is the handoff note for each development round.
 ## Validation
 
 - Local build passed with `./gradlew.bat build`
+- Multi-shop bindings + shop-scoped data-layer refactor passed with `./gradlew.bat build`
 - Config-driven bindings and multi-shop refactor compiled successfully with `./gradlew.bat build`
 - Live startup test passed on local `1.12.2paper`
 - Live admin command test passed for `matrixshopadmin status` and `matrixshopadmin sync`
@@ -74,6 +87,8 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- `Auction`, `GlobalMarket`, and `PlayerShop` are now shop-scoped in storage and commands, but `ChestShop` still only uses `shops/*.yml` as alternate views, not separate shop pools
+- `Transaction` now has shop entry configs and binding-based routing, but request/trade/confirm UIs are still shared module-level templates rather than per-shop UI packs
 - `SystemShop` is still config-driven and does not use JDBC runtime storage
 - Database access still uses direct JDBC helpers; there is no shared transaction helper yet
 - Schema migration now exists, but there is still no richer multi-step migration history or rollback support
@@ -87,6 +102,9 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Run live Paper validation for `/ms <shop-binding>` on at least one custom `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction` shop pack
+- Add a second sample shop config for each of the four shop-scoped modules to verify duplicate binding registration and isolated content behavior
+- Decide whether `Transaction` should also support per-shop `request/trade/confirm` UI overrides instead of only per-shop entry menus
 - Review whether `SystemShop` needs database-backed cache/index support or should remain purely config-driven
 - Add more focused admin diagnostics for data-layer health and migration state
 - Consider whether legacy import summaries should also expose per-module timestamps and source-file counts

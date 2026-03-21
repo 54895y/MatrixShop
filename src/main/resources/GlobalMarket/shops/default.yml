@@ -1,7 +1,16 @@
 id: default
 
+Bindings:
+  Commands:
+    Bindings:
+      - 'market'
+      - 'gm'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
+
 Title:
-  - '&8全球市场 &7{page}/{max-page}'
+  - '&8Global Market &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -20,28 +29,28 @@ icons:
     mode: 'goods'
   'U':
     material: 'CHEST'
-    name: '&a上架'
+    name: '&aUpload'
     lore:
-      - '&7打开上架说明'
+      - '&7Open the upload view for this market'
   'C':
     material: 'CHEST_MINECART'
-    name: '&6购物车'
+    name: '&6Cart'
     lore:
-      - '&7查看购物车'
+      - '&7Open your shopping cart'
   'M':
     material: 'BOOK'
-    name: '&d我的上架'
+    name: '&dMy Listings'
     lore:
-      - '&7管理自己的全球市场商品'
+      - '&7Manage your listings in this market'
   'R':
     material: 'BARRIER'
-    name: '&c关闭'
+    name: '&cClose'
     actions:
       left:
         - 'close'
   'P':
     material: 'ARROW'
-    name: '&a上一页'
+    name: '&aPrevious'
   'N':
     material: 'ARROW'
-    name: '&a下一页'
+    name: '&aNext'

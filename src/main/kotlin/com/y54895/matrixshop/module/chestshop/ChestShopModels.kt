@@ -1,5 +1,6 @@
 package com.y54895.matrixshop.module.chestshop
 
+import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
@@ -42,7 +43,7 @@ data class ChestShopShop(
 )
 
 data class ChestShopMenus(
-    val shopViews: Map<String, MenuDefinition>,
+    val shopViews: Map<String, ConfiguredShopMenu>,
     val create: MenuDefinition,
     val edit: MenuDefinition,
     val stock: MenuDefinition,

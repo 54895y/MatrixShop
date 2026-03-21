@@ -7,6 +7,7 @@ import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.menu.ShopMenuLoader
+import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
@@ -14,7 +15,6 @@ import com.y54895.matrixshop.module.cart.CartModule
 import com.y54895.matrixshop.module.systemshop.ModuleOperationResult
 import org.bukkit.Bukkit
 import org.bukkit.Material
-import org.bukkit.OfflinePlayer
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
@@ -59,10 +59,10 @@ object PlayerShopModule : MatrixModule {
     }
 
     fun openShop(viewer: Player, ownerId: UUID, ownerName: String, shopId: String?, page: Int = 1) {
-        val store = loadStore(ownerId, ownerName)
-        val selectedMenu = ShopMenuLoader.resolve(menus.browseViews, shopId)
-        val browseMenu = selectedMenu.definition
-        val goodsPerPage = goodsSlots(browseMenu).size.coerceAtLeast(1)
+        val resolvedShopId = resolveShopId(shopId)
+        val store = loadStore(ownerId, ownerName, resolvedShopId)
+        val selectedShop = selectShop(resolvedShopId)
+        val goodsPerPage = goodsSlots(selectedShop.definition).size.coerceAtLeast(1)
         val ownerView = viewer.uniqueId == ownerId
         val maxPage = if (ownerView) {
             ((store.unlockedSlots + goodsPerPage - 1) / goodsPerPage).coerceAtLeast(1)
@@ -70,14 +70,13 @@ object PlayerShopModule : MatrixModule {
             ((store.listings.size + goodsPerPage - 1) / goodsPerPage).coerceAtLeast(1)
         }
         val currentPage = page.coerceIn(1, maxPage)
-        val placeholders = basePlaceholders(viewer, store, currentPage, maxPage)
         MenuRenderer.open(
             player = viewer,
-            definition = browseMenu,
-            placeholders = placeholders,
+            definition = selectedShop.definition,
+            placeholders = basePlaceholders(viewer, store, currentPage, maxPage),
             goodsRenderer = { holder, slots ->
                 renderBrowse(viewer, holder, store, slots, currentPage, ownerView)
-                wireBrowseControls(viewer, holder, browseMenu, selectedMenu.id, store, currentPage, maxPage, ownerView)
+                wireBrowseControls(viewer, holder, selectedShop.definition, resolvedShopId, store, currentPage, maxPage, ownerView)
             }
         )
     }
@@ -87,19 +86,19 @@ object PlayerShopModule : MatrixModule {
     }
 
     fun openEdit(owner: Player, browseShopId: String?, page: Int = 1) {
-        val store = loadStore(owner.uniqueId, owner.name)
+        val resolvedShopId = resolveShopId(browseShopId)
+        val store = loadStore(owner.uniqueId, owner.name, resolvedShopId)
         val goodsPerPage = goodsSlots(menus.edit).size.coerceAtLeast(1)
         val maxPage = ((store.unlockedSlots + goodsPerPage - 1) / goodsPerPage).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
-        val placeholders = basePlaceholders(owner, store, currentPage, maxPage)
         MenuRenderer.open(
             player = owner,
             definition = menus.edit,
-            placeholders = placeholders,
-            backAction = { openShop(owner, owner.uniqueId, owner.name, browseShopId, currentPage) },
+            placeholders = basePlaceholders(owner, store, currentPage, maxPage),
+            backAction = { openShop(owner, owner.uniqueId, owner.name, resolvedShopId, currentPage) },
             goodsRenderer = { holder, slots ->
                 renderEdit(owner, holder, store, slots, currentPage)
-                wireEditControls(owner, holder, browseShopId, currentPage, maxPage)
+                wireEditControls(owner, holder, resolvedShopId, currentPage, maxPage)
             }
         )
     }
@@ -108,37 +107,49 @@ object PlayerShopModule : MatrixModule {
         return ShopMenuLoader.contains(menus.browseViews, shopId)
     }
 
+    fun resolveBoundShop(token: String?): String? {
+        return ShopMenuLoader.resolveByBinding(menus.browseViews, token)?.id
+    }
+
+    fun helpEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.helpEntries(menus.browseViews)
+    }
+
+    fun standaloneEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.standaloneEntries(menus.browseViews)
+    }
+
     fun uploadFromHand(player: Player, price: Double, requestedAmount: Int?) {
+        uploadFromHand(player, null, price, requestedAmount)
+    }
+
+    fun uploadFromHand(player: Player, shopId: String?, price: Double, requestedAmount: Int?) {
         if (price <= 0) {
-            Texts.send(player, "&c价格必须大于 0。")
+            Texts.send(player, "&cPrice must be greater than 0.")
             return
         }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
         if (hand.type == Material.AIR || hand.amount <= 0) {
-            Texts.send(player, "&c请先把要上架的物品拿在主手。")
+            Texts.send(player, "&cHold the item you want to list in your main hand.")
+            return
+        }
+        val resolvedShopId = resolveShopId(shopId)
+        val store = loadStore(player.uniqueId, player.name, resolvedShopId)
+        val slotIndex = PlayerShopRepository.nextFreeSlot(store)
+        if (slotIndex == null) {
+            Texts.send(player, "&cYour store is already full in this shop.")
             return
         }
         val amount = (requestedAmount ?: hand.amount).coerceAtLeast(1)
         if (amount > hand.amount) {
-            Texts.send(player, "&c主手物品数量不足，无法上架 $amount 个。")
-            return
-        }
-        val store = loadStore(player.uniqueId, player.name)
-        val slotIndex = PlayerShopRepository.nextFreeSlot(store)
-        if (slotIndex == null) {
-            Texts.send(player, "&c你的商店上架槽位已满。")
+            Texts.send(player, "&cYou do not have enough items in your main hand.")
             return
         }
         val listed = hand.clone().apply { this.amount = amount }
         val remaining = hand.amount - amount
-        if (remaining <= 0) {
-            player.inventory.itemInMainHand = ItemStack(Material.AIR)
-        } else {
-            hand.amount = remaining
-            player.inventory.itemInMainHand = hand
-        }
+        player.inventory.itemInMainHand = if (remaining <= 0) ItemStack(Material.AIR) else hand.apply { this.amount = remaining }
         val listing = PlayerShopListing(
-            id = "ps-${System.currentTimeMillis().toString(36)}-${slotIndex}",
+            id = "ps-${System.currentTimeMillis().toString(36)}-$slotIndex",
             slotIndex = slotIndex,
             price = price,
             currency = "vault",
@@ -148,84 +159,87 @@ object PlayerShopModule : MatrixModule {
         store.listings += listing
         PlayerShopRepository.save(store)
         player.updateInventory()
-        Texts.send(player, "&a上架成功: &f${itemDisplayName(listed)} &7x&f${listed.amount} &7- &e${trimDouble(price)}")
-        RecordService.append("player_shop", "list", player.name, "listing=${listing.id};price=${trimDouble(price)};amount=${listed.amount}")
-            openEdit(player, null, pageForSlot(slotIndex, goodsPerPage(menus.edit)))
+        Texts.send(player, "&aListed in &f${store.shopId}&a: &f${itemDisplayName(listed)} &7x&f${listed.amount} &7- &e${trimDouble(price)}")
+        RecordService.append("player_shop", "list", player.name, "shop=${store.shopId};listing=${listing.id};price=${trimDouble(price)};amount=${listed.amount}")
+        openEdit(player, resolvedShopId, pageForSlot(slotIndex, goodsPerPage(menus.edit)))
     }
 
     fun selection(ownerId: UUID, ownerName: String, listingId: String): PlayerShopSelection? {
-        val store = loadStore(ownerId, ownerName)
+        return selection(ownerId, ownerName, null, listingId)
+    }
+
+    fun selection(ownerId: UUID, ownerName: String, shopId: String?, listingId: String): PlayerShopSelection? {
+        val resolvedShopId = resolveShopId(shopId)
+        val store = loadStore(ownerId, ownerName, resolvedShopId)
         val listing = store.listings.firstOrNull { it.id == listingId } ?: return null
         return PlayerShopSelection(ownerId = ownerId, ownerName = store.ownerName, listing = listing)
     }
 
     fun validateListing(ownerId: UUID, ownerName: String, listingId: String): ModuleOperationResult {
-        val selection = selection(ownerId, ownerName, listingId)
-            ?: return ModuleOperationResult(false, "&c该商品已被下架或售出。")
+        return validateListing(ownerId, ownerName, null, listingId)
+    }
+
+    fun validateListing(ownerId: UUID, ownerName: String, shopId: String?, listingId: String): ModuleOperationResult {
+        val selection = selection(ownerId, ownerName, shopId, listingId)
+            ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
         return if (selection.listing.item.type == Material.AIR || selection.listing.item.amount <= 0) {
-            ModuleOperationResult(false, "&c该商品数据无效。")
+            ModuleOperationResult(false, "&cThat listing contains invalid item data.")
         } else {
             ModuleOperationResult(true, "")
         }
+    }
+
+    fun purchaseDirect(viewer: Player, ownerId: UUID, ownerName: String, listingId: String, reopenAfterSuccess: Boolean = true): ModuleOperationResult {
+        return purchaseDirect(viewer, ownerId, ownerName, null, listingId, reopenAfterSuccess)
     }
 
     fun purchaseDirect(
         viewer: Player,
         ownerId: UUID,
         ownerName: String,
+        shopId: String?,
         listingId: String,
         reopenAfterSuccess: Boolean = true
     ): ModuleOperationResult {
-        val store = loadStore(ownerId, ownerName)
+        val resolvedShopId = resolveShopId(shopId)
+        val store = loadStore(ownerId, ownerName, resolvedShopId)
         val listing = store.listings.firstOrNull { it.id == listingId }
-            ?: return ModuleOperationResult(false, "&c该商品已被下架或售出。")
+            ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
         return purchase(viewer, store, listing, reopenAfterSuccess)
     }
 
-    private fun purchase(
-        viewer: Player,
-        store: PlayerShopStore,
-        listing: PlayerShopListing,
-        reopenAfterSuccess: Boolean = true
-    ): ModuleOperationResult {
+    private fun purchase(viewer: Player, store: PlayerShopStore, listing: PlayerShopListing, reopenAfterSuccess: Boolean): ModuleOperationResult {
         if (viewer.uniqueId == store.ownerId) {
-            openEdit(viewer, null, pageForSlot(listing.slotIndex, goodsPerPage(menus.edit)))
+            openEdit(viewer, store.shopId, pageForSlot(listing.slotIndex, goodsPerPage(menus.edit)))
             return ModuleOperationResult(false, "")
         }
-        val refreshed = loadStore(store.ownerId, store.ownerName)
+        val refreshed = loadStore(store.ownerId, store.ownerName, store.shopId)
         val target = refreshed.listings.firstOrNull { it.id == listing.id }
-        if (target == null) {
-            Texts.send(viewer, "&c该商品已被下架或售出。")
-            if (reopenAfterSuccess) {
-                openShop(viewer, store.ownerId, store.ownerName)
-            }
-            return ModuleOperationResult(false, "&c该商品已被下架或售出。")
-        }
-        if (listing.price > 0 && !VaultEconomyBridge.isAvailable()) {
-            return ModuleOperationResult(false, "&c当前未接入 Vault 经济，无法购买玩家商店商品。")
+            ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
+        if (target.price > 0 && !VaultEconomyBridge.isAvailable()) {
+            return ModuleOperationResult(false, "&cVault economy is required for player shop purchases.")
         }
         if (!canFit(viewer.inventory.contents.filterNotNull(), listOf(target.item))) {
-            return ModuleOperationResult(false, "&c背包空间不足。")
+            return ModuleOperationResult(false, "&cYour inventory does not have enough free space.")
         }
         if (!VaultEconomyBridge.has(viewer, target.price)) {
-            return ModuleOperationResult(false, "&c余额不足，需要 &e${trimDouble(target.price)} &c金币。")
+            return ModuleOperationResult(false, "&cYou need &e${trimDouble(target.price)} &cto buy this listing.")
         }
         if (!VaultEconomyBridge.withdraw(viewer, target.price)) {
-            return ModuleOperationResult(false, "&c扣款失败，购买取消。")
+            return ModuleOperationResult(false, "&cFailed to withdraw the purchase price.")
         }
         val seller = Bukkit.getOfflinePlayer(store.ownerId)
         if (!VaultEconomyBridge.deposit(seller, target.price)) {
             VaultEconomyBridge.deposit(viewer, target.price)
-            return ModuleOperationResult(false, "&c卖家收款失败，已回退本次交易。")
+            return ModuleOperationResult(false, "&cFailed to deliver money to the seller. The purchase was rolled back.")
         }
         refreshed.listings.remove(target)
         PlayerShopRepository.save(refreshed)
         viewer.inventory.addItem(target.item.clone())
         viewer.updateInventory()
-        Texts.send(viewer, "&a购买成功: &f${itemDisplayName(target.item)} &7x&f${target.item.amount} &7- &e${trimDouble(target.price)}")
-        val sellerPlayer = Bukkit.getPlayer(store.ownerId)
-        if (sellerPlayer != null && sellerPlayer.isOnline) {
-            Texts.send(sellerPlayer, "&a你的商品已售出: &f${itemDisplayName(target.item)} &7- &e${trimDouble(target.price)}")
+        Texts.send(viewer, "&aPurchased from &f${store.shopId}&a: &f${itemDisplayName(target.item)} &7x&f${target.item.amount} &7- &e${trimDouble(target.price)}")
+        Bukkit.getPlayer(store.ownerId)?.let {
+            Texts.send(it, "&aYour player shop item sold in &f${store.shopId}&a for &e${trimDouble(target.price)}&a.")
         }
         RecordService.append(
             module = "player_shop",
@@ -233,7 +247,7 @@ object PlayerShopModule : MatrixModule {
             actor = viewer.name,
             target = store.ownerName,
             moneyChange = -target.price,
-            detail = "seller=${store.ownerName};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
+            detail = "shop=${store.shopId};seller=${store.ownerName};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
         )
         RecordService.append(
             module = "player_shop",
@@ -241,19 +255,19 @@ object PlayerShopModule : MatrixModule {
             actor = store.ownerName,
             target = viewer.name,
             moneyChange = target.price,
-            detail = "buyer=${viewer.name};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
+            detail = "shop=${store.shopId};buyer=${viewer.name};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
         )
         if (reopenAfterSuccess) {
-            openShop(viewer, store.ownerId, store.ownerName)
+            openShop(viewer, store.ownerId, store.ownerName, store.shopId)
         }
         return ModuleOperationResult(true, "")
     }
 
-    private fun removeListing(owner: Player, listingId: String) {
-        val store = loadStore(owner.uniqueId, owner.name)
+    private fun removeListing(owner: Player, shopId: String, listingId: String) {
+        val store = loadStore(owner.uniqueId, owner.name, shopId)
         val listing = store.listings.firstOrNull { it.id == listingId }
         if (listing == null) {
-            Texts.send(owner, "&c未找到该上架条目。")
+            Texts.send(owner, "&cListing not found in this shop.")
             return
         }
         store.listings.remove(listing)
@@ -262,44 +276,36 @@ object PlayerShopModule : MatrixModule {
             owner.world.dropItemNaturally(owner.location, it)
         }
         owner.updateInventory()
-        Texts.send(owner, "&a已下架并返还: &f${itemDisplayName(listing.item)}")
-        RecordService.append("player_shop", "remove", owner.name, "listing=${listing.id}")
-        openEdit(owner, pageForSlot(listing.slotIndex, goodsPerPage(menus.edit)))
+        Texts.send(owner, "&aRemoved listing from &f${shopId}&a: &f${itemDisplayName(listing.item)}")
+        RecordService.append("player_shop", "remove", owner.name, "shop=$shopId;listing=${listing.id}")
+        openEdit(owner, shopId, pageForSlot(listing.slotIndex, goodsPerPage(menus.edit)))
     }
 
-    private fun renderBrowse(
-        viewer: Player,
-        holder: MatrixMenuHolder,
-        store: PlayerShopStore,
-        slots: List<Int>,
-        currentPage: Int,
-        ownerView: Boolean
-    ) {
+    private fun renderBrowse(viewer: Player, holder: MatrixMenuHolder, store: PlayerShopStore, slots: List<Int>, currentPage: Int, ownerView: Boolean) {
         val entries = if (ownerView) {
             val start = (currentPage - 1) * slots.size
             val end = start + slots.size
             store.listings.sortedBy { it.slotIndex }.filter { it.slotIndex in start until end }
         } else {
-            val compact = store.listings.sortedBy { it.slotIndex }
-            compact.drop((currentPage - 1) * slots.size).take(slots.size)
+            store.listings.sortedBy { it.slotIndex }.drop((currentPage - 1) * slots.size).take(slots.size)
         }
         entries.forEachIndexed { index, listing ->
             val slot = slots[index]
             val item = listing.item.clone()
             item.itemMeta = item.itemMeta?.apply {
                 lore = (lore ?: emptyList()) + listOf(
-                    Texts.color("&7售价: &e${trimDouble(listing.price)} ${listing.currency}"),
-                    Texts.color("&7卖家: &f${store.ownerName}"),
-                    Texts.color(if (ownerView) "&e左键进入编辑页" else "&e左键购买"),
-                    Texts.color(if (ownerView) "&7" else "&6右键加入购物车")
+                    Texts.color("&7Price: &e${trimDouble(listing.price)} ${listing.currency}"),
+                    Texts.color("&7Owner: &f${store.ownerName}"),
+                    Texts.color(if (ownerView) "&eLeft click to edit" else "&eLeft click to buy"),
+                    Texts.color(if (ownerView) "&7This is your store" else "&6Right click to add to cart")
                 )
             }
             holder.backingInventory.setItem(slot, item)
             holder.handlers[slot] = { event ->
                 if (ownerView) {
-                    openEdit(viewer, pageForSlot(listing.slotIndex, slots.size))
+                    openEdit(viewer, store.shopId, pageForSlot(listing.slotIndex, slots.size))
                 } else if (event.click.isRightClick) {
-                    CartModule.addPlayerShopListing(viewer, store.ownerId.toString(), store.ownerName, listing.id)
+                    CartModule.addPlayerShopListing(viewer, store.shopId, store.ownerId.toString(), store.ownerName, listing.id)
                 } else {
                     purchase(viewer, store, listing, true)
                 }
@@ -321,15 +327,13 @@ object PlayerShopModule : MatrixModule {
                 val item = listing.item.clone()
                 item.itemMeta = item.itemMeta?.apply {
                     lore = (lore ?: emptyList()) + listOf(
-                        Texts.color("&7售价: &e${trimDouble(listing.price)} ${listing.currency}"),
-                        Texts.color("&7槽位: &f${listing.slotIndex + 1}/${store.unlockedSlots}"),
-                        Texts.color("&c左键下架并返还")
+                        Texts.color("&7Price: &e${trimDouble(listing.price)} ${listing.currency}"),
+                        Texts.color("&7Slot: &f${listing.slotIndex + 1}/${store.unlockedSlots}"),
+                        Texts.color("&cLeft click to remove")
                     )
                 }
                 holder.backingInventory.setItem(inventorySlot, item)
-                holder.handlers[inventorySlot] = {
-                    removeListing(owner, listing.id)
-                }
+                holder.handlers[inventorySlot] = { removeListing(owner, store.shopId, listing.id) }
             }
     }
 
@@ -359,7 +363,7 @@ object PlayerShopModule : MatrixModule {
         }
     }
 
-    private fun wireEditControls(owner: Player, holder: MatrixMenuHolder, browseShopId: String?, currentPage: Int, maxPage: Int) {
+    private fun wireEditControls(owner: Player, holder: MatrixMenuHolder, browseShopId: String, currentPage: Int, maxPage: Int) {
         buttonSlot(menus.edit, 'P')?.let { slot ->
             holder.handlers[slot] = { openEdit(owner, browseShopId, (currentPage - 1).coerceAtLeast(1)) }
         }
@@ -367,7 +371,7 @@ object PlayerShopModule : MatrixModule {
             holder.handlers[slot] = { openEdit(owner, browseShopId, (currentPage + 1).coerceAtMost(maxPage)) }
         }
         buttonSlot(menus.edit, 'H')?.let { slot ->
-            holder.handlers[slot] = { Texts.send(owner, "&e使用 /matrixshop player_shop upload <price> [amount] 上架主手物品。") }
+            holder.handlers[slot] = { Texts.send(owner, "&7Use /ms ${browseShopId} upload <price> [amount] to list the item in your main hand.") }
         }
     }
 
@@ -379,7 +383,8 @@ object PlayerShopModule : MatrixModule {
             "max-page" to maxPage.toString(),
             "money" to trimDouble(VaultEconomyBridge.balance(viewer)),
             "listed" to store.listings.size.toString(),
-            "unlocked" to store.unlockedSlots.toString()
+            "unlocked" to store.unlockedSlots.toString(),
+            "shop-id" to store.shopId
         )
     }
 
@@ -415,8 +420,8 @@ object PlayerShopModule : MatrixModule {
         return (slotIndex / goodsPerPage) + 1
     }
 
-    private fun loadStore(ownerId: UUID, ownerName: String): PlayerShopStore {
-        return PlayerShopRepository.load(ownerId, ownerName, settings.unlockedBase, settings.unlockedMax)
+    private fun loadStore(ownerId: UUID, ownerName: String, shopId: String): PlayerShopStore {
+        return PlayerShopRepository.load(shopId, ownerId, ownerName, settings.unlockedBase, settings.unlockedMax)
     }
 
     private fun loadSettings(): PlayerShopSettings {
@@ -425,6 +430,14 @@ object PlayerShopModule : MatrixModule {
             unlockedBase = yaml.getInt("Unlock.Base", 21),
             unlockedMax = yaml.getInt("Unlock.Max", 100)
         )
+    }
+
+    private fun selectShop(shopId: String?): ShopMenuSelection {
+        return ShopMenuLoader.resolve(menus.browseViews, shopId)
+    }
+
+    private fun resolveShopId(shopId: String?): String {
+        return selectShop(shopId).id
     }
 
     private fun fillerItem(): ItemStack {

@@ -77,7 +77,7 @@ object GlobalMarketRepository {
             }
             connection.prepareStatement(
                 """
-                SELECT id, owner_id, owner_name, price, currency, item_blob, created_at, expire_at
+                SELECT id, shop_id, owner_id, owner_name, price, currency, item_blob, created_at, expire_at
                 FROM global_market_listings
                 ORDER BY created_at DESC
                 """.trimIndent()
@@ -88,6 +88,7 @@ object GlobalMarketRepository {
                         val item = ItemStackCodec.decode(result.getString("item_blob")) ?: continue
                         listings += GlobalMarketListing(
                             id = result.getString("id"),
+                            shopId = result.getString("shop_id").orEmpty().ifBlank { "default" },
                             ownerId = UUID.fromString(result.getString("owner_id")),
                             ownerName = result.getString("owner_name"),
                             price = result.getDouble("price"),
@@ -115,19 +116,20 @@ object GlobalMarketRepository {
                 connection.prepareStatement(
                     """
                     INSERT INTO global_market_listings (
-                        id, owner_id, owner_name, price, currency, item_blob, created_at, expire_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        id, shop_id, owner_id, owner_name, price, currency, item_blob, created_at, expire_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.trimIndent()
                 ).use { insert ->
                     listings.sortedBy { it.createdAt }.forEach { listing ->
                         insert.setString(1, listing.id)
-                        insert.setString(2, listing.ownerId.toString())
-                        insert.setString(3, listing.ownerName)
-                        insert.setDouble(4, listing.price)
-                        insert.setString(5, listing.currency)
-                        insert.setString(6, ItemStackCodec.encode(listing.item))
-                        insert.setLong(7, listing.createdAt)
-                        insert.setLong(8, listing.expireAt)
+                        insert.setString(2, listing.shopId)
+                        insert.setString(3, listing.ownerId.toString())
+                        insert.setString(4, listing.ownerName)
+                        insert.setDouble(5, listing.price)
+                        insert.setString(6, listing.currency)
+                        insert.setString(7, ItemStackCodec.encode(listing.item))
+                        insert.setLong(8, listing.createdAt)
+                        insert.setLong(9, listing.expireAt)
                         insert.addBatch()
                     }
                     insert.executeBatch()
@@ -160,6 +162,7 @@ object GlobalMarketRepository {
             }
             result += GlobalMarketListing(
                 id = id,
+                shopId = child.getString("shop-id", "default").orEmpty().ifBlank { "default" },
                 ownerId = UUID.fromString(child.getString("owner-id").orEmpty()),
                 ownerName = child.getString("owner-name").orEmpty(),
                 price = child.getDouble("price"),
@@ -179,6 +182,7 @@ object GlobalMarketRepository {
         val yaml = YamlConfiguration()
         listings.sortedBy { it.createdAt }.forEach { listing ->
             val base = "listings.${listing.id}"
+            yaml.set("$base.shop-id", listing.shopId)
             yaml.set("$base.owner-id", listing.ownerId.toString())
             yaml.set("$base.owner-name", listing.ownerName)
             yaml.set("$base.price", listing.price)

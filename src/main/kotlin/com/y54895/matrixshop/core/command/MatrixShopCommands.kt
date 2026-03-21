@@ -27,6 +27,7 @@ object MatrixShopCommands {
             return
         }
         registered = true
+        val reserved = hashSetOf("matrixshop", "shop", "ms", "matrixshopadmin", "msa")
         simpleCommand(
             name = "matrixshop",
             aliases = listOf("shop", "ms"),
@@ -43,9 +44,13 @@ object MatrixShopCommands {
         ) { sender, args ->
             handleAdmin(sender, args)
         }
-        registerStandaloneCommand("transaction", "trade", "MatrixShop trade command", "/trade", "matrixshop.transaction.use", ::handleTradeAlias)
-        registerStandaloneCommand("auction", "auction", "MatrixShop auction command", "/auction", "matrixshop.auction.use", ::handleAuctionAlias)
-        registerStandaloneCommand("chestshop", "chestshop", "MatrixShop chest shop command", "/chestshop", "matrixshop.chestshop.use", ::handleChestShopAlias)
+        registerStandaloneCommand("transaction", "trade", "MatrixShop trade command", "/trade", "matrixshop.transaction.use", ::handleTradeAlias, reserved)
+        registerStandaloneCommand("auction", "auction", "MatrixShop auction command", "/auction", "matrixshop.auction.use", ::handleAuctionAlias, reserved)
+        registerStandaloneCommand("chestshop", "chestshop", "MatrixShop chest shop command", "/chestshop", "matrixshop.chestshop.use", ::handleChestShopAlias, reserved)
+        registerStandaloneShopCommands("global-market", "MatrixShop global market command", "/market", "matrixshop.globalmarket.use", reserved)
+        registerStandaloneShopCommands("player-shop", "MatrixShop player shop command", "/playershop", "matrixshop.playershop.use", reserved)
+        registerStandaloneShopCommands("auction", "MatrixShop auction command", "/auction", "matrixshop.auction.use", reserved)
+        registerStandaloneShopCommands("transaction", "MatrixShop trade command", "/trade", "matrixshop.transaction.use", reserved)
     }
 
     private fun handleMain(sender: ProxyCommandSender, args: Array<String>) {
@@ -56,10 +61,12 @@ object MatrixShopCommands {
             }
             return
         }
+        val shopRoute = resolveBoundShopRoute(args[0])
         val moduleRoute = ModuleBindings.resolveModule(args[0])
         when {
             args[0].equals("help", true) -> sendPlayerHelp(player)
             args[0].equals("open", true) -> ModuleRegistry.systemShop.openMain(player)
+            shopRoute != null -> handleBoundShop(player, shopRoute, args.drop(1))
             moduleRoute == "auction" -> handleAuction(player, args.drop(1))
             moduleRoute == "system-shop" -> handleSystem(player, args.drop(1))
             moduleRoute == "player-shop" -> handlePlayerShop(player, args.drop(1))
@@ -176,33 +183,36 @@ object MatrixShopCommands {
         }
     }
 
-    private fun handleGlobalMarket(player: Player, args: List<String>) {
+    private fun handleGlobalMarket(player: Player, args: List<String>, defaultShopId: String? = null) {
         if (!Permissions.require(player, PermissionNodes.GLOBALMARKET_USE)) {
             return
         }
         if (args.isEmpty()) {
-            ModuleRegistry.globalMarket.openMarket(player)
+            ModuleRegistry.globalMarket.openMarket(player, defaultShopId)
             return
         }
         when (args[0].lowercase()) {
-            "open" -> ModuleRegistry.globalMarket.openMarket(player, shopId = args.getOrNull(1))
+            "open" -> ModuleRegistry.globalMarket.openMarket(player, shopId = args.getOrNull(1) ?: defaultShopId)
             "upload" -> {
                 if (!Permissions.require(player, PermissionNodes.GLOBALMARKET_SELL)) {
                     return
                 }
-                val price = args.getOrNull(1)?.toDoubleOrNull()
+                val explicitShopId = if (defaultShopId == null && ModuleRegistry.globalMarket.hasMarketView(args.getOrNull(1))) args.getOrNull(1) else null
+                val priceIndex = if (explicitShopId != null) 2 else 1
+                val price = args.getOrNull(priceIndex)?.toDoubleOrNull()
                 if (price == null) {
-                    ModuleRegistry.globalMarket.openUpload(player)
+                    ModuleRegistry.globalMarket.openUpload(player, explicitShopId ?: defaultShopId)
                     return
                 }
-                val amount = args.getOrNull(2)?.toIntOrNull()
-                ModuleRegistry.globalMarket.uploadFromHand(player, price, amount)
+                val amount = args.getOrNull(priceIndex + 1)?.toIntOrNull()
+                ModuleRegistry.globalMarket.uploadFromHand(player, explicitShopId ?: defaultShopId, price, amount)
             }
             "manage" -> {
                 if (!Permissions.require(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN)) {
                     return
                 }
-                ModuleRegistry.globalMarket.openManage(player)
+                val shopId = if (defaultShopId == null && ModuleRegistry.globalMarket.hasMarketView(args.getOrNull(1))) args.getOrNull(1) else defaultShopId
+                ModuleRegistry.globalMarket.openManage(player, shopId)
             }
             else -> {
                 if (ModuleRegistry.globalMarket.hasMarketView(args[0])) {
@@ -214,40 +224,47 @@ object MatrixShopCommands {
         }
     }
 
-    private fun handlePlayerShop(player: Player, args: List<String>) {
+    private fun handlePlayerShop(player: Player, args: List<String>, defaultShopId: String? = null) {
         if (!Permissions.require(player, PermissionNodes.PLAYERSHOP_USE)) {
             return
         }
         if (args.isEmpty()) {
-            ModuleRegistry.playerShop.openShop(player, player.uniqueId, player.name)
+            ModuleRegistry.playerShop.openShop(player, player.uniqueId, player.name, defaultShopId, 1)
             return
         }
         when (args[0].lowercase()) {
             "open" -> {
-                val (targetName, shopId) = resolvePlayerShopOpen(player, args.drop(1))
+                val (targetName, shopId) = resolvePlayerShopOpen(player, args.drop(1), defaultShopId)
                 ModuleRegistry.playerShop.openShop(player, targetName, shopId)
             }
             "edit" -> {
                 if (!Permissions.require(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN)) {
                     return
                 }
-                ModuleRegistry.playerShop.openEdit(player)
+                val shopId = if (defaultShopId == null && ModuleRegistry.playerShop.hasBrowseView(args.getOrNull(1))) args.getOrNull(1) else defaultShopId
+                ModuleRegistry.playerShop.openEdit(player, shopId)
             }
             "upload" -> {
                 if (!Permissions.require(player, PermissionNodes.PLAYERSHOP_SELL)) {
                     return
                 }
-                val price = args.getOrNull(1)?.toDoubleOrNull()
+                val explicitShopId = if (defaultShopId == null && ModuleRegistry.playerShop.hasBrowseView(args.getOrNull(1))) args.getOrNull(1) else null
+                val priceIndex = if (explicitShopId != null) 2 else 1
+                val price = args.getOrNull(priceIndex)?.toDoubleOrNull()
                 if (price == null) {
                     Texts.send(player, "&cUsage: /matrixshop player_shop upload <price> [amount]")
                     return
                 }
-                val amount = args.getOrNull(2)?.toIntOrNull()
-                ModuleRegistry.playerShop.uploadFromHand(player, price, amount)
+                val amount = args.getOrNull(priceIndex + 1)?.toIntOrNull()
+                ModuleRegistry.playerShop.uploadFromHand(player, explicitShopId ?: defaultShopId, price, amount)
             }
             else -> {
                 if (ModuleRegistry.playerShop.hasBrowseView(args[0])) {
                     ModuleRegistry.playerShop.openShop(player, player.name, args[0])
+                    return
+                }
+                if (defaultShopId != null) {
+                    ModuleRegistry.playerShop.openShop(player, args[0], defaultShopId)
                     return
                 }
                 Texts.send(player, "&cUnknown player shop subcommand.")
@@ -302,79 +319,91 @@ object MatrixShopCommands {
         }
     }
 
-    private fun handleAuction(player: Player, args: List<String>) {
+    private fun handleAuction(player: Player, args: List<String>, defaultShopId: String? = null) {
         if (!Permissions.require(player, PermissionNodes.AUCTION_USE)) {
             return
         }
         if (args.isEmpty()) {
-            ModuleRegistry.auction.openAuction(player)
+            ModuleRegistry.auction.openAuction(player, defaultShopId)
             return
         }
         when (args[0].lowercase()) {
-            "open" -> ModuleRegistry.auction.openAuction(player, shopId = args.getOrNull(1))
+            "open" -> ModuleRegistry.auction.openAuction(player, shopId = args.getOrNull(1) ?: defaultShopId)
             "upload" -> {
                 if (!Permissions.require(player, PermissionNodes.AUCTION_SELL)) {
                     return
                 }
-                if (args.size == 1) {
-                    ModuleRegistry.auction.openUpload(player)
+                val explicitShopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else null
+                val baseIndex = if (explicitShopId != null) 2 else 1
+                if (args.size <= baseIndex) {
+                    ModuleRegistry.auction.openUpload(player, explicitShopId ?: defaultShopId)
                     return
                 }
                 ModuleRegistry.auction.uploadFromHand(
                     player = player,
-                    modeRaw = args.getOrNull(1),
-                    startPrice = args.getOrNull(2)?.toDoubleOrNull(),
-                    secondPrice = args.getOrNull(3)?.toDoubleOrNull(),
-                    durationSeconds = args.getOrNull(4)?.toIntOrNull()
+                    shopId = explicitShopId ?: defaultShopId,
+                    modeRaw = args.getOrNull(baseIndex),
+                    startPrice = args.getOrNull(baseIndex + 1)?.toDoubleOrNull(),
+                    secondPrice = args.getOrNull(baseIndex + 2)?.toDoubleOrNull(),
+                    durationSeconds = args.getOrNull(baseIndex + 3)?.toIntOrNull()
                 )
             }
             "detail" -> {
-                val id = args.getOrNull(1)
+                val explicitShopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else null
+                val id = args.getOrNull(if (explicitShopId != null) 2 else 1)
                 if (id.isNullOrBlank()) {
                     Texts.send(player, "&cUsage: /auction detail <id>")
                     return
                 }
-                ModuleRegistry.auction.openDetail(player, id)
+                ModuleRegistry.auction.openDetail(player, explicitShopId ?: defaultShopId, id)
             }
             "bid" -> {
                 if (!Permissions.require(player, PermissionNodes.AUCTION_BID)) {
                     return
                 }
-                val id = args.getOrNull(1)
+                val explicitShopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else null
+                val baseIndex = if (explicitShopId != null) 2 else 1
+                val id = args.getOrNull(baseIndex)
                 if (id.isNullOrBlank()) {
                     Texts.send(player, "&cUsage: /auction bid <id> [price]")
                     return
                 }
-                ModuleRegistry.auction.bid(player, id, args.getOrNull(2)?.toDoubleOrNull())
+                ModuleRegistry.auction.bid(player, explicitShopId ?: defaultShopId, id, args.getOrNull(baseIndex + 1)?.toDoubleOrNull())
             }
             "buyout" -> {
                 if (!Permissions.require(player, PermissionNodes.AUCTION_BUYOUT)) {
                     return
                 }
-                val id = args.getOrNull(1)
+                val explicitShopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else null
+                val id = args.getOrNull(if (explicitShopId != null) 2 else 1)
                 if (id.isNullOrBlank()) {
                     Texts.send(player, "&cUsage: /auction buyout <id>")
                     return
                 }
-                ModuleRegistry.auction.buyout(player, id)
+                ModuleRegistry.auction.buyout(player, explicitShopId ?: defaultShopId, id)
             }
             "my_items", "manage" -> {
                 if (!Permissions.require(player, PermissionNodes.AUCTION_MANAGE_OWN)) {
                     return
                 }
-                ModuleRegistry.auction.openManage(player)
+                val shopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else defaultShopId
+                ModuleRegistry.auction.openManage(player, shopId)
             }
-            "my_bids", "bids" -> ModuleRegistry.auction.openBids(player)
+            "my_bids", "bids" -> {
+                val shopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else defaultShopId
+                ModuleRegistry.auction.openBids(player, shopId)
+            }
             "remove" -> {
                 if (!Permissions.require(player, PermissionNodes.AUCTION_MANAGE_OWN)) {
                     return
                 }
-                val id = args.getOrNull(1)
+                val explicitShopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else null
+                val id = args.getOrNull(if (explicitShopId != null) 2 else 1)
                 if (id.isNullOrBlank()) {
                     Texts.send(player, "&cUsage: /auction remove <id>")
                     return
                 }
-                ModuleRegistry.auction.remove(player, id)
+                ModuleRegistry.auction.remove(player, explicitShopId ?: defaultShopId, id)
             }
             else -> {
                 if (ModuleRegistry.auction.hasAuctionView(args[0])) {
@@ -386,16 +415,17 @@ object MatrixShopCommands {
         }
     }
 
-    private fun handleTransaction(player: Player, args: List<String>) {
+    private fun handleTransaction(player: Player, args: List<String>, defaultShopId: String? = null) {
         if (!Permissions.require(player, PermissionNodes.TRANSACTION_USE)) {
             return
         }
-        if (args.isEmpty() || args[0].equals("open", true)) {
-            ModuleRegistry.transaction.open(player)
+        if (args.isEmpty()) {
+            ModuleRegistry.transaction.open(player, defaultShopId)
             return
         }
         when (args[0].lowercase()) {
-            "request" -> ModuleRegistry.transaction.requestTrade(player, args.getOrNull(1))
+            "open" -> ModuleRegistry.transaction.open(player, args.getOrNull(1) ?: defaultShopId)
+            "request" -> ModuleRegistry.transaction.requestTrade(player, defaultShopId, args.getOrNull(1))
             "accept" -> ModuleRegistry.transaction.acceptRequest(player, args.getOrNull(1))
             "deny" -> ModuleRegistry.transaction.denyRequest(player, args.getOrNull(1))
             "money" -> ModuleRegistry.transaction.setMoney(player, args.getOrNull(1)?.toDoubleOrNull())
@@ -404,7 +434,17 @@ object MatrixShopCommands {
             "confirm" -> ModuleRegistry.transaction.confirm(player, args.getOrNull(1)?.equals("submit", true) == true)
             "cancel" -> ModuleRegistry.transaction.cancel(player)
             "logs" -> ModuleRegistry.transaction.openLogs(player)
-            else -> Texts.send(player, "&cUnknown trade subcommand.")
+            else -> {
+                if (defaultShopId != null) {
+                    ModuleRegistry.transaction.requestTrade(player, defaultShopId, args[0])
+                    return
+                }
+                if (ModuleRegistry.transaction.hasShopView(args[0])) {
+                    ModuleRegistry.transaction.open(player, args[0])
+                    return
+                }
+                Texts.send(player, "&cUnknown trade subcommand.")
+            }
         }
     }
 
@@ -579,17 +619,18 @@ object MatrixShopCommands {
         val lines = mutableListOf("&8[&bMatrixShop&8] &fPlayer Commands")
         addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/matrixshop &8- &fOpen SystemShop")
         addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7${msUsage("system-shop", "open [category]")} &8- &fOpen a SystemShop category")
-        addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), "&7${msUsage("auction", "open [shop-id]")} &8- &fOpen the auction hall")
-        addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), "&7${msUsage("auction", "upload <english|dutch> <start> [buyout|end] [duration]")} &8- &fList the main-hand item")
-        addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), "&7${msUsage("auction", "bid <id> [price]")} &8- &fPlace an auction bid")
-        addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_BUYOUT), "&7${msUsage("auction", "buyout <id>")} &8- &fBuy at buyout or current Dutch price")
-        addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_MANAGE_OWN), "&7${msUsage("auction", "my_items|my_bids")} &8- &fOpen your auction views")
-        addHelp(lines, showModuleHelp("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), "&7${msUsage("player-shop", "open [player] [shop-id]")} &8- &fOpen a player shop")
-        addHelp(lines, showModuleHelp("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN), "&7${msUsage("player-shop", "edit")} &8- &fManage your player shop")
-        addHelp(lines, showModuleHelp("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_SELL), "&7${msUsage("player-shop", "upload <price> [amount]")} &8- &fList the main-hand item")
-        addHelp(lines, showModuleHelp("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), "&7${msUsage("global-market", "open [shop-id]")} &8- &fOpen GlobalMarket")
-        addHelp(lines, showModuleHelp("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), "&7${msUsage("global-market", "upload <price> [amount]")} &8- &fList to GlobalMarket")
-        addHelp(lines, showModuleHelp("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), "&7${msUsage("global-market", "manage")} &8- &fManage your GlobalMarket listings")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), shopHelpEntries("auction"), "Open auction shop")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), shopHelpEntries("auction"), "upload <english|dutch> <start> [buyout|end] [duration]", "List the main-hand item")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), shopHelpEntries("auction"), "bid <id> [price]", "Place an auction bid")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BUYOUT), shopHelpEntries("auction"), "buyout <id>", "Buy at buyout or Dutch price")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_MANAGE_OWN), shopHelpEntries("auction"), "manage | bids", "Open your auction views")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), shopHelpEntries("player-shop"), "Open player shop")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), shopHelpEntries("player-shop"), "[player]", "Open another player's shop")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN), shopHelpEntries("player-shop"), "edit", "Manage your player shop")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_SELL), shopHelpEntries("player-shop"), "upload <price> [amount]", "List the main-hand item")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), shopHelpEntries("global-market"), "Open global market")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), shopHelpEntries("global-market"), "upload <price> [amount]", "List to this global market")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), shopHelpEntries("global-market"), "manage", "Manage your listings in this market")
         addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), "&7${msUsage("chestshop", "create <buy|sell|dual> <price> [sell-price] [amount]")} &8- &fCreate a chest shop from the target chest")
         addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), "&7${msUsage("chestshop", "open [shop-id] | stock | history")} &8- &fOpen the target chest shop views")
         addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), "&7${msUsage("chestshop", "edit|remove|price|amount|mode")} &8- &fManage your chest shop")
@@ -598,9 +639,10 @@ object MatrixShopCommands {
         addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_USE), "&7${msUsage("record", "open [keyword]")} &8- &fOpen ledger records")
         addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), "&7${msUsage("record", "detail <id>")} &8- &fOpen one record detail")
         addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), "&7${msUsage("record", "income|expense|stats")} &8- &fOpen ledger statistics")
-        addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), "&7${msUsage("transaction", "request <player>")} &8- &fSend a face-to-face trade request")
-        addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), "&7${msUsage("transaction", "accept [player] / ready / confirm / cancel / logs")} &8- &fControl the active trade")
-        addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), "&7${msUsage("transaction", "money <amount> / exp <amount>")} &8- &fSet your money or exp offer")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "Open trade shop")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "request <player>", "Send a face-to-face trade request")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "accept [player] | ready | confirm | cancel | logs", "Control the active trade")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "money <amount> | exp <amount>", "Set your money or exp offer")
         Texts.sendRaw(player, lines.joinToString("\n"))
     }
 
@@ -665,6 +707,50 @@ object MatrixShopCommands {
         }
     }
 
+    private fun addBoundShopHelp(
+        lines: MutableList<String>,
+        visible: Boolean,
+        entries: List<com.y54895.matrixshop.core.menu.ShopMenuSelection>,
+        description: String
+    ) {
+        if (!visible) {
+            return
+        }
+        entries.forEach { entry ->
+            val key = entry.bindings.keys.firstOrNull() ?: entry.id
+            lines += "&7/ms $key &8- &f$description &7(${entry.id})"
+        }
+    }
+
+    private fun addBoundShopHelp(
+        lines: MutableList<String>,
+        visible: Boolean,
+        entries: List<com.y54895.matrixshop.core.menu.ShopMenuSelection>,
+        suffix: String,
+        description: String
+    ) {
+        if (!visible) {
+            return
+        }
+        entries.forEach { entry ->
+            val key = entry.bindings.keys.firstOrNull() ?: entry.id
+            lines += "&7/ms $key $suffix &8- &f$description &7(${entry.id})"
+        }
+    }
+
+    private fun shopHelpEntries(moduleId: String): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {
+        if (!ModuleRegistry.isEnabled(moduleId)) {
+            return emptyList()
+        }
+        return when (moduleId) {
+            "auction" -> ModuleRegistry.auction.helpEntries()
+            "player-shop" -> ModuleRegistry.playerShop.helpEntries()
+            "global-market" -> ModuleRegistry.globalMarket.helpEntries()
+            "transaction" -> ModuleRegistry.transaction.helpEntries()
+            else -> emptyList()
+        }
+    }
+
     private fun msUsage(moduleId: String, suffix: String): String {
         return "/ms ${ModuleBindings.primary(moduleId)} $suffix".trim()
     }
@@ -681,11 +767,12 @@ object MatrixShopCommands {
         return player
     }
 
-    private fun resolvePlayerShopOpen(player: Player, args: List<String>): Pair<String, String?> {
+    private fun resolvePlayerShopOpen(player: Player, args: List<String>, defaultShopId: String? = null): Pair<String, String?> {
         val first = args.getOrNull(0)
         val second = args.getOrNull(1)
         return when {
-            first == null -> player.name to null
+            first == null -> player.name to defaultShopId
+            defaultShopId != null -> first to defaultShopId
             second != null -> first to second
             ModuleRegistry.playerShop.hasBrowseView(first) -> player.name to first
             else -> first to null
@@ -698,14 +785,20 @@ object MatrixShopCommands {
         description: String,
         usage: String,
         permission: String,
-        executor: (ProxyCommandSender, Array<String>) -> Unit
+        executor: (ProxyCommandSender, Array<String>) -> Unit,
+        reserved: MutableSet<String>
     ) {
         if (!ModuleBindings.registerStandalone(moduleId)) {
             return
         }
         val bindings = ModuleBindings.keys(moduleId)
         val name = bindings.firstOrNull() ?: defaultName
-        val aliases = bindings.drop(1)
+        val aliases = bindings.drop(1).filterNot { reserved.contains(it.lowercase()) }
+        if (reserved.contains(name.lowercase())) {
+            return
+        }
+        reserved += name.lowercase()
+        aliases.forEach { reserved += it.lowercase() }
         simpleCommand(
             name = name,
             aliases = aliases,
@@ -717,6 +810,80 @@ object MatrixShopCommands {
         }
     }
 
+    private fun registerStandaloneShopCommands(
+        moduleId: String,
+        description: String,
+        usage: String,
+        permission: String,
+        reserved: MutableSet<String>
+    ) {
+        standaloneBoundShopEntries(moduleId).forEach { entry ->
+            val bindings = entry.selection.bindings.keys
+            val name = bindings.firstOrNull() ?: return@forEach
+            if (reserved.contains(name.lowercase())) {
+                return@forEach
+            }
+            val aliases = bindings.drop(1).filterNot { reserved.contains(it.lowercase()) }
+            reserved += name.lowercase()
+            aliases.forEach { reserved += it.lowercase() }
+            simpleCommand(
+                name = name,
+                aliases = aliases,
+                description = description,
+                usage = usage,
+                permission = permission
+            ) { sender, args ->
+                val player = requirePlayer(sender) ?: return@simpleCommand
+                handleBoundShop(player, entry.route, args.toList())
+            }
+        }
+    }
+
+    private fun handleBoundShop(player: Player, route: ShopBindingRoute, args: List<String>) {
+        when (route.moduleId) {
+            "auction" -> handleAuction(player, args, route.shopId)
+            "global-market" -> handleGlobalMarket(player, args, route.shopId)
+            "player-shop" -> handlePlayerShop(player, args, route.shopId)
+            "transaction" -> handleTransaction(player, args, route.shopId)
+            else -> sendPlayerHelp(player)
+        }
+    }
+
+    private fun resolveBoundShopRoute(token: String): ShopBindingRoute? {
+        val normalized = token.trim().lowercase()
+        return boundShopEntries()
+            .firstOrNull { it.selection.bindings.keys.contains(normalized) }
+            ?.route
+    }
+
+    private fun boundShopEntries(moduleId: String? = null): List<BoundShopEntry> {
+        val routes = mutableListOf<BoundShopEntry>()
+        if ((moduleId == null || moduleId == "global-market") && ModuleRegistry.isEnabled("global-market")) {
+            ModuleRegistry.globalMarket.helpEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("global-market", it.id), it) }
+        }
+        if ((moduleId == null || moduleId == "player-shop") && ModuleRegistry.isEnabled("player-shop")) {
+            ModuleRegistry.playerShop.helpEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("player-shop", it.id), it) }
+        }
+        if ((moduleId == null || moduleId == "auction") && ModuleRegistry.isEnabled("auction")) {
+            ModuleRegistry.auction.helpEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("auction", it.id), it) }
+        }
+        if ((moduleId == null || moduleId == "transaction") && ModuleRegistry.isEnabled("transaction")) {
+            ModuleRegistry.transaction.helpEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("transaction", it.id), it) }
+        }
+        return routes
+    }
+
+    private fun standaloneBoundShopEntries(moduleId: String): List<BoundShopEntry> {
+        val entries = mutableListOf<BoundShopEntry>()
+        when (moduleId) {
+            "global-market" -> if (ModuleRegistry.isEnabled("global-market")) ModuleRegistry.globalMarket.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("global-market", it.id), it) }
+            "player-shop" -> if (ModuleRegistry.isEnabled("player-shop")) ModuleRegistry.playerShop.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("player-shop", it.id), it) }
+            "auction" -> if (ModuleRegistry.isEnabled("auction")) ModuleRegistry.auction.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("auction", it.id), it) }
+            "transaction" -> if (ModuleRegistry.isEnabled("transaction")) ModuleRegistry.transaction.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("transaction", it.id), it) }
+        }
+        return entries
+    }
+
     private fun formatEpochMillis(value: String): String {
         val millis = value.toLongOrNull() ?: return value
         return runCatching {
@@ -726,3 +893,13 @@ object MatrixShopCommands {
         }.getOrDefault(value)
     }
 }
+
+private data class ShopBindingRoute(
+    val moduleId: String,
+    val shopId: String
+)
+
+private data class BoundShopEntry(
+    val route: ShopBindingRoute,
+    val selection: com.y54895.matrixshop.core.menu.ShopMenuSelection
+)

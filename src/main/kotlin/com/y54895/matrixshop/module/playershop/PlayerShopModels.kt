@@ -1,11 +1,13 @@
 package com.y54895.matrixshop.module.playershop
 
+import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
 data class PlayerShopStore(
     val ownerId: UUID,
+    val shopId: String = "default",
     var ownerName: String,
     var unlockedSlots: Int,
     val listings: MutableList<PlayerShopListing> = mutableListOf()
@@ -26,7 +28,7 @@ data class PlayerShopSettings(
 )
 
 data class PlayerShopMenus(
-    val browseViews: Map<String, MenuDefinition>,
+    val browseViews: Map<String, ConfiguredShopMenu>,
     val edit: MenuDefinition
 )
 

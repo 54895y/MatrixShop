@@ -2,10 +2,12 @@ package com.y54895.matrixshop.module.globalmarket
 
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.menu.ShopMenuLoader
+import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
@@ -17,7 +19,6 @@ import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import java.io.File
-import java.util.UUID
 
 object GlobalMarketModule : MatrixModule {
 
@@ -49,24 +50,23 @@ object GlobalMarketModule : MatrixModule {
     }
 
     fun openMarket(player: Player, shopId: String?, page: Int = 1) {
-        val selectedMenu = ShopMenuLoader.resolve(menus.marketViews, shopId)
-        val browseMenu = selectedMenu.definition
-        val listings = activeListings()
-        val goodsSlots = goodsSlots(browseMenu).size.coerceAtLeast(1)
+        val selectedShop = selectShop(shopId)
+        val listings = activeListings(selectedShop.id)
+        val goodsSlots = goodsSlots(selectedShop.definition).size.coerceAtLeast(1)
         val maxPage = ((listings.size + goodsSlots - 1) / goodsSlots).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val entries = listings.drop((currentPage - 1) * goodsSlots).take(goodsSlots)
-        val placeholders = mapOf(
-            "page" to currentPage.toString(),
-            "max-page" to maxPage.toString()
-        )
         MenuRenderer.open(
             player = player,
-            definition = browseMenu,
-            placeholders = placeholders,
+            definition = selectedShop.definition,
+            placeholders = mapOf(
+                "page" to currentPage.toString(),
+                "max-page" to maxPage.toString(),
+                "shop-id" to selectedShop.id
+            ),
             goodsRenderer = { holder, slots ->
-                renderMarket(player, holder, entries, slots)
-                wireMarketControls(player, holder, browseMenu, selectedMenu.id, currentPage, maxPage)
+                renderMarket(player, holder, entries, slots, selectedShop.id)
+                wireMarketControls(player, holder, selectedShop.definition, selectedShop.id, currentPage, maxPage)
             }
         )
     }
@@ -75,123 +75,172 @@ object GlobalMarketModule : MatrixModule {
         return ShopMenuLoader.contains(menus.marketViews, shopId)
     }
 
+    fun resolveBoundShop(token: String?): String? {
+        return ShopMenuLoader.resolveByBinding(menus.marketViews, token)?.id
+    }
+
+    fun helpEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.helpEntries(menus.marketViews)
+    }
+
+    fun standaloneEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.standaloneEntries(menus.marketViews)
+    }
+
     fun openManage(player: Player, page: Int = 1) {
-        val listings = activeListings().filter { it.ownerId == player.uniqueId }
+        openManage(player, null, page)
+    }
+
+    fun openManage(player: Player, shopId: String?, page: Int = 1) {
+        val resolvedShopId = resolveShopId(shopId)
+        val listings = activeListings(resolvedShopId).filter { it.ownerId == player.uniqueId }
         val goodsSlots = goodsSlots(menus.manage).size.coerceAtLeast(1)
         val maxPage = ((listings.size + goodsSlots - 1) / goodsSlots).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val entries = listings.drop((currentPage - 1) * goodsSlots).take(goodsSlots)
-        val placeholders = mapOf(
-            "page" to currentPage.toString(),
-            "max-page" to maxPage.toString(),
-            "listed" to listings.size.toString()
-        )
         MenuRenderer.open(
             player = player,
             definition = menus.manage,
-            placeholders = placeholders,
-            backAction = { openMarket(player) },
+            placeholders = mapOf(
+                "page" to currentPage.toString(),
+                "max-page" to maxPage.toString(),
+                "listed" to listings.size.toString(),
+                "shop-id" to resolvedShopId
+            ),
+            backAction = { openMarket(player, resolvedShopId) },
             goodsRenderer = { holder, slots ->
-                renderManage(player, holder, entries, slots)
-                wireManageControls(player, holder, currentPage, maxPage)
+                renderManage(player, holder, entries, slots, resolvedShopId)
+                wireManageControls(player, holder, resolvedShopId, currentPage, maxPage)
             }
         )
     }
 
     fun openUpload(player: Player) {
-        MenuRenderer.open(player, menus.upload, mapOf("player" to player.name))
+        openUpload(player, null)
+    }
+
+    fun openUpload(player: Player, shopId: String?) {
+        val resolvedShopId = resolveShopId(shopId)
+        MenuRenderer.open(
+            player = player,
+            definition = menus.upload,
+            placeholders = mapOf(
+                "player" to player.name,
+                "shop-id" to resolvedShopId
+            ),
+            backAction = { openMarket(player, resolvedShopId) }
+        )
     }
 
     fun uploadFromHand(player: Player, price: Double, requestedAmount: Int?) {
+        uploadFromHand(player, null, price, requestedAmount)
+    }
+
+    fun uploadFromHand(player: Player, shopId: String?, price: Double, requestedAmount: Int?) {
         if (price <= 0) {
-            Texts.send(player, "&c价格必须大于 0。")
+            Texts.send(player, "&cPrice must be greater than 0.")
             return
         }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
         if (hand.type == Material.AIR || hand.amount <= 0) {
-            Texts.send(player, "&c请先把要上架的物品拿在主手。")
+            Texts.send(player, "&cHold the item you want to list in your main hand.")
             return
         }
         val amount = (requestedAmount ?: hand.amount).coerceAtLeast(1)
         if (amount > hand.amount) {
-            Texts.send(player, "&c主手物品数量不足。")
+            Texts.send(player, "&cYou do not have enough items in your main hand.")
             return
         }
         val listingItem = hand.clone().apply { this.amount = amount }
         val remain = hand.amount - amount
-        if (remain <= 0) {
-            player.inventory.itemInMainHand = ItemStack(Material.AIR)
-        } else {
-            hand.amount = remain
-            player.inventory.itemInMainHand = hand
-        }
+        player.inventory.itemInMainHand = if (remain <= 0) ItemStack(Material.AIR) else hand.apply { this.amount = remain }
         val now = System.currentTimeMillis()
         val listing = GlobalMarketListing(
             id = "gm-${now.toString(36)}",
+            shopId = resolveShopId(shopId),
             ownerId = player.uniqueId,
             ownerName = player.name,
             price = price,
             currency = "vault",
             item = listingItem,
             createdAt = now,
-            expireAt = now + settings.expireHours.coerceAtLeast(1) * 3600_000L
+            expireAt = now + settings.expireHours.coerceAtLeast(1) * 3_600_000L
         )
-        val listings = activeListings().toMutableList()
+        val listings = GlobalMarketRepository.loadAll().toMutableList()
         listings += listing
         GlobalMarketRepository.saveAll(listings)
         player.updateInventory()
-        Texts.send(player, "&a已上架到全球市场: &f${itemDisplayName(listingItem)} &7x&f${listingItem.amount} &7- &e${trimDouble(price)}")
-        RecordService.append("global_market", "list", player.name, "listing=${listing.id};price=${trimDouble(price)};amount=${listingItem.amount}")
+        Texts.send(player, "&aListed in &f${listing.shopId}&a: &f${itemDisplayName(listingItem)} &7x&f${listingItem.amount} &7- &e${trimDouble(price)}")
+        RecordService.append("global_market", "list", player.name, "shop=${listing.shopId};listing=${listing.id};price=${trimDouble(price)};amount=${listingItem.amount}")
     }
 
     fun selection(listingId: String): GlobalMarketListing? {
-        return activeListings().firstOrNull { it.id == listingId }
+        return selection(null, listingId)
+    }
+
+    fun selection(shopId: String?, listingId: String): GlobalMarketListing? {
+        val resolvedShopId = shopId?.trim()?.takeIf(String::isNotBlank)?.lowercase()
+        return GlobalMarketRepository.loadAll()
+            .asSequence()
+            .filter { resolvedShopId == null || it.shopId.equals(resolvedShopId, true) }
+            .filter { it.id == listingId }
+            .firstOrNull()
     }
 
     fun validateListing(listingId: String): ModuleOperationResult {
-        val listing = selection(listingId) ?: return ModuleOperationResult(false, "&c该商品已被下架或过期。")
+        return validateListing(null, listingId)
+    }
+
+    fun validateListing(shopId: String?, listingId: String): ModuleOperationResult {
+        val listing = selection(shopId, listingId) ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
         return if (listing.item.type == Material.AIR || listing.item.amount <= 0) {
-            ModuleOperationResult(false, "&c商品数据无效。")
+            ModuleOperationResult(false, "&cThat listing contains invalid item data.")
         } else {
             ModuleOperationResult(true, "")
         }
     }
 
     fun purchaseDirect(player: Player, listingId: String, reopenAfterSuccess: Boolean = true): ModuleOperationResult {
-        val listings = activeListings().toMutableList()
-        val listing = listings.firstOrNull { it.id == listingId } ?: return ModuleOperationResult(false, "&c该商品已被下架或过期。")
+        return purchaseDirect(player, null, listingId, reopenAfterSuccess)
+    }
+
+    fun purchaseDirect(player: Player, shopId: String?, listingId: String, reopenAfterSuccess: Boolean = true): ModuleOperationResult {
+        val resolvedShopId = resolveShopId(shopId)
+        val listings = GlobalMarketRepository.loadAll().toMutableList()
+        val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
+            ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
         if (listing.ownerId == player.uniqueId) {
             if (reopenAfterSuccess) {
-                openManage(player)
+                openManage(player, listing.shopId)
             }
             return ModuleOperationResult(false, "")
         }
         if (listing.price > 0 && !VaultEconomyBridge.isAvailable()) {
-            return ModuleOperationResult(false, "&c当前未接入 Vault 经济，无法购买全球市场商品。")
+            return ModuleOperationResult(false, "&cVault economy is required for GlobalMarket purchases.")
         }
         if (!canFit(player.inventory.contents.filterNotNull(), listOf(listing.item))) {
-            return ModuleOperationResult(false, "&c背包空间不足。")
+            return ModuleOperationResult(false, "&cYour inventory does not have enough free space.")
         }
         if (!VaultEconomyBridge.has(player, listing.price)) {
-            return ModuleOperationResult(false, "&c余额不足，需要 &e${trimDouble(listing.price)} &c金币。")
+            return ModuleOperationResult(false, "&cYou need &e${trimDouble(listing.price)} &cto buy this listing.")
         }
         if (!VaultEconomyBridge.withdraw(player, listing.price)) {
-            return ModuleOperationResult(false, "&c扣款失败，购买取消。")
+            return ModuleOperationResult(false, "&cFailed to withdraw the purchase price.")
         }
         val tax = listing.price * settings.taxPercent / 100.0
         val sellerIncome = (listing.price - tax).coerceAtLeast(0.0)
         val seller = Bukkit.getOfflinePlayer(listing.ownerId)
         if (!VaultEconomyBridge.deposit(seller, sellerIncome)) {
             VaultEconomyBridge.deposit(player, listing.price)
-            return ModuleOperationResult(false, "&c卖家收款失败，已回退本次交易。")
+            return ModuleOperationResult(false, "&cFailed to deliver money to the seller. The purchase was rolled back.")
         }
         listings.removeIf { it.id == listing.id }
         GlobalMarketRepository.saveAll(listings)
         player.inventory.addItem(listing.item.clone())
         player.updateInventory()
-        Texts.send(player, "&a购买成功: &f${itemDisplayName(listing.item)} &7x&f${listing.item.amount} &7- &e${trimDouble(listing.price)}")
+        Texts.send(player, "&aPurchased from &f${listing.shopId}&a: &f${itemDisplayName(listing.item)} &7x&f${listing.item.amount} &7- &e${trimDouble(listing.price)}")
         Bukkit.getPlayer(listing.ownerId)?.let {
-            Texts.send(it, "&a你的全球市场商品已售出: &f${itemDisplayName(listing.item)} &7- &e${trimDouble(sellerIncome)}")
+            Texts.send(it, "&aYour GlobalMarket listing sold in &f${listing.shopId}&a for &e${trimDouble(sellerIncome)}&a.")
         }
         RecordService.append(
             module = "global_market",
@@ -199,7 +248,7 @@ object GlobalMarketModule : MatrixModule {
             actor = player.name,
             target = listing.ownerName,
             moneyChange = -listing.price,
-            detail = "seller=${listing.ownerName};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
+            detail = "shop=${listing.shopId};seller=${listing.ownerName};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
         )
         RecordService.append(
             module = "global_market",
@@ -207,19 +256,19 @@ object GlobalMarketModule : MatrixModule {
             actor = listing.ownerName,
             target = player.name,
             moneyChange = sellerIncome,
-            detail = "buyer=${player.name};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
+            detail = "shop=${listing.shopId};buyer=${player.name};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
         )
         if (reopenAfterSuccess) {
-            openMarket(player)
+            openMarket(player, listing.shopId)
         }
         return ModuleOperationResult(true, "")
     }
 
-    private fun removeListing(player: Player, listingId: String) {
-        val listings = activeListings().toMutableList()
-        val listing = listings.firstOrNull { it.id == listingId && it.ownerId == player.uniqueId }
+    private fun removeListing(player: Player, shopId: String, listingId: String) {
+        val listings = GlobalMarketRepository.loadAll().toMutableList()
+        val listing = listings.firstOrNull { it.id == listingId && it.ownerId == player.uniqueId && it.shopId.equals(shopId, true) }
         if (listing == null) {
-            Texts.send(player, "&c未找到该上架条目。")
+            Texts.send(player, "&cListing not found in this market.")
             return
         }
         listings.removeIf { it.id == listing.id }
@@ -228,30 +277,30 @@ object GlobalMarketModule : MatrixModule {
             player.world.dropItemNaturally(player.location, it)
         }
         player.updateInventory()
-        Texts.send(player, "&a已下架并返还: &f${itemDisplayName(listing.item)}")
-        RecordService.append("global_market", "remove", player.name, "listing=${listing.id}")
-        openManage(player)
+        Texts.send(player, "&aRemoved listing from &f${listing.shopId}&a: &f${itemDisplayName(listing.item)}")
+        RecordService.append("global_market", "remove", player.name, "shop=${listing.shopId};listing=${listing.id}")
+        openManage(player, shopId)
     }
 
-    private fun renderMarket(player: Player, holder: MatrixMenuHolder, entries: List<GlobalMarketListing>, slots: List<Int>) {
+    private fun renderMarket(player: Player, holder: MatrixMenuHolder, entries: List<GlobalMarketListing>, slots: List<Int>, shopId: String) {
         entries.forEachIndexed { index, listing ->
             val item = listing.item.clone()
             item.itemMeta = item.itemMeta?.apply {
                 lore = (lore ?: emptyList()) + listOf(
-                    Texts.color("&7卖家: &f${listing.ownerName}"),
-                    Texts.color("&7单价: &e${trimDouble(listing.price)} ${listing.currency}"),
-                    Texts.color("&7剩余时间: &f${remainingText(listing)}"),
-                    Texts.color("&e左键购买"),
-                    Texts.color("&6右键加入购物车")
+                    Texts.color("&7Seller: &f${listing.ownerName}"),
+                    Texts.color("&7Price: &e${trimDouble(listing.price)} ${listing.currency}"),
+                    Texts.color("&7Time Left: &f${remainingText(listing)}"),
+                    Texts.color("&eLeft click to buy"),
+                    Texts.color("&6Right click to add to cart")
                 )
             }
             val slot = slots[index]
             holder.backingInventory.setItem(slot, item)
             holder.handlers[slot] = { event ->
                 if (event.click.isRightClick) {
-                    CartModule.addGlobalMarketListing(player, listing.id)
+                    CartModule.addGlobalMarketListing(player, shopId, listing.id)
                 } else {
-                    val result = purchaseDirect(player, listing.id, true)
+                    val result = purchaseDirect(player, shopId, listing.id, true)
                     if (!result.success && result.message.isNotBlank()) {
                         Texts.send(player, result.message)
                     }
@@ -260,36 +309,34 @@ object GlobalMarketModule : MatrixModule {
         }
     }
 
-    private fun renderManage(player: Player, holder: MatrixMenuHolder, entries: List<GlobalMarketListing>, slots: List<Int>) {
+    private fun renderManage(player: Player, holder: MatrixMenuHolder, entries: List<GlobalMarketListing>, slots: List<Int>, shopId: String) {
         entries.forEachIndexed { index, listing ->
             val item = listing.item.clone()
             item.itemMeta = item.itemMeta?.apply {
                 lore = (lore ?: emptyList()) + listOf(
-                    Texts.color("&7售价: &e${trimDouble(listing.price)} ${listing.currency}"),
-                    Texts.color("&7剩余时间: &f${remainingText(listing)}"),
-                    Texts.color("&c左键下架返还")
+                    Texts.color("&7Price: &e${trimDouble(listing.price)} ${listing.currency}"),
+                    Texts.color("&7Time Left: &f${remainingText(listing)}"),
+                    Texts.color("&cLeft click to remove")
                 )
             }
             val slot = slots[index]
             holder.backingInventory.setItem(slot, item)
-            holder.handlers[slot] = {
-                removeListing(player, listing.id)
-            }
+            holder.handlers[slot] = { removeListing(player, shopId, listing.id) }
         }
     }
 
-    private fun wireMarketControls(player: Player, holder: MatrixMenuHolder, definition: com.y54895.matrixshop.core.menu.MenuDefinition, shopId: String, currentPage: Int, maxPage: Int) {
+    private fun wireMarketControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, shopId: String, currentPage: Int, maxPage: Int) {
         buttonSlot(definition, 'P')?.let { holder.handlers[it] = { openMarket(player, shopId, (currentPage - 1).coerceAtLeast(1)) } }
         buttonSlot(definition, 'N')?.let { holder.handlers[it] = { openMarket(player, shopId, (currentPage + 1).coerceAtMost(maxPage)) } }
-        buttonSlot(definition, 'U')?.let { holder.handlers[it] = { openUpload(player) } }
-        buttonSlot(definition, 'M')?.let { holder.handlers[it] = { openManage(player) } }
+        buttonSlot(definition, 'U')?.let { holder.handlers[it] = { openUpload(player, shopId) } }
+        buttonSlot(definition, 'M')?.let { holder.handlers[it] = { openManage(player, shopId) } }
         buttonSlot(definition, 'C')?.let { holder.handlers[it] = { CartModule.open(player) } }
     }
 
-    private fun wireManageControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
-        buttonSlot(menus.manage, 'P')?.let { holder.handlers[it] = { openManage(player, (currentPage - 1).coerceAtLeast(1)) } }
-        buttonSlot(menus.manage, 'N')?.let { holder.handlers[it] = { openManage(player, (currentPage + 1).coerceAtMost(maxPage)) } }
-        buttonSlot(menus.manage, 'U')?.let { holder.handlers[it] = { openUpload(player) } }
+    private fun wireManageControls(player: Player, holder: MatrixMenuHolder, shopId: String, currentPage: Int, maxPage: Int) {
+        buttonSlot(menus.manage, 'P')?.let { holder.handlers[it] = { openManage(player, shopId, (currentPage - 1).coerceAtLeast(1)) } }
+        buttonSlot(menus.manage, 'N')?.let { holder.handlers[it] = { openManage(player, shopId, (currentPage + 1).coerceAtMost(maxPage)) } }
+        buttonSlot(menus.manage, 'U')?.let { holder.handlers[it] = { openUpload(player, shopId) } }
     }
 
     private fun loadSettings(): GlobalMarketSettings {
@@ -300,11 +347,24 @@ object GlobalMarketModule : MatrixModule {
         )
     }
 
-    private fun activeListings(): List<GlobalMarketListing> {
-        return GlobalMarketRepository.loadAll().sortedByDescending { it.createdAt }
+    private fun activeListings(shopId: String? = null): List<GlobalMarketListing> {
+        val now = System.currentTimeMillis()
+        val resolvedShopId = shopId?.trim()?.takeIf(String::isNotBlank)?.lowercase()
+        return GlobalMarketRepository.loadAll()
+            .filter { it.expireAt <= 0L || it.expireAt > now }
+            .filter { resolvedShopId == null || it.shopId.equals(resolvedShopId, true) }
+            .sortedByDescending { it.createdAt }
     }
 
-    private fun goodsSlots(definition: com.y54895.matrixshop.core.menu.MenuDefinition): List<Int> {
+    private fun selectShop(shopId: String?): ShopMenuSelection {
+        return ShopMenuLoader.resolve(menus.marketViews, shopId)
+    }
+
+    private fun resolveShopId(shopId: String?): String {
+        return selectShop(shopId).id
+    }
+
+    private fun goodsSlots(definition: MenuDefinition): List<Int> {
         val slots = ArrayList<Int>()
         definition.layout.forEachIndexed { row, line ->
             line.forEachIndexed { column, char ->
@@ -317,7 +377,7 @@ object GlobalMarketModule : MatrixModule {
         return slots
     }
 
-    private fun buttonSlot(definition: com.y54895.matrixshop.core.menu.MenuDefinition, symbol: Char): Int? {
+    private fun buttonSlot(definition: MenuDefinition, symbol: Char): Int? {
         definition.layout.forEachIndexed { row, line ->
             line.forEachIndexed { column, char ->
                 if (char == symbol) {
@@ -330,8 +390,8 @@ object GlobalMarketModule : MatrixModule {
 
     private fun remainingText(listing: GlobalMarketListing): String {
         val remain = (listing.expireAt - System.currentTimeMillis()).coerceAtLeast(0L)
-        val hours = remain / 3600_000L
-        val minutes = (remain % 3600_000L) / 60_000L
+        val hours = remain / 3_600_000L
+        val minutes = (remain % 3_600_000L) / 60_000L
         return "${hours}h ${minutes}m"
     }
 

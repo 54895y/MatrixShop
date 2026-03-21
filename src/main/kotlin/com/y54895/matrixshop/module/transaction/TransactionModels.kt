@@ -1,11 +1,13 @@
 package com.y54895.matrixshop.module.transaction
 
+import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.InventoryHolder
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
 data class TransactionRequest(
+    val shopId: String,
     val requesterId: UUID,
     val requesterName: String,
     val targetId: UUID,
@@ -21,6 +23,7 @@ data class TransactionRequest(
 
 data class TransactionSession(
     val id: String,
+    val shopId: String,
     val leftId: UUID,
     val leftName: String,
     val rightId: UUID,
@@ -57,6 +60,7 @@ data class TransactionSettings(
 )
 
 data class TransactionMenus(
+    val shopViews: Map<String, ConfiguredShopMenu>,
     val request: com.y54895.matrixshop.core.menu.MenuDefinition,
     val trade: com.y54895.matrixshop.core.menu.MenuDefinition,
     val confirm: com.y54895.matrixshop.core.menu.MenuDefinition

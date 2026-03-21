@@ -6,6 +6,8 @@ import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
+import com.y54895.matrixshop.core.menu.ShopMenuLoader
+import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.record.RecordService
@@ -52,6 +54,7 @@ object TransactionModule : MatrixModule {
         val dataFolder = ConfigFiles.dataFolder()
         settings = loadSettings()
         menus = TransactionMenus(
+            shopViews = ShopMenuLoader.load("Transaction", "request.yml"),
             request = MenuLoader.load(File(dataFolder, "Transaction/ui/request.yml")),
             trade = MenuLoader.load(File(dataFolder, "Transaction/ui/trade.yml")),
             confirm = MenuLoader.load(File(dataFolder, "Transaction/ui/confirm.yml"))
@@ -59,6 +62,10 @@ object TransactionModule : MatrixModule {
     }
 
     fun requestTrade(requester: Player, targetName: String?) {
+        requestTrade(requester, null, targetName)
+    }
+
+    fun requestTrade(requester: Player, shopId: String?, targetName: String?) {
         if (!ensureReady(requester)) {
             return
         }
@@ -99,6 +106,7 @@ object TransactionModule : MatrixModule {
             return
         }
         val request = TransactionRequest(
+            shopId = resolveShopId(shopId),
             requesterId = requester.uniqueId,
             requesterName = requester.name,
             targetId = target.uniqueId,
@@ -143,6 +151,7 @@ object TransactionModule : MatrixModule {
         removeAllRelatedRequests(requester.uniqueId, target.uniqueId)
         val session = TransactionSession(
             id = nextSessionId(),
+            shopId = request.shopId,
             leftId = requester.uniqueId,
             leftName = requester.name,
             rightId = target.uniqueId,
@@ -175,12 +184,16 @@ object TransactionModule : MatrixModule {
     }
 
     fun open(player: Player) {
+        open(player, null)
+    }
+
+    fun open(player: Player, shopId: String?) {
         if (!ensureReady(player)) {
             return
         }
         val session = activeSession(player.uniqueId)
         if (session == null) {
-            Texts.send(player, "&cYou do not have an active trade.")
+            openShopEntry(player, resolveShopId(shopId))
             return
         }
         if (session.confirmPhase) {
@@ -314,6 +327,22 @@ object TransactionModule : MatrixModule {
         ModuleRegistry.record.open(player, "transaction")
     }
 
+    fun hasShopView(shopId: String?): Boolean {
+        return ShopMenuLoader.contains(menus.shopViews, shopId)
+    }
+
+    fun resolveBoundShop(token: String?): String? {
+        return ShopMenuLoader.resolveByBinding(menus.shopViews, token)?.id
+    }
+
+    fun helpEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.helpEntries(menus.shopViews)
+    }
+
+    fun standaloneEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.standaloneEntries(menus.shopViews)
+    }
+
     internal fun handleTradeClick(player: Player, holder: TransactionTradeHolder, event: InventoryClickEvent) {
         val session = sessionsById[holder.sessionId] ?: run {
             player.closeInventory()
@@ -408,10 +437,45 @@ object TransactionModule : MatrixModule {
         }
     }
 
+    private fun openShopEntry(player: Player, shopId: String) {
+        val selectedShop = ShopMenuLoader.resolve(menus.shopViews, shopId)
+        MenuRenderer.open(
+            player = player,
+            definition = selectedShop.definition,
+            placeholders = mapOf(
+                "player" to player.name,
+                "shop-id" to selectedShop.id
+            ),
+            goodsRenderer = { holder, _ ->
+                buttonSlot(selectedShop.definition, 'R')?.let { slot ->
+                    holder.handlers[slot] = {
+                        Texts.send(player, "&7Use /ms ${selectedShop.bindings.keys.firstOrNull() ?: selectedShop.id} request <player> to send a trade request.")
+                    }
+                }
+                buttonSlot(selectedShop.definition, 'L')?.let { slot ->
+                    holder.handlers[slot] = { openLogs(player) }
+                }
+                buttonSlot(selectedShop.definition, 'A')?.let { slot ->
+                    holder.handlers[slot] = {
+                        val session = activeSession(player.uniqueId)
+                        if (session == null) {
+                            Texts.send(player, "&cYou do not have an active trade.")
+                        } else if (session.confirmPhase) {
+                            openConfirm(player, session)
+                        } else {
+                            openTrade(player, session)
+                        }
+                    }
+                }
+            }
+        )
+    }
+
     private fun openRequestMenu(target: Player, request: TransactionRequest) {
         val placeholders = mapOf(
             "requester" to request.requesterName,
-            "expire" to "${((request.expireAt - System.currentTimeMillis()).coerceAtLeast(0L) / 1000L)}s"
+            "expire" to "${((request.expireAt - System.currentTimeMillis()).coerceAtLeast(0L) / 1000L)}s",
+            "shop-id" to request.shopId
         )
         MenuRenderer.open(
             player = target,
@@ -450,7 +514,7 @@ object TransactionModule : MatrixModule {
         val holder = TransactionTradeHolder(session.id, player.uniqueId)
         val title = Texts.apply(
             menus.trade.title.firstOrNull().orEmpty(),
-            mapOf("self" to player.name, "target" to otherName(session, player.uniqueId))
+            mapOf("self" to player.name, "target" to otherName(session, player.uniqueId), "shop-id" to session.shopId)
         )
         val inventory = Bukkit.createInventory(holder, menus.trade.layout.size * 9, title)
         holder.backingInventory = inventory
@@ -498,7 +562,8 @@ object TransactionModule : MatrixModule {
                 "self-exp" to expOf(session, selfSide).toString(),
                 "target-item-size" to offeredItems(offersOf(session, targetSide)).size.toString(),
                 "target-money" to trimDouble(moneyOf(session, targetSide)),
-                "target-exp" to expOf(session, targetSide).toString()
+                "target-exp" to expOf(session, targetSide).toString(),
+                "shop-id" to session.shopId
             ),
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.confirm, 'C')?.let { slot ->
@@ -697,7 +762,7 @@ object TransactionModule : MatrixModule {
             actor = session.leftName,
             target = session.rightName,
             moneyChange = session.rightMoney - session.leftMoney,
-            detail = "offer-money=${trimDouble(session.leftMoney)};offer-exp=${session.leftExp};offer-items=${itemSummary(session.leftOffers)};receive-money=${trimDouble(session.rightMoney)};receive-exp=${session.rightExp};receive-items=${itemSummary(rightIncoming)}"
+            detail = "shop=${session.shopId};offer-money=${trimDouble(session.leftMoney)};offer-exp=${session.leftExp};offer-items=${itemSummary(session.leftOffers)};receive-money=${trimDouble(session.rightMoney)};receive-exp=${session.rightExp};receive-items=${itemSummary(rightIncoming)}"
         )
         RecordService.append(
             module = "transaction",
@@ -705,7 +770,7 @@ object TransactionModule : MatrixModule {
             actor = session.rightName,
             target = session.leftName,
             moneyChange = session.leftMoney - session.rightMoney,
-            detail = "offer-money=${trimDouble(session.rightMoney)};offer-exp=${session.rightExp};offer-items=${itemSummary(session.rightOffers)};receive-money=${trimDouble(session.leftMoney)};receive-exp=${session.leftExp};receive-items=${itemSummary(leftIncoming)}"
+            detail = "shop=${session.shopId};offer-money=${trimDouble(session.rightMoney)};offer-exp=${session.rightExp};offer-items=${itemSummary(session.rightOffers)};receive-money=${trimDouble(session.leftMoney)};receive-exp=${session.leftExp};receive-items=${itemSummary(leftIncoming)}"
         )
     }
 
@@ -726,14 +791,14 @@ object TransactionModule : MatrixModule {
                 type = "cancel",
                 actor = session.leftName,
                 target = session.rightName,
-                detail = "reason=${message.removePrefix("&c")};offer-money=${trimDouble(session.leftMoney)};offer-exp=${session.leftExp};offer-items=${itemSummary(session.leftOffers)}"
+                detail = "shop=${session.shopId};reason=${message.removePrefix("&c")};offer-money=${trimDouble(session.leftMoney)};offer-exp=${session.leftExp};offer-items=${itemSummary(session.leftOffers)}"
             )
             RecordService.append(
                 module = "transaction",
                 type = "cancel",
                 actor = session.rightName,
                 target = session.leftName,
-                detail = "reason=${message.removePrefix("&c")};offer-money=${trimDouble(session.rightMoney)};offer-exp=${session.rightExp};offer-items=${itemSummary(session.rightOffers)}"
+                detail = "shop=${session.shopId};reason=${message.removePrefix("&c")};offer-money=${trimDouble(session.rightMoney)};offer-exp=${session.rightExp};offer-items=${itemSummary(session.rightOffers)}"
             )
         }
         removeSession(session)
@@ -865,7 +930,8 @@ object TransactionModule : MatrixModule {
             "self-exp" to expOf(session, selfSide).toString(),
             "target-money" to trimDouble(moneyOf(session, targetSide)),
             "target-exp" to expOf(session, targetSide).toString(),
-            "target-ready" to if (readyOf(session, targetSide)) "READY" else "NOT READY"
+            "target-ready" to if (readyOf(session, targetSide)) "READY" else "NOT READY",
+            "shop-id" to session.shopId
         )
     }
 
@@ -1020,5 +1086,9 @@ object TransactionModule : MatrixModule {
 
     private fun trimDouble(value: Double): String {
         return if (value % 1.0 == 0.0) value.toInt().toString() else "%.2f".format(value)
+    }
+
+    private fun resolveShopId(shopId: String?): String {
+        return ShopMenuLoader.resolve(menus.shopViews, shopId).id
     }
 }

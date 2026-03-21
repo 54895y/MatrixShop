@@ -1,11 +1,13 @@
 package com.y54895.matrixshop.module.globalmarket
 
+import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
 data class GlobalMarketListing(
     val id: String,
+    val shopId: String = "default",
     val ownerId: UUID,
     val ownerName: String,
     var price: Double,
@@ -16,7 +18,7 @@ data class GlobalMarketListing(
 )
 
 data class GlobalMarketMenus(
-    val marketViews: Map<String, MenuDefinition>,
+    val marketViews: Map<String, ConfiguredShopMenu>,
     val manage: MenuDefinition,
     val upload: MenuDefinition
 )

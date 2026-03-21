@@ -7,6 +7,7 @@ import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.menu.ShopMenuLoader
+import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
@@ -62,14 +63,15 @@ object AuctionModule : MatrixModule {
         cleanupExpiredListings()
         val selectedMenu = ShopMenuLoader.resolve(menus.auctionViews, shopId)
         val browseMenu = selectedMenu.definition
-        val listings = activeListings()
+        val listings = activeListings(selectedMenu.id)
         val goodsSlots = goodsSlots(browseMenu).size.coerceAtLeast(1)
         val maxPage = ((listings.size + goodsSlots - 1) / goodsSlots).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val entries = listings.drop((currentPage - 1) * goodsSlots).take(goodsSlots)
         val placeholders = mapOf(
             "page" to currentPage.toString(),
-            "max-page" to maxPage.toString()
+            "max-page" to maxPage.toString(),
+            "shop-id" to selectedMenu.id
         )
         MenuRenderer.open(
             player = player,
@@ -86,10 +88,27 @@ object AuctionModule : MatrixModule {
         return ShopMenuLoader.contains(menus.auctionViews, shopId)
     }
 
+    fun resolveBoundShop(token: String?): String? {
+        return ShopMenuLoader.resolveByBinding(menus.auctionViews, token)?.id
+    }
+
+    fun helpEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.helpEntries(menus.auctionViews)
+    }
+
+    fun standaloneEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.standaloneEntries(menus.auctionViews)
+    }
+
     fun openUpload(player: Player) {
+        openUpload(player, null)
+    }
+
+    fun openUpload(player: Player, shopId: String?) {
         if (!ensureReady(player)) {
             return
         }
+        val resolvedShopId = resolveShopId(shopId)
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
         MenuRenderer.open(
             player = player,
@@ -98,8 +117,10 @@ object AuctionModule : MatrixModule {
                 "item" to itemDisplayName(hand),
                 "default-duration" to settings.defaultDuration.toString(),
                 "min-duration" to settings.minDuration.toString(),
-                "max-duration" to settings.maxDuration.toString()
+                "max-duration" to settings.maxDuration.toString(),
+                "shop-id" to resolvedShopId
             ),
+            backAction = { openAuction(player, resolvedShopId) },
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.upload, 'i')?.let { slot ->
                     holder.backingInventory.setItem(slot, if (hand.type == Material.AIR) ItemStack(Material.BARRIER) else hand.clone())
@@ -109,11 +130,16 @@ object AuctionModule : MatrixModule {
     }
 
     fun openManage(player: Player, page: Int = 1) {
+        openManage(player, null, page)
+    }
+
+    fun openManage(player: Player, shopId: String?, page: Int = 1) {
         if (!ensureReady(player)) {
             return
         }
         cleanupExpiredListings()
-        val listings = activeListings().filter { it.ownerId == player.uniqueId }
+        val resolvedShopId = resolveShopId(shopId)
+        val listings = activeListings(resolvedShopId).filter { it.ownerId == player.uniqueId }
         val goodsSlots = goodsSlots(menus.manage).size.coerceAtLeast(1)
         val maxPage = ((listings.size + goodsSlots - 1) / goodsSlots).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
@@ -124,22 +150,28 @@ object AuctionModule : MatrixModule {
             placeholders = mapOf(
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
-                "size" to listings.size.toString()
+                "size" to listings.size.toString(),
+                "shop-id" to resolvedShopId
             ),
-            backAction = { openAuction(player) },
+            backAction = { openAuction(player, resolvedShopId) },
             goodsRenderer = { holder, slots ->
-                renderManageEntries(player, holder, entries, slots)
-                wireManageControls(player, holder, currentPage, maxPage)
+                renderManageEntries(player, holder, entries, slots, resolvedShopId)
+                wireManageControls(player, holder, resolvedShopId, currentPage, maxPage)
             }
         )
     }
 
     fun openBids(player: Player, page: Int = 1) {
+        openBids(player, null, page)
+    }
+
+    fun openBids(player: Player, shopId: String?, page: Int = 1) {
         if (!ensureReady(player)) {
             return
         }
         cleanupExpiredListings()
-        val listings = activeListings().filter { listing ->
+        val resolvedShopId = resolveShopId(shopId)
+        val listings = activeListings(resolvedShopId).filter { listing ->
             listing.bidHistory.any { it.bidderId == player.uniqueId }
         }
         val goodsSlots = goodsSlots(menus.bids).size.coerceAtLeast(1)
@@ -152,22 +184,27 @@ object AuctionModule : MatrixModule {
             placeholders = mapOf(
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
-                "size" to listings.size.toString()
+                "size" to listings.size.toString(),
+                "shop-id" to resolvedShopId
             ),
-            backAction = { openAuction(player) },
+            backAction = { openAuction(player, resolvedShopId) },
             goodsRenderer = { holder, slots ->
-                renderBidEntries(player, holder, entries, slots)
-                wireBidsControls(player, holder, currentPage, maxPage)
+                renderBidEntries(player, holder, entries, slots, resolvedShopId)
+                wireBidsControls(player, holder, resolvedShopId, currentPage, maxPage)
             }
         )
     }
 
     fun openDetail(player: Player, listingId: String, source: String = "auction") {
+        openDetail(player, null, listingId, source)
+    }
+
+    fun openDetail(player: Player, shopId: String?, listingId: String, source: String = "auction") {
         if (!ensureReady(player)) {
             return
         }
         cleanupExpiredListings()
-        val listing = activeListings().firstOrNull { it.id == listingId }
+        val listing = activeListings(shopId).firstOrNull { it.id == listingId }
         if (listing == null) {
             Texts.send(player, "&cAuction listing not found.")
             return
@@ -188,11 +225,15 @@ object AuctionModule : MatrixModule {
     }
 
     fun openBidMenu(player: Player, listingId: String) {
+        openBidMenu(player, null, listingId)
+    }
+
+    fun openBidMenu(player: Player, shopId: String?, listingId: String) {
         if (!ensureReady(player)) {
             return
         }
         cleanupExpiredListings()
-        val listing = activeListings().firstOrNull { it.id == listingId }
+        val listing = activeListings(shopId).firstOrNull { it.id == listingId }
         if (listing == null) {
             Texts.send(player, "&cAuction listing not found.")
             return
@@ -210,7 +251,7 @@ object AuctionModule : MatrixModule {
             player = player,
             definition = menus.bid,
             placeholders = placeholders,
-            backAction = { openDetail(player, listing.id) },
+            backAction = { openDetail(player, listing.shopId, listing.id) },
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.bid, 'i')?.let { slot ->
                     holder.backingInventory.setItem(slot, buildDisplayItem(listing, detailLore(listing, player)))
@@ -221,10 +262,15 @@ object AuctionModule : MatrixModule {
     }
 
     fun uploadFromHand(player: Player, modeRaw: String?, startPrice: Double?, secondPrice: Double?, durationSeconds: Int?) {
+        uploadFromHand(player, null, modeRaw, startPrice, secondPrice, durationSeconds)
+    }
+
+    fun uploadFromHand(player: Player, shopId: String?, modeRaw: String?, startPrice: Double?, secondPrice: Double?, durationSeconds: Int?) {
         if (!ensureReady(player)) {
             return
         }
         cleanupExpiredListings()
+        val resolvedShopId = resolveShopId(shopId)
         val mode = parseMode(modeRaw)
         if (mode == null) {
             Texts.send(player, "&cUsage: /auction upload <english|dutch> <start-price> [buyout|end-price] [duration-seconds]")
@@ -235,7 +281,7 @@ object AuctionModule : MatrixModule {
             Texts.send(player, "&cHold the item you want to list in your main hand.")
             return
         }
-        val listings = activeListings()
+        val listings = AuctionRepository.loadAll().toMutableList()
         if (listings.count { it.ownerId == player.uniqueId } >= settings.maxActive) {
             Texts.send(player, "&cYou already reached the maximum active auction listings.")
             return
@@ -278,6 +324,7 @@ object AuctionModule : MatrixModule {
         val now = System.currentTimeMillis()
         val listing = AuctionListing(
             id = nextListingId(),
+            shopId = resolvedShopId,
             ownerId = player.uniqueId,
             ownerName = player.name,
             mode = mode,
@@ -290,27 +337,33 @@ object AuctionModule : MatrixModule {
             expireAt = now + safeDuration * 1000L,
             depositPaid = deposit
         )
-        AuctionRepository.saveAll(listings + listing)
+        listings += listing
+        AuctionRepository.saveAll(listings)
         player.updateInventory()
-        Texts.send(player, "&aAuction listed: &f${itemDisplayName(listingItem)} &7- &e${trimDouble(safeStart)}")
+        Texts.send(player, "&aAuction listed in &f${listing.shopId}&a: &f${itemDisplayName(listingItem)} &7- &e${trimDouble(safeStart)}")
         if (settings.recordWriteOnCreate) {
             RecordService.append(
                 module = "auction",
                 type = "create",
                 actor = player.name,
                 moneyChange = -deposit,
-                detail = "listing=${listing.id};mode=${listing.mode.name};start=${trimDouble(listing.startPrice)};buyout=${trimDouble(listing.buyoutPrice)};end=${trimDouble(listing.endPrice)};duration=$safeDuration;deposit=${trimDouble(deposit)}"
+                detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};start=${trimDouble(listing.startPrice)};buyout=${trimDouble(listing.buyoutPrice)};end=${trimDouble(listing.endPrice)};duration=$safeDuration;deposit=${trimDouble(deposit)}"
             )
         }
     }
 
     fun bid(player: Player, listingId: String, amount: Double?) {
+        bid(player, null, listingId, amount)
+    }
+
+    fun bid(player: Player, shopId: String?, listingId: String, amount: Double?) {
         if (!ensureReady(player)) {
             return
         }
         cleanupExpiredListings()
-        val listings = activeListings().toMutableList()
-        val listing = listings.firstOrNull { it.id == listingId }
+        val resolvedShopId = resolveShopId(shopId)
+        val listings = AuctionRepository.loadAll().toMutableList()
+        val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
         if (listing == null) {
             Texts.send(player, "&cAuction listing not found.")
             return
@@ -320,7 +373,7 @@ object AuctionModule : MatrixModule {
             return
         }
         if (listing.mode == AuctionMode.DUTCH) {
-            buyout(player, listingId)
+            buyout(player, resolvedShopId, listingId)
             return
         }
         val offered = amount ?: nextMinimumBid(listing)
@@ -359,18 +412,23 @@ object AuctionModule : MatrixModule {
                 actor = player.name,
                 target = listing.ownerName,
                 moneyChange = -offered,
-                detail = "listing=${listing.id};amount=${trimDouble(offered)}"
+                detail = "shop=${listing.shopId};listing=${listing.id};amount=${trimDouble(offered)}"
             )
         }
     }
 
     fun buyout(player: Player, listingId: String) {
+        buyout(player, null, listingId)
+    }
+
+    fun buyout(player: Player, shopId: String?, listingId: String) {
         if (!ensureReady(player)) {
             return
         }
         cleanupExpiredListings()
-        val listings = activeListings().toMutableList()
-        val listing = listings.firstOrNull { it.id == listingId }
+        val resolvedShopId = resolveShopId(shopId)
+        val listings = AuctionRepository.loadAll().toMutableList()
+        val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
         if (listing == null) {
             Texts.send(player, "&cAuction listing not found.")
             return
@@ -404,12 +462,17 @@ object AuctionModule : MatrixModule {
     }
 
     fun remove(player: Player, listingId: String) {
+        remove(player, null, listingId)
+    }
+
+    fun remove(player: Player, shopId: String?, listingId: String) {
         if (!ensureReady(player)) {
             return
         }
         cleanupExpiredListings()
-        val listings = activeListings().toMutableList()
-        val listing = listings.firstOrNull { it.id == listingId }
+        val resolvedShopId = resolveShopId(shopId)
+        val listings = AuctionRepository.loadAll().toMutableList()
+        val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
         if (listing == null) {
             Texts.send(player, "&cAuction listing not found.")
             return
@@ -441,7 +504,7 @@ object AuctionModule : MatrixModule {
                 module = "auction",
                 type = "cancel",
                 actor = player.name,
-                detail = "listing=${listing.id};mode=${listing.mode.name};deposit-refund=${trimDouble(if (settings.depositRefundOnCancel) listing.depositPaid else 0.0)}"
+                detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};deposit-refund=${trimDouble(if (settings.depositRefundOnCancel) listing.depositPaid else 0.0)}"
             )
         }
     }
@@ -483,34 +546,34 @@ object AuctionModule : MatrixModule {
             val item = buildDisplayItem(listing, listLore(listing, player))
             holder.backingInventory.setItem(slot, item)
             holder.handlers[slot] = {
-                openDetail(player, listing.id, "auction:$shopId")
+                openDetail(player, shopId, listing.id, "auction:$shopId")
             }
         }
     }
 
-    private fun renderManageEntries(player: Player, holder: MatrixMenuHolder, entries: List<AuctionListing>, slots: List<Int>) {
+    private fun renderManageEntries(player: Player, holder: MatrixMenuHolder, entries: List<AuctionListing>, slots: List<Int>, shopId: String) {
         entries.forEachIndexed { index, listing ->
             val slot = slots[index]
             val item = buildDisplayItem(listing, listLore(listing, player) + Texts.color("&cRight click to remove"))
             holder.backingInventory.setItem(slot, item)
             holder.handlers[slot] = { event ->
                 if (event.click.isRightClick) {
-                    remove(player, listing.id)
-                    openManage(player)
+                    remove(player, shopId, listing.id)
+                    openManage(player, shopId)
                 } else {
-                    openDetail(player, listing.id, "manage")
+                    openDetail(player, shopId, listing.id, "manage:$shopId")
                 }
             }
         }
     }
 
-    private fun renderBidEntries(player: Player, holder: MatrixMenuHolder, entries: List<AuctionListing>, slots: List<Int>) {
+    private fun renderBidEntries(player: Player, holder: MatrixMenuHolder, entries: List<AuctionListing>, slots: List<Int>, shopId: String) {
         entries.forEachIndexed { index, listing ->
             val slot = slots[index]
             val item = buildDisplayItem(listing, listLore(listing, player))
             holder.backingInventory.setItem(slot, item)
             holder.handlers[slot] = {
-                openDetail(player, listing.id, "bids")
+                openDetail(player, shopId, listing.id, "bids:$shopId")
             }
         }
     }
@@ -518,43 +581,43 @@ object AuctionModule : MatrixModule {
     private fun wireAuctionControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, shopId: String, currentPage: Int, maxPage: Int) {
         buttonSlot(definition, 'P')?.let { holder.handlers[it] = { openAuction(player, shopId, (currentPage - 1).coerceAtLeast(1)) } }
         buttonSlot(definition, 'N')?.let { holder.handlers[it] = { openAuction(player, shopId, (currentPage + 1).coerceAtMost(maxPage)) } }
-        buttonSlot(definition, 'U')?.let { holder.handlers[it] = { openUpload(player) } }
-        buttonSlot(definition, 'M')?.let { holder.handlers[it] = { openManage(player) } }
-        buttonSlot(definition, 'B')?.let { holder.handlers[it] = { openBids(player) } }
+        buttonSlot(definition, 'U')?.let { holder.handlers[it] = { openUpload(player, shopId) } }
+        buttonSlot(definition, 'M')?.let { holder.handlers[it] = { openManage(player, shopId) } }
+        buttonSlot(definition, 'B')?.let { holder.handlers[it] = { openBids(player, shopId) } }
     }
 
-    private fun wireManageControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
-        buttonSlot(menus.manage, 'P')?.let { holder.handlers[it] = { openManage(player, (currentPage - 1).coerceAtLeast(1)) } }
-        buttonSlot(menus.manage, 'N')?.let { holder.handlers[it] = { openManage(player, (currentPage + 1).coerceAtMost(maxPage)) } }
-        buttonSlot(menus.manage, 'R')?.let { holder.handlers[it] = { openAuction(player) } }
-        buttonSlot(menus.manage, 'I')?.let { holder.handlers[it] = { openUpload(player) } }
+    private fun wireManageControls(player: Player, holder: MatrixMenuHolder, shopId: String, currentPage: Int, maxPage: Int) {
+        buttonSlot(menus.manage, 'P')?.let { holder.handlers[it] = { openManage(player, shopId, (currentPage - 1).coerceAtLeast(1)) } }
+        buttonSlot(menus.manage, 'N')?.let { holder.handlers[it] = { openManage(player, shopId, (currentPage + 1).coerceAtMost(maxPage)) } }
+        buttonSlot(menus.manage, 'R')?.let { holder.handlers[it] = { openAuction(player, shopId) } }
+        buttonSlot(menus.manage, 'I')?.let { holder.handlers[it] = { openUpload(player, shopId) } }
     }
 
-    private fun wireBidsControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
-        buttonSlot(menus.bids, 'P')?.let { holder.handlers[it] = { openBids(player, (currentPage - 1).coerceAtLeast(1)) } }
-        buttonSlot(menus.bids, 'N')?.let { holder.handlers[it] = { openBids(player, (currentPage + 1).coerceAtMost(maxPage)) } }
-        buttonSlot(menus.bids, 'R')?.let { holder.handlers[it] = { openAuction(player) } }
+    private fun wireBidsControls(player: Player, holder: MatrixMenuHolder, shopId: String, currentPage: Int, maxPage: Int) {
+        buttonSlot(menus.bids, 'P')?.let { holder.handlers[it] = { openBids(player, shopId, (currentPage - 1).coerceAtLeast(1)) } }
+        buttonSlot(menus.bids, 'N')?.let { holder.handlers[it] = { openBids(player, shopId, (currentPage + 1).coerceAtMost(maxPage)) } }
+        buttonSlot(menus.bids, 'R')?.let { holder.handlers[it] = { openAuction(player, shopId) } }
     }
 
     private fun wireDetailControls(player: Player, holder: MatrixMenuHolder, listing: AuctionListing, source: String) {
         buttonSlot(menus.detail, 'B')?.let { slot ->
             holder.handlers[slot] = {
                 if (listing.mode == AuctionMode.DUTCH) {
-                    buyout(player, listing.id)
+                    buyout(player, listing.shopId, listing.id)
                 } else {
-                    openBidMenu(player, listing.id)
+                    openBidMenu(player, listing.shopId, listing.id)
                 }
             }
         }
         buttonSlot(menus.detail, 'T')?.let { slot ->
             holder.handlers[slot] = {
-                buyout(player, listing.id)
+                buyout(player, listing.shopId, listing.id)
             }
         }
         buttonSlot(menus.detail, 'M')?.let { slot ->
             if (listing.ownerId == player.uniqueId) {
                 holder.handlers[slot] = {
-                    remove(player, listing.id)
+                    remove(player, listing.shopId, listing.id)
                     reopenSource(player, source)
                 }
             }
@@ -571,26 +634,26 @@ object AuctionModule : MatrixModule {
         keys.forEachIndexed { index, symbol ->
             buttonSlot(menus.bid, symbol)?.let { slot ->
                 holder.handlers[slot] = {
-                    bid(player, listing.id, suggestions.getOrNull(index))
-                    openDetail(player, listing.id)
+                    bid(player, listing.shopId, listing.id, suggestions.getOrNull(index))
+                    openDetail(player, listing.shopId, listing.id)
                 }
             }
         }
         buttonSlot(menus.bid, 'A')?.let { slot ->
             holder.handlers[slot] = {
-                bid(player, listing.id, nextMinimumBid(listing))
-                openDetail(player, listing.id)
+                bid(player, listing.shopId, listing.id, nextMinimumBid(listing))
+                openDetail(player, listing.shopId, listing.id)
             }
         }
         buttonSlot(menus.bid, 'C')?.let { slot ->
             holder.handlers[slot] = {
-                buyout(player, listing.id)
-                openAuction(player)
+                buyout(player, listing.shopId, listing.id)
+                openAuction(player, listing.shopId)
             }
         }
         buttonSlot(menus.bid, 'R')?.let { slot ->
             holder.handlers[slot] = {
-                openDetail(player, listing.id)
+                openDetail(player, listing.shopId, listing.id)
             }
         }
     }
@@ -619,7 +682,7 @@ object AuctionModule : MatrixModule {
                 actor = buyerName,
                 target = listing.ownerName,
                 moneyChange = -finalPrice,
-                detail = "listing=${listing.id};mode=${listing.mode.name};price=${trimDouble(finalPrice)};cause=$cause"
+                detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};price=${trimDouble(finalPrice)};cause=$cause"
             )
             RecordService.append(
                 module = "auction",
@@ -627,7 +690,7 @@ object AuctionModule : MatrixModule {
                 actor = listing.ownerName,
                 target = buyerName,
                 moneyChange = sellerIncome + if (settings.depositRefundOnSell) listing.depositPaid else 0.0,
-                detail = "listing=${listing.id};mode=${listing.mode.name};price=${trimDouble(finalPrice)};tax=${trimDouble(tax)};cause=$cause"
+                detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};price=${trimDouble(finalPrice)};tax=${trimDouble(tax)};cause=$cause"
             )
         }
     }
@@ -659,7 +722,7 @@ object AuctionModule : MatrixModule {
                         module = "auction",
                         type = "expire",
                         actor = listing.ownerName,
-                        detail = "listing=${listing.id};mode=${listing.mode.name};highest=${trimDouble(listing.currentBid)}"
+                        detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};highest=${trimDouble(listing.currentBid)}"
                     )
                 }
             }
@@ -723,8 +786,11 @@ object AuctionModule : MatrixModule {
         return true
     }
 
-    private fun activeListings(): List<AuctionListing> {
-        return AuctionRepository.loadAll().sortedByDescending { it.createdAt }
+    private fun activeListings(shopId: String? = null): List<AuctionListing> {
+        val resolvedShopId = shopId?.trim()?.takeIf(String::isNotBlank)?.lowercase()
+        return AuctionRepository.loadAll()
+            .filter { resolvedShopId == null || it.shopId.equals(resolvedShopId, true) }
+            .sortedByDescending { it.createdAt }
     }
 
     private fun loadSettings(): AuctionSettings {
@@ -766,6 +832,7 @@ object AuctionModule : MatrixModule {
     private fun detailPlaceholders(listing: AuctionListing): Map<String, String> {
         return mapOf(
             "id" to listing.id,
+            "shop-id" to listing.shopId,
             "mode" to listing.mode.name,
             "owner" to listing.ownerName,
             "current-price" to trimDouble(currentPrice(listing)),
@@ -859,14 +926,18 @@ object AuctionModule : MatrixModule {
     }
 
     private fun reopenSource(player: Player, source: String) {
-        when (source.lowercase()) {
-            else -> when {
-                source.startsWith("auction:", true) -> openAuction(player, source.substringAfter(':'))
-                source.equals("manage", true) -> openManage(player)
-                source.equals("bids", true) -> openBids(player)
-                else -> openAuction(player)
-            }
+        when {
+            source.startsWith("auction:", true) -> openAuction(player, source.substringAfter(':'))
+            source.startsWith("manage:", true) -> openManage(player, source.substringAfter(':'))
+            source.startsWith("bids:", true) -> openBids(player, source.substringAfter(':'))
+            source.equals("manage", true) -> openManage(player)
+            source.equals("bids", true) -> openBids(player)
+            else -> openAuction(player)
         }
+    }
+
+    private fun resolveShopId(shopId: String?): String {
+        return ShopMenuLoader.resolve(menus.auctionViews, shopId).id
     }
 
     private fun buildDisplayItem(listing: AuctionListing, lore: List<String>): ItemStack {

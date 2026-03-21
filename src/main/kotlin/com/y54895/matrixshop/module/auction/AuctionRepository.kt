@@ -94,7 +94,7 @@ object AuctionRepository {
             connection.prepareStatement(
                 """
                 SELECT
-                    id, owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
+                    id, shop_id, owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
                     current_bid, highest_bidder_id, highest_bidder_name, created_at, expire_at, extend_count, deposit_paid
                 FROM auction_listings
                 ORDER BY created_at DESC
@@ -107,6 +107,7 @@ object AuctionRepository {
                         val id = result.getString("id")
                         listings += AuctionListing(
                             id = id,
+                            shopId = result.getString("shop_id").orEmpty().ifBlank { "default" },
                             ownerId = UUID.fromString(result.getString("owner_id")),
                             ownerName = result.getString("owner_name"),
                             mode = runCatching {
@@ -143,9 +144,9 @@ object AuctionRepository {
                 connection.prepareStatement(
                     """
                     INSERT INTO auction_listings (
-                        id, owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
+                        id, shop_id, owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
                         current_bid, highest_bidder_id, highest_bidder_name, created_at, expire_at, extend_count, deposit_paid
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """.trimIndent()
                 ).use { insertListing ->
                     connection.prepareStatement(
@@ -157,20 +158,21 @@ object AuctionRepository {
                     ).use { insertBid ->
                         listings.sortedBy { it.createdAt }.forEach { listing ->
                             insertListing.setString(1, listing.id)
-                            insertListing.setString(2, listing.ownerId.toString())
-                            insertListing.setString(3, listing.ownerName)
-                            insertListing.setString(4, listing.mode.name)
-                            insertListing.setString(5, ItemStackCodec.encode(listing.item))
-                            insertListing.setDouble(6, listing.startPrice)
-                            insertListing.setDouble(7, listing.buyoutPrice)
-                            insertListing.setDouble(8, listing.endPrice)
-                            insertListing.setDouble(9, listing.currentBid)
-                            insertListing.setString(10, listing.highestBidderId?.toString().orEmpty())
-                            insertListing.setString(11, listing.highestBidderName)
-                            insertListing.setLong(12, listing.createdAt)
-                            insertListing.setLong(13, listing.expireAt)
-                            insertListing.setInt(14, listing.extendCount)
-                            insertListing.setDouble(15, listing.depositPaid)
+                            insertListing.setString(2, listing.shopId)
+                            insertListing.setString(3, listing.ownerId.toString())
+                            insertListing.setString(4, listing.ownerName)
+                            insertListing.setString(5, listing.mode.name)
+                            insertListing.setString(6, ItemStackCodec.encode(listing.item))
+                            insertListing.setDouble(7, listing.startPrice)
+                            insertListing.setDouble(8, listing.buyoutPrice)
+                            insertListing.setDouble(9, listing.endPrice)
+                            insertListing.setDouble(10, listing.currentBid)
+                            insertListing.setString(11, listing.highestBidderId?.toString().orEmpty())
+                            insertListing.setString(12, listing.highestBidderName)
+                            insertListing.setLong(13, listing.createdAt)
+                            insertListing.setLong(14, listing.expireAt)
+                            insertListing.setInt(15, listing.extendCount)
+                            insertListing.setDouble(16, listing.depositPaid)
                             insertListing.addBatch()
                             listing.bidHistory.sortedBy { it.createdAt }.forEachIndexed { index, bid ->
                                 insertBid.setString(1, listing.id)
@@ -211,6 +213,7 @@ object AuctionRepository {
                 .getOrDefault(AuctionMode.ENGLISH)
             val listing = AuctionListing(
                 id = id,
+                shopId = child.getString("shop-id", "default").orEmpty().ifBlank { "default" },
                 ownerId = UUID.fromString(child.getString("owner-id").orEmpty()),
                 ownerName = child.getString("owner-name").orEmpty(),
                 mode = mode,
@@ -245,6 +248,7 @@ object AuctionRepository {
         val yaml = YamlConfiguration()
         listings.sortedBy { it.createdAt }.forEach { listing ->
             val base = "listings.${listing.id}"
+            yaml.set("$base.shop-id", listing.shopId)
             yaml.set("$base.owner-id", listing.ownerId.toString())
             yaml.set("$base.owner-name", listing.ownerName)
             yaml.set("$base.mode", listing.mode.name)

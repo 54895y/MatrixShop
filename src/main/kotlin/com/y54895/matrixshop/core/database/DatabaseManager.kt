@@ -61,7 +61,7 @@ private data class DatabaseMigration(
 object DatabaseManager {
 
     private const val BASE_SCHEMA_VERSION = 1
-    private const val CURRENT_SCHEMA_VERSION = 2
+    private const val CURRENT_SCHEMA_VERSION = 3
 
     private val knownTables = listOf(
         "matrixshop_meta",
@@ -84,6 +84,13 @@ object DatabaseManager {
             description = "Create runtime tables and indexes"
         ) { connection ->
             ensureRuntimeTables(connection)
+            ensureRuntimeIndexes(connection)
+        },
+        DatabaseMigration(
+            version = 3,
+            description = "Add shop scoped runtime tables"
+        ) { connection ->
+            migrateRuntimeTablesToShopScoped(connection)
             ensureRuntimeIndexes(connection)
         }
     )
@@ -359,6 +366,7 @@ object DatabaseManager {
                 """
                 CREATE TABLE IF NOT EXISTS auction_listings (
                     id VARCHAR(64) PRIMARY KEY,
+                    shop_id VARCHAR(64) NOT NULL,
                     owner_id VARCHAR(64) NOT NULL,
                     owner_name VARCHAR(64) NOT NULL,
                     mode VARCHAR(16) NOT NULL,
@@ -406,6 +414,7 @@ object DatabaseManager {
                 """
                 CREATE TABLE IF NOT EXISTS global_market_listings (
                     id VARCHAR(64) PRIMARY KEY,
+                    shop_id VARCHAR(64) NOT NULL,
                     owner_id VARCHAR(64) NOT NULL,
                     owner_name VARCHAR(64) NOT NULL,
                     price DOUBLE NOT NULL,
@@ -419,9 +428,11 @@ object DatabaseManager {
             statement.executeUpdate(
                 """
                 CREATE TABLE IF NOT EXISTS player_shop_stores (
-                    owner_id VARCHAR(64) PRIMARY KEY,
+                    shop_id VARCHAR(64) NOT NULL,
+                    owner_id VARCHAR(64) NOT NULL,
                     owner_name VARCHAR(64) NOT NULL,
-                    unlocked_slots INT NOT NULL
+                    unlocked_slots INT NOT NULL,
+                    PRIMARY KEY (shop_id, owner_id)
                 )
                 """.trimIndent()
             )
@@ -429,6 +440,7 @@ object DatabaseManager {
                 """
                 CREATE TABLE IF NOT EXISTS player_shop_listings (
                     id VARCHAR(64) PRIMARY KEY,
+                    shop_id VARCHAR(64) NOT NULL,
                     owner_id VARCHAR(64) NOT NULL,
                     slot_index INT NOT NULL,
                     price DOUBLE NOT NULL,
@@ -519,18 +531,178 @@ object DatabaseManager {
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_record_entries_created_at ON record_entries (created_at)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_record_entries_actor ON record_entries (actor)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_record_entries_module ON record_entries (module)")
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auction_listings_shop_id ON auction_listings (shop_id)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auction_listings_owner_id ON auction_listings (owner_id)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auction_listings_expire_at ON auction_listings (expire_at)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auction_bids_bidder_id ON auction_bids (bidder_id)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auction_deliveries_owner_id ON auction_deliveries (owner_id)")
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_global_market_shop_id ON global_market_listings (shop_id)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_global_market_owner_id ON global_market_listings (owner_id)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_global_market_expire_at ON global_market_listings (expire_at)")
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_player_shop_stores_shop_owner ON player_shop_stores (shop_id, owner_id)")
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_player_shop_listings_shop_owner_slot ON player_shop_listings (shop_id, owner_id, slot_index)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_player_shop_listings_owner_slot ON player_shop_listings (owner_id, slot_index)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_cart_entries_owner_created ON cart_entries (owner_id, created_at)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_chest_shops_owner_id ON chest_shops (owner_id)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_chest_shop_signs_location ON chest_shop_signs (world, x, y, z)")
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_chest_shop_history_shop_created ON chest_shop_history (shop_id, created_at)")
         }
+    }
+
+    private fun migrateRuntimeTablesToShopScoped(connection: Connection) {
+        if (!columnExists(connection, "auction_listings", "shop_id")) {
+            recreateAuctionListingsWithShopScope(connection)
+        }
+        if (!columnExists(connection, "global_market_listings", "shop_id")) {
+            recreateGlobalMarketListingsWithShopScope(connection)
+        }
+        if (!columnExists(connection, "player_shop_stores", "shop_id")) {
+            recreatePlayerShopStoresWithShopScope(connection)
+        }
+        if (!columnExists(connection, "player_shop_listings", "shop_id")) {
+            recreatePlayerShopListingsWithShopScope(connection)
+        }
+    }
+
+    private fun recreateAuctionListingsWithShopScope(connection: Connection) {
+        connection.createStatement().use { statement ->
+            statement.executeUpdate("DROP TABLE IF EXISTS auction_listings_v3")
+            statement.executeUpdate(
+                """
+                CREATE TABLE auction_listings_v3 (
+                    id VARCHAR(64) PRIMARY KEY,
+                    shop_id VARCHAR(64) NOT NULL,
+                    owner_id VARCHAR(64) NOT NULL,
+                    owner_name VARCHAR(64) NOT NULL,
+                    mode VARCHAR(16) NOT NULL,
+                    item_blob TEXT NOT NULL,
+                    start_price DOUBLE NOT NULL,
+                    buyout_price DOUBLE NOT NULL,
+                    end_price DOUBLE NOT NULL,
+                    current_bid DOUBLE NOT NULL,
+                    highest_bidder_id VARCHAR(64) NOT NULL,
+                    highest_bidder_name VARCHAR(64) NOT NULL,
+                    created_at BIGINT NOT NULL,
+                    expire_at BIGINT NOT NULL,
+                    extend_count INT NOT NULL,
+                    deposit_paid DOUBLE NOT NULL
+                )
+                """.trimIndent()
+            )
+            statement.executeUpdate(
+                """
+                INSERT INTO auction_listings_v3 (
+                    id, shop_id, owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
+                    current_bid, highest_bidder_id, highest_bidder_name, created_at, expire_at, extend_count, deposit_paid
+                )
+                SELECT
+                    id, 'default', owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
+                    current_bid, highest_bidder_id, highest_bidder_name, created_at, expire_at, extend_count, deposit_paid
+                FROM auction_listings
+                """.trimIndent()
+            )
+            statement.executeUpdate("DROP TABLE auction_listings")
+            statement.executeUpdate("ALTER TABLE auction_listings_v3 RENAME TO auction_listings")
+        }
+    }
+
+    private fun recreateGlobalMarketListingsWithShopScope(connection: Connection) {
+        connection.createStatement().use { statement ->
+            statement.executeUpdate("DROP TABLE IF EXISTS global_market_listings_v3")
+            statement.executeUpdate(
+                """
+                CREATE TABLE global_market_listings_v3 (
+                    id VARCHAR(64) PRIMARY KEY,
+                    shop_id VARCHAR(64) NOT NULL,
+                    owner_id VARCHAR(64) NOT NULL,
+                    owner_name VARCHAR(64) NOT NULL,
+                    price DOUBLE NOT NULL,
+                    currency VARCHAR(32) NOT NULL,
+                    item_blob TEXT NOT NULL,
+                    created_at BIGINT NOT NULL,
+                    expire_at BIGINT NOT NULL
+                )
+                """.trimIndent()
+            )
+            statement.executeUpdate(
+                """
+                INSERT INTO global_market_listings_v3 (
+                    id, shop_id, owner_id, owner_name, price, currency, item_blob, created_at, expire_at
+                )
+                SELECT
+                    id, 'default', owner_id, owner_name, price, currency, item_blob, created_at, expire_at
+                FROM global_market_listings
+                """.trimIndent()
+            )
+            statement.executeUpdate("DROP TABLE global_market_listings")
+            statement.executeUpdate("ALTER TABLE global_market_listings_v3 RENAME TO global_market_listings")
+        }
+    }
+
+    private fun recreatePlayerShopStoresWithShopScope(connection: Connection) {
+        connection.createStatement().use { statement ->
+            statement.executeUpdate("DROP TABLE IF EXISTS player_shop_stores_v3")
+            statement.executeUpdate(
+                """
+                CREATE TABLE player_shop_stores_v3 (
+                    shop_id VARCHAR(64) NOT NULL,
+                    owner_id VARCHAR(64) NOT NULL,
+                    owner_name VARCHAR(64) NOT NULL,
+                    unlocked_slots INT NOT NULL,
+                    PRIMARY KEY (shop_id, owner_id)
+                )
+                """.trimIndent()
+            )
+            statement.executeUpdate(
+                """
+                INSERT INTO player_shop_stores_v3 (shop_id, owner_id, owner_name, unlocked_slots)
+                SELECT 'default', owner_id, owner_name, unlocked_slots
+                FROM player_shop_stores
+                """.trimIndent()
+            )
+            statement.executeUpdate("DROP TABLE player_shop_stores")
+            statement.executeUpdate("ALTER TABLE player_shop_stores_v3 RENAME TO player_shop_stores")
+        }
+    }
+
+    private fun recreatePlayerShopListingsWithShopScope(connection: Connection) {
+        connection.createStatement().use { statement ->
+            statement.executeUpdate("DROP TABLE IF EXISTS player_shop_listings_v3")
+            statement.executeUpdate(
+                """
+                CREATE TABLE player_shop_listings_v3 (
+                    id VARCHAR(64) PRIMARY KEY,
+                    shop_id VARCHAR(64) NOT NULL,
+                    owner_id VARCHAR(64) NOT NULL,
+                    slot_index INT NOT NULL,
+                    price DOUBLE NOT NULL,
+                    currency VARCHAR(32) NOT NULL,
+                    item_blob TEXT NOT NULL,
+                    created_at BIGINT NOT NULL
+                )
+                """.trimIndent()
+            )
+            statement.executeUpdate(
+                """
+                INSERT INTO player_shop_listings_v3 (
+                    id, shop_id, owner_id, slot_index, price, currency, item_blob, created_at
+                )
+                SELECT
+                    id, 'default', owner_id, slot_index, price, currency, item_blob, created_at
+                FROM player_shop_listings
+                """.trimIndent()
+            )
+            statement.executeUpdate("DROP TABLE player_shop_listings")
+            statement.executeUpdate("ALTER TABLE player_shop_listings_v3 RENAME TO player_shop_listings")
+        }
+    }
+
+    private fun columnExists(connection: Connection, tableName: String, columnName: String): Boolean {
+        return runCatching {
+            connection.metaData.getColumns(null, null, tableName, columnName).use { result ->
+                result.next()
+            }
+        }.getOrDefault(false)
     }
 
     private fun loadSettings(yaml: YamlConfiguration): DatabaseSettings {

@@ -1,5 +1,14 @@
 id: default
 
+Bindings:
+  Commands:
+    Bindings:
+      - 'auction'
+      - 'ah'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
+
 Title:
   - '&8Auction Hall &7{page}/{max-page}'
 

@@ -1,11 +1,13 @@
 package com.y54895.matrixshop.module.auction
 
+import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
 data class AuctionListing(
     val id: String,
+    val shopId: String = "default",
     val ownerId: UUID,
     val ownerName: String,
     val mode: AuctionMode,
@@ -31,7 +33,7 @@ data class AuctionBidEntry(
 )
 
 data class AuctionMenus(
-    val auctionViews: Map<String, MenuDefinition>,
+    val auctionViews: Map<String, ConfiguredShopMenu>,
     val upload: MenuDefinition,
     val detail: MenuDefinition,
     val bid: MenuDefinition,

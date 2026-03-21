@@ -1,7 +1,17 @@
 id: default
 
+Bindings:
+  Commands:
+    Bindings:
+      - 'player_shop'
+      - 'playershop'
+      - 'pshop'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
+
 Title:
-  - '&8{owner}的商店 &7{page}/{max-page}'
+  - '&8{owner} Shop &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -20,26 +30,26 @@ icons:
     mode: 'goods'
   'I':
     material: 'PAPER'
-    name: '&f商店信息'
+    name: '&fShop Info'
     lore:
-      - '&7店主: &f{owner}'
-      - '&7已上架: &f{listed}'
-      - '&7查看者余额: &e{money}'
+      - '&7Owner: &f{owner}'
+      - '&7Listed: &f{listed}'
+      - '&7Your Balance: &e{money}'
   'E':
     material: 'BOOK'
-    name: '&e编辑我的商店'
+    name: '&eEdit My Shop'
     lore:
-      - '&7仅店主可见'
-      - '&e左键打开编辑页'
+      - '&7Only visible for the owner'
+      - '&eLeft click to open the edit view'
   'B':
     material: 'BARRIER'
-    name: '&c关闭'
+    name: '&cClose'
     actions:
       left:
         - 'close'
   'P':
     material: 'ARROW'
-    name: '&a上一页'
+    name: '&aPrevious'
   'N':
     material: 'ARROW'
-    name: '&a下一页'
+    name: '&aNext'

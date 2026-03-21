@@ -40,7 +40,7 @@ object PlayerShopRepository {
             val ownerId = runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull() ?: return@forEach
             val yaml = YamlConfiguration.loadConfiguration(file)
             val ownerName = yaml.getString("owner-name", ownerId.toString()).orEmpty().ifBlank { ownerId.toString() }
-            val store = loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+            val store = loadFile("default", ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
             saveJdbc(store)
         }
         val imported = DatabaseManager.withConnection { connection ->
@@ -57,12 +57,12 @@ object PlayerShopRepository {
         }
     }
 
-    fun load(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
+    fun load(shopId: String, ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
         initialize()
         return if (DatabaseManager.isJdbcAvailable()) {
-            loadJdbc(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+            loadJdbc(shopId, ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
         } else {
-            loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+            loadFile(shopId, ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
         }
     }
 
@@ -80,26 +80,30 @@ object PlayerShopRepository {
         return (0 until store.unlockedSlots).firstOrNull { it !in occupied }
     }
 
-    private fun loadJdbc(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
+    private fun loadJdbc(shopId: String, ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
         DatabaseManager.withConnection { connection ->
+            val normalizedShopId = shopId.trim().ifBlank { "default" }
             val store = connection.prepareStatement(
                 """
                 SELECT owner_name, unlocked_slots
                 FROM player_shop_stores
-                WHERE owner_id = ?
+                WHERE shop_id = ? AND owner_id = ?
                 """.trimIndent()
             ).use { statement ->
-                statement.setString(1, ownerId.toString())
+                statement.setString(1, normalizedShopId)
+                statement.setString(2, ownerId.toString())
                 statement.executeQuery().use { result ->
                     if (result.next()) {
                         PlayerShopStore(
                             ownerId = ownerId,
+                            shopId = normalizedShopId,
                             ownerName = result.getString("owner_name").ifBlank { ownerName },
                             unlockedSlots = result.getInt("unlocked_slots").coerceAtLeast(1).coerceAtMost(maxUnlockedSlots)
                         )
                     } else {
                         PlayerShopStore(
                             ownerId = ownerId,
+                            shopId = normalizedShopId,
                             ownerName = ownerName,
                             unlockedSlots = defaultUnlockedSlots.coerceAtLeast(1).coerceAtMost(maxUnlockedSlots)
                         )
@@ -110,11 +114,12 @@ object PlayerShopRepository {
                 """
                 SELECT id, slot_index, price, currency, item_blob, created_at
                 FROM player_shop_listings
-                WHERE owner_id = ?
+                WHERE shop_id = ? AND owner_id = ?
                 ORDER BY slot_index ASC
                 """.trimIndent()
             ).use { statement ->
-                statement.setString(1, ownerId.toString())
+                statement.setString(1, normalizedShopId)
+                statement.setString(2, ownerId.toString())
                 statement.executeQuery().use { result ->
                     while (result.next()) {
                         val item = ItemStackCodec.decode(result.getString("item_blob")) ?: continue
@@ -131,7 +136,7 @@ object PlayerShopRepository {
             }
             store
         }?.let { return it }
-        return loadFile(ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
+        return loadFile(shopId, ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
     }
 
     private fun saveJdbc(store: PlayerShopStore) {
@@ -141,34 +146,37 @@ object PlayerShopRepository {
             try {
                 connection.prepareStatement(
                     """
-                    REPLACE INTO player_shop_stores (owner_id, owner_name, unlocked_slots)
-                    VALUES (?, ?, ?)
+                    REPLACE INTO player_shop_stores (shop_id, owner_id, owner_name, unlocked_slots)
+                    VALUES (?, ?, ?, ?)
                     """.trimIndent()
                 ).use { statement ->
-                    statement.setString(1, store.ownerId.toString())
-                    statement.setString(2, store.ownerName)
-                    statement.setInt(3, store.unlockedSlots)
+                    statement.setString(1, store.shopId)
+                    statement.setString(2, store.ownerId.toString())
+                    statement.setString(3, store.ownerName)
+                    statement.setInt(4, store.unlockedSlots)
                     statement.executeUpdate()
                 }
-                connection.prepareStatement("DELETE FROM player_shop_listings WHERE owner_id = ?").use { delete ->
-                    delete.setString(1, store.ownerId.toString())
+                connection.prepareStatement("DELETE FROM player_shop_listings WHERE shop_id = ? AND owner_id = ?").use { delete ->
+                    delete.setString(1, store.shopId)
+                    delete.setString(2, store.ownerId.toString())
                     delete.executeUpdate()
                 }
                 connection.prepareStatement(
                     """
                     INSERT INTO player_shop_listings (
-                        id, owner_id, slot_index, price, currency, item_blob, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        id, shop_id, owner_id, slot_index, price, currency, item_blob, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """.trimIndent()
                 ).use { insert ->
                     store.listings.sortedBy { it.slotIndex }.forEach { listing ->
                         insert.setString(1, listing.id)
-                        insert.setString(2, store.ownerId.toString())
-                        insert.setInt(3, listing.slotIndex)
-                        insert.setDouble(4, listing.price)
-                        insert.setString(5, listing.currency)
-                        insert.setString(6, ItemStackCodec.encode(listing.item))
-                        insert.setLong(7, listing.createdAt)
+                        insert.setString(2, store.shopId)
+                        insert.setString(3, store.ownerId.toString())
+                        insert.setInt(4, listing.slotIndex)
+                        insert.setDouble(5, listing.price)
+                        insert.setString(6, listing.currency)
+                        insert.setString(7, ItemStackCodec.encode(listing.item))
+                        insert.setLong(8, listing.createdAt)
                         insert.addBatch()
                     }
                     insert.executeBatch()
@@ -187,14 +195,22 @@ object PlayerShopRepository {
         }
     }
 
-    private fun loadFile(ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
-        val file = storeFile(ownerId)
-        if (!file.exists()) {
-            return PlayerShopStore(ownerId, ownerName, defaultUnlockedSlots.coerceAtLeast(1).coerceAtMost(maxUnlockedSlots))
+    private fun loadFile(shopId: String, ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
+        val normalizedShopId = shopId.trim().ifBlank { "default" }
+        val file = storeFile(normalizedShopId, ownerId)
+        val legacyFile = legacyStoreFile(ownerId)
+        if (!file.exists() && !(normalizedShopId == "default" && legacyFile.exists())) {
+            return PlayerShopStore(
+                ownerId = ownerId,
+                shopId = normalizedShopId,
+                ownerName = ownerName,
+                unlockedSlots = defaultUnlockedSlots.coerceAtLeast(1).coerceAtMost(maxUnlockedSlots)
+            )
         }
-        val yaml = YamlConfiguration.loadConfiguration(file)
+        val yaml = YamlConfiguration.loadConfiguration(if (file.exists()) file else legacyFile)
         val store = PlayerShopStore(
             ownerId = ownerId,
+            shopId = normalizedShopId,
             ownerName = yaml.getString("owner-name", ownerName).orEmpty().ifBlank { ownerName },
             unlockedSlots = yaml.getInt("unlocked-slots", defaultUnlockedSlots).coerceAtLeast(1).coerceAtMost(maxUnlockedSlots)
         )
@@ -216,6 +232,7 @@ object PlayerShopRepository {
 
     private fun saveFile(store: PlayerShopStore) {
         val yaml = YamlConfiguration()
+        yaml.set("shop-id", store.shopId)
         yaml.set("owner-id", store.ownerId.toString())
         yaml.set("owner-name", store.ownerName)
         yaml.set("unlocked-slots", store.unlockedSlots)
@@ -227,10 +244,16 @@ object PlayerShopRepository {
             yaml.set("$base.item", listing.item)
             yaml.set("$base.created-at", listing.createdAt)
         }
-        yaml.save(storeFile(store.ownerId))
+        yaml.save(storeFile(store.shopId, store.ownerId))
     }
 
-    private fun storeFile(ownerId: UUID): File {
+    private fun storeFile(shopId: String, ownerId: UUID): File {
+        val shopFolder = File(folder, shopId)
+        shopFolder.mkdirs()
+        return File(shopFolder, "${ownerId}.yml")
+    }
+
+    private fun legacyStoreFile(ownerId: UUID): File {
         return File(folder, "${ownerId}.yml")
     }
 }
