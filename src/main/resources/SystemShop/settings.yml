@@ -1,5 +1,15 @@
 Enabled: true
 
+Bindings:
+  Commands:
+    Bindings:
+      - 'system'
+      - 'systemshop'
+    Register: false
+    Show-In-Help: true
+    Priority: 100
+    Condition: 'perm matrixshop.systemshop.use'
+
 Entry:
   Open-Main-On-Command: true
 

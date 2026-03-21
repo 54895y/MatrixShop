@@ -6,6 +6,7 @@ import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
+import com.y54895.matrixshop.core.menu.ShopMenuLoader
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
@@ -39,7 +40,7 @@ object AuctionModule : MatrixModule {
         val dataFolder = ConfigFiles.dataFolder()
         settings = loadSettings()
         menus = AuctionMenus(
-            auction = MenuLoader.load(File(dataFolder, "Auction/ui/auction.yml")),
+            auctionViews = ShopMenuLoader.load("Auction", "auction.yml"),
             upload = MenuLoader.load(File(dataFolder, "Auction/ui/upload.yml")),
             detail = MenuLoader.load(File(dataFolder, "Auction/ui/detail.yml")),
             bid = MenuLoader.load(File(dataFolder, "Auction/ui/bid.yml")),
@@ -50,13 +51,19 @@ object AuctionModule : MatrixModule {
     }
 
     fun openAuction(player: Player, page: Int = 1) {
+        openAuction(player, null, page)
+    }
+
+    fun openAuction(player: Player, shopId: String?, page: Int = 1) {
         if (!ensureReady(player)) {
             return
         }
         deliverPending(player)
         cleanupExpiredListings()
+        val selectedMenu = ShopMenuLoader.resolve(menus.auctionViews, shopId)
+        val browseMenu = selectedMenu.definition
         val listings = activeListings()
-        val goodsSlots = goodsSlots(menus.auction).size.coerceAtLeast(1)
+        val goodsSlots = goodsSlots(browseMenu).size.coerceAtLeast(1)
         val maxPage = ((listings.size + goodsSlots - 1) / goodsSlots).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val entries = listings.drop((currentPage - 1) * goodsSlots).take(goodsSlots)
@@ -66,13 +73,17 @@ object AuctionModule : MatrixModule {
         )
         MenuRenderer.open(
             player = player,
-            definition = menus.auction,
+            definition = browseMenu,
             placeholders = placeholders,
             goodsRenderer = { holder, slots ->
-                renderAuctionEntries(player, holder, entries, slots)
-                wireAuctionControls(player, holder, currentPage, maxPage)
+                renderAuctionEntries(player, holder, entries, slots, selectedMenu.id)
+                wireAuctionControls(player, holder, browseMenu, selectedMenu.id, currentPage, maxPage)
             }
         )
+    }
+
+    fun hasAuctionView(shopId: String?): Boolean {
+        return ShopMenuLoader.contains(menus.auctionViews, shopId)
     }
 
     fun openUpload(player: Player) {
@@ -466,13 +477,13 @@ object AuctionModule : MatrixModule {
         AuctionDeliveryRepository.saveAll(remaining)
     }
 
-    private fun renderAuctionEntries(player: Player, holder: MatrixMenuHolder, entries: List<AuctionListing>, slots: List<Int>) {
+    private fun renderAuctionEntries(player: Player, holder: MatrixMenuHolder, entries: List<AuctionListing>, slots: List<Int>, shopId: String) {
         entries.forEachIndexed { index, listing ->
             val slot = slots[index]
             val item = buildDisplayItem(listing, listLore(listing, player))
             holder.backingInventory.setItem(slot, item)
             holder.handlers[slot] = {
-                openDetail(player, listing.id, "auction")
+                openDetail(player, listing.id, "auction:$shopId")
             }
         }
     }
@@ -504,12 +515,12 @@ object AuctionModule : MatrixModule {
         }
     }
 
-    private fun wireAuctionControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
-        buttonSlot(menus.auction, 'P')?.let { holder.handlers[it] = { openAuction(player, (currentPage - 1).coerceAtLeast(1)) } }
-        buttonSlot(menus.auction, 'N')?.let { holder.handlers[it] = { openAuction(player, (currentPage + 1).coerceAtMost(maxPage)) } }
-        buttonSlot(menus.auction, 'U')?.let { holder.handlers[it] = { openUpload(player) } }
-        buttonSlot(menus.auction, 'M')?.let { holder.handlers[it] = { openManage(player) } }
-        buttonSlot(menus.auction, 'B')?.let { holder.handlers[it] = { openBids(player) } }
+    private fun wireAuctionControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, shopId: String, currentPage: Int, maxPage: Int) {
+        buttonSlot(definition, 'P')?.let { holder.handlers[it] = { openAuction(player, shopId, (currentPage - 1).coerceAtLeast(1)) } }
+        buttonSlot(definition, 'N')?.let { holder.handlers[it] = { openAuction(player, shopId, (currentPage + 1).coerceAtMost(maxPage)) } }
+        buttonSlot(definition, 'U')?.let { holder.handlers[it] = { openUpload(player) } }
+        buttonSlot(definition, 'M')?.let { holder.handlers[it] = { openManage(player) } }
+        buttonSlot(definition, 'B')?.let { holder.handlers[it] = { openBids(player) } }
     }
 
     private fun wireManageControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
@@ -849,9 +860,12 @@ object AuctionModule : MatrixModule {
 
     private fun reopenSource(player: Player, source: String) {
         when (source.lowercase()) {
-            "manage" -> openManage(player)
-            "bids" -> openBids(player)
-            else -> openAuction(player)
+            else -> when {
+                source.startsWith("auction:", true) -> openAuction(player, source.substringAfter(':'))
+                source.equals("manage", true) -> openManage(player)
+                source.equals("bids", true) -> openBids(player)
+                else -> openAuction(player)
+            }
         }
     }
 

@@ -1,5 +1,16 @@
 Enabled: true
 
+Bindings:
+  Commands:
+    Bindings:
+      - 'player_shop'
+      - 'playershop'
+      - 'pshop'
+    Register: false
+    Show-In-Help: true
+    Priority: 90
+    Condition: 'perm matrixshop.playershop.use'
+
 Unlock:
   Base: 21
   Max: 100

@@ -26,7 +26,7 @@ data class PlayerShopSettings(
 )
 
 data class PlayerShopMenus(
-    val browse: MenuDefinition,
+    val browseViews: Map<String, MenuDefinition>,
     val edit: MenuDefinition
 )
 

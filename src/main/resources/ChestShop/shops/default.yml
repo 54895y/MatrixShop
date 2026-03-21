@@ -1,0 +1,70 @@
+id: default
+
+Title:
+  - '&8ChestShop &7{shop-id}'
+
+layout:
+  - '#########'
+  - '#11i22S##'
+  - '#33###B##'
+  - '##I#H#M##'
+  - '#########'
+  - '####R####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  '1':
+    material: 'WOOD_BUTTON'
+    name: '&f1x'
+    lore:
+      - '&7Preview one trade bundle'
+  '2':
+    material: 'STONE_BUTTON'
+    name: '&f8x'
+    lore:
+      - '&7Preview eight trade bundles'
+  '3':
+    material: 'STONE_BUTTON'
+    name: '&f64x'
+    lore:
+      - '&7Preview sixty-four trade bundles'
+  'i':
+    material: 'AIR'
+    mode: 'preview'
+  'S':
+    material: 'HOPPER'
+    name: '&aSell To Shop'
+    lore:
+      - '&7Mode: &f{mode}'
+      - '&7Amount: &f{total-amount}'
+      - '&7Value: &e{total-buy-price}'
+  'B':
+    material: 'EMERALD'
+    name: '&6Buy From Shop'
+    lore:
+      - '&7Mode: &f{mode}'
+      - '&7Amount: &f{total-amount}'
+      - '&7Cost: &e{total-sell-price}'
+  'I':
+    material: 'CHEST'
+    name: '&fStock'
+    lore:
+      - '&7Current stock: &f{stock}'
+  'H':
+    material: 'PAPER'
+    name: '&fHistory'
+    lore:
+      - '&7View recent trades'
+  'M':
+    material: 'BOOK'
+    name: '&eManage'
+    lore:
+      - '&7Owner only'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'

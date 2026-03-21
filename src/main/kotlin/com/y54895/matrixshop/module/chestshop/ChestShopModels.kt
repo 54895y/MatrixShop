@@ -42,7 +42,7 @@ data class ChestShopShop(
 )
 
 data class ChestShopMenus(
-    val shop: MenuDefinition,
+    val shopViews: Map<String, MenuDefinition>,
     val create: MenuDefinition,
     val edit: MenuDefinition,
     val stock: MenuDefinition,

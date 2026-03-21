@@ -1,0 +1,45 @@
+id: default
+
+Title:
+  - '&8{owner}的商店 &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '###I#E###'
+  - 'P###B###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'I':
+    material: 'PAPER'
+    name: '&f商店信息'
+    lore:
+      - '&7店主: &f{owner}'
+      - '&7已上架: &f{listed}'
+      - '&7查看者余额: &e{money}'
+  'E':
+    material: 'BOOK'
+    name: '&e编辑我的商店'
+    lore:
+      - '&7仅店主可见'
+      - '&e左键打开编辑页'
+  'B':
+    material: 'BARRIER'
+    name: '&c关闭'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&a上一页'
+  'N':
+    material: 'ARROW'
+    name: '&a下一页'

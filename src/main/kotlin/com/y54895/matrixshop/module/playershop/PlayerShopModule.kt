@@ -6,6 +6,7 @@ import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
+import com.y54895.matrixshop.core.menu.ShopMenuLoader
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
@@ -39,19 +40,29 @@ object PlayerShopModule : MatrixModule {
         PlayerShopRepository.initialize()
         settings = loadSettings()
         menus = PlayerShopMenus(
-            browse = MenuLoader.load(File(ConfigFiles.dataFolder(), "PlayerShop/ui/shop.yml")),
+            browseViews = ShopMenuLoader.load("PlayerShop", "shop.yml"),
             edit = MenuLoader.load(File(ConfigFiles.dataFolder(), "PlayerShop/ui/edit.yml"))
         )
     }
 
     fun openShop(viewer: Player, targetName: String) {
+        openShop(viewer, targetName, null)
+    }
+
+    fun openShop(viewer: Player, targetName: String, shopId: String?) {
         val offline = Bukkit.getOfflinePlayer(targetName)
-        openShop(viewer, offline.uniqueId, offline.name ?: targetName)
+        openShop(viewer, offline.uniqueId, offline.name ?: targetName, shopId = shopId)
     }
 
     fun openShop(viewer: Player, ownerId: UUID, ownerName: String, page: Int = 1) {
+        openShop(viewer, ownerId, ownerName, null, page)
+    }
+
+    fun openShop(viewer: Player, ownerId: UUID, ownerName: String, shopId: String?, page: Int = 1) {
         val store = loadStore(ownerId, ownerName)
-        val goodsPerPage = goodsSlots(menus.browse).size.coerceAtLeast(1)
+        val selectedMenu = ShopMenuLoader.resolve(menus.browseViews, shopId)
+        val browseMenu = selectedMenu.definition
+        val goodsPerPage = goodsSlots(browseMenu).size.coerceAtLeast(1)
         val ownerView = viewer.uniqueId == ownerId
         val maxPage = if (ownerView) {
             ((store.unlockedSlots + goodsPerPage - 1) / goodsPerPage).coerceAtLeast(1)
@@ -62,16 +73,20 @@ object PlayerShopModule : MatrixModule {
         val placeholders = basePlaceholders(viewer, store, currentPage, maxPage)
         MenuRenderer.open(
             player = viewer,
-            definition = menus.browse,
+            definition = browseMenu,
             placeholders = placeholders,
             goodsRenderer = { holder, slots ->
                 renderBrowse(viewer, holder, store, slots, currentPage, ownerView)
-                wireBrowseControls(viewer, holder, store, currentPage, maxPage, ownerView)
+                wireBrowseControls(viewer, holder, browseMenu, selectedMenu.id, store, currentPage, maxPage, ownerView)
             }
         )
     }
 
     fun openEdit(owner: Player, page: Int = 1) {
+        openEdit(owner, null, page)
+    }
+
+    fun openEdit(owner: Player, browseShopId: String?, page: Int = 1) {
         val store = loadStore(owner.uniqueId, owner.name)
         val goodsPerPage = goodsSlots(menus.edit).size.coerceAtLeast(1)
         val maxPage = ((store.unlockedSlots + goodsPerPage - 1) / goodsPerPage).coerceAtLeast(1)
@@ -81,12 +96,16 @@ object PlayerShopModule : MatrixModule {
             player = owner,
             definition = menus.edit,
             placeholders = placeholders,
-            backAction = { openShop(owner, owner.uniqueId, owner.name, currentPage) },
+            backAction = { openShop(owner, owner.uniqueId, owner.name, browseShopId, currentPage) },
             goodsRenderer = { holder, slots ->
                 renderEdit(owner, holder, store, slots, currentPage)
-                wireEditControls(owner, holder, currentPage, maxPage)
+                wireEditControls(owner, holder, browseShopId, currentPage, maxPage)
             }
         )
+    }
+
+    fun hasBrowseView(shopId: String?): Boolean {
+        return ShopMenuLoader.contains(menus.browseViews, shopId)
     }
 
     fun uploadFromHand(player: Player, price: Double, requestedAmount: Int?) {
@@ -131,7 +150,7 @@ object PlayerShopModule : MatrixModule {
         player.updateInventory()
         Texts.send(player, "&a上架成功: &f${itemDisplayName(listed)} &7x&f${listed.amount} &7- &e${trimDouble(price)}")
         RecordService.append("player_shop", "list", player.name, "listing=${listing.id};price=${trimDouble(price)};amount=${listed.amount}")
-        openEdit(player, pageForSlot(slotIndex, goodsPerPage(menus.edit)))
+            openEdit(player, null, pageForSlot(slotIndex, goodsPerPage(menus.edit)))
     }
 
     fun selection(ownerId: UUID, ownerName: String, listingId: String): PlayerShopSelection? {
@@ -170,7 +189,7 @@ object PlayerShopModule : MatrixModule {
         reopenAfterSuccess: Boolean = true
     ): ModuleOperationResult {
         if (viewer.uniqueId == store.ownerId) {
-            openEdit(viewer, pageForSlot(listing.slotIndex, goodsPerPage(menus.edit)))
+            openEdit(viewer, null, pageForSlot(listing.slotIndex, goodsPerPage(menus.edit)))
             return ModuleOperationResult(false, "")
         }
         val refreshed = loadStore(store.ownerId, store.ownerName)
@@ -314,16 +333,25 @@ object PlayerShopModule : MatrixModule {
             }
     }
 
-    private fun wireBrowseControls(viewer: Player, holder: MatrixMenuHolder, store: PlayerShopStore, currentPage: Int, maxPage: Int, ownerView: Boolean) {
-        buttonSlot(menus.browse, 'P')?.let { slot ->
-            holder.handlers[slot] = { openShop(viewer, store.ownerId, store.ownerName, (currentPage - 1).coerceAtLeast(1)) }
+    private fun wireBrowseControls(
+        viewer: Player,
+        holder: MatrixMenuHolder,
+        definition: MenuDefinition,
+        browseShopId: String,
+        store: PlayerShopStore,
+        currentPage: Int,
+        maxPage: Int,
+        ownerView: Boolean
+    ) {
+        buttonSlot(definition, 'P')?.let { slot ->
+            holder.handlers[slot] = { openShop(viewer, store.ownerId, store.ownerName, browseShopId, (currentPage - 1).coerceAtLeast(1)) }
         }
-        buttonSlot(menus.browse, 'N')?.let { slot ->
-            holder.handlers[slot] = { openShop(viewer, store.ownerId, store.ownerName, (currentPage + 1).coerceAtMost(maxPage)) }
+        buttonSlot(definition, 'N')?.let { slot ->
+            holder.handlers[slot] = { openShop(viewer, store.ownerId, store.ownerName, browseShopId, (currentPage + 1).coerceAtMost(maxPage)) }
         }
-        buttonSlot(menus.browse, 'E')?.let { slot ->
+        buttonSlot(definition, 'E')?.let { slot ->
             if (ownerView) {
-                holder.handlers[slot] = { openEdit(viewer, currentPage) }
+                holder.handlers[slot] = { openEdit(viewer, browseShopId, currentPage) }
             } else {
                 holder.backingInventory.setItem(slot, fillerItem())
                 holder.handlers.remove(slot)
@@ -331,12 +359,12 @@ object PlayerShopModule : MatrixModule {
         }
     }
 
-    private fun wireEditControls(owner: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
+    private fun wireEditControls(owner: Player, holder: MatrixMenuHolder, browseShopId: String?, currentPage: Int, maxPage: Int) {
         buttonSlot(menus.edit, 'P')?.let { slot ->
-            holder.handlers[slot] = { openEdit(owner, (currentPage - 1).coerceAtLeast(1)) }
+            holder.handlers[slot] = { openEdit(owner, browseShopId, (currentPage - 1).coerceAtLeast(1)) }
         }
         buttonSlot(menus.edit, 'N')?.let { slot ->
-            holder.handlers[slot] = { openEdit(owner, (currentPage + 1).coerceAtMost(maxPage)) }
+            holder.handlers[slot] = { openEdit(owner, browseShopId, (currentPage + 1).coerceAtMost(maxPage)) }
         }
         buttonSlot(menus.edit, 'H')?.let { slot ->
             holder.handlers[slot] = { Texts.send(owner, "&e使用 /matrixshop player_shop upload <price> [amount] 上架主手物品。") }

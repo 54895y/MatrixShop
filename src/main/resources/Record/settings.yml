@@ -1,4 +1,15 @@
 Enabled: true
+
+Bindings:
+  Commands:
+    Bindings:
+      - 'record'
+      - 'records'
+    Register: false
+    Show-In-Help: true
+    Priority: 30
+    Condition: 'perm matrixshop.record.use'
+
 View:
   Player:
     Show-Admin-Reason: true

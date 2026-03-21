@@ -16,7 +16,7 @@ data class GlobalMarketListing(
 )
 
 data class GlobalMarketMenus(
-    val market: MenuDefinition,
+    val marketViews: Map<String, MenuDefinition>,
     val manage: MenuDefinition,
     val upload: MenuDefinition
 )

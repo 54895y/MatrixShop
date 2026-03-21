@@ -1,4 +1,14 @@
 Enabled: true
+
+Bindings:
+  Commands:
+    Bindings:
+      - 'cart'
+    Register: false
+    Show-In-Help: true
+    Priority: 40
+    Condition: 'perm matrixshop.cart.use'
+
 Sources:
   Checkoutable:
     - system_shop

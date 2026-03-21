@@ -31,7 +31,7 @@ data class AuctionBidEntry(
 )
 
 data class AuctionMenus(
-    val auction: MenuDefinition,
+    val auctionViews: Map<String, MenuDefinition>,
     val upload: MenuDefinition,
     val detail: MenuDefinition,
     val bid: MenuDefinition,

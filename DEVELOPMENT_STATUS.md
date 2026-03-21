@@ -31,6 +31,13 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added `ModuleBindings` so module command keys now come from each module `settings.yml`
+- Updated `/ms` routing to resolve module entry keys from `Bindings.Commands.Bindings`
+- Switched standalone `trade`, `auction`, and `chestshop` command registration to config-driven bindings at startup
+- Added missing `Bindings` blocks to `SystemShop`, `PlayerShop`, `GlobalMarket`, `ChestShop`, `Cart`, and `Record` settings
+- Added `shops/default.yml` packs for `Auction`, `PlayerShop`, `GlobalMarket`, and `ChestShop`
+- Added `ShopMenuLoader` and moved those four modules to `shops/*.yml`-driven browse menus with legacy UI fallback
+- Added optional `shop-id` support for `/ms <module> open [shop-id]` and direct `/ms <module> <shop-id>` opens on multi-shop modules
 - Fixed `ProxyCommandSender` handling in `MatrixShopCommands` to avoid console-side `ClassCastException`
 - Migrated `AuctionDeliveryRepository` to JDBC-first with file fallback
 - Migrated `ChestShopRepository` to JDBC-first with file fallback
@@ -60,6 +67,7 @@ This file is the handoff note for each development round.
 ## Validation
 
 - Local build passed with `./gradlew.bat build`
+- Config-driven bindings and multi-shop refactor compiled successfully with `./gradlew.bat build`
 - Live startup test passed on local `1.12.2paper`
 - Live admin command test passed for `matrixshopadmin status` and `matrixshopadmin sync`
 - Live console smoke test passed for `ms`, `matrixshop`, `trade`, `auction`, and `chestshop` without MatrixShop stack traces
@@ -73,6 +81,7 @@ This file is the handoff note for each development round.
 - Redis is config-visible only; actual sync/invalidation transport is not implemented
 - Test environment currently uses a PlaceholderAPI build that throws `Bukkit.getAsyncScheduler()` on shutdown under Paper 1.12.2; this is external to MatrixShop
 - Non-interactive stdin replay can still report `Unknown command` for the first queued console line during early startup; use a fully interactive terminal when validating admin commands
+- Standalone command names still register only once at plugin startup; changing standalone binding keys requires a full restart, while `/ms` binding changes follow config reload
 
 ## Next Tasks
 
@@ -83,6 +92,7 @@ This file is the handoff note for each development round.
 - Consider whether legacy import summaries should also expose per-module timestamps and source-file counts
 - Start validating player-side command paths and one complete business flow on live Paper
 - Re-run interactive admin command validation in a persistent server terminal
+- Add menu actions to jump between custom `shops/*.yml` packs without relying only on command opens
 
 ### Medium Priority
 

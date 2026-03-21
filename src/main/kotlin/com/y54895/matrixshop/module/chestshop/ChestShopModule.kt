@@ -6,6 +6,7 @@ import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
+import com.y54895.matrixshop.core.menu.ShopMenuLoader
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
@@ -54,7 +55,7 @@ object ChestShopModule : MatrixModule {
         settings = loadSettings()
         signConfig = YamlConfiguration.loadConfiguration(File(dataFolder, "ChestShop/signs.yml"))
         menus = ChestShopMenus(
-            shop = MenuLoader.load(File(dataFolder, "ChestShop/ui/shop.yml")),
+            shopViews = ShopMenuLoader.load("ChestShop", "shop.yml"),
             create = MenuLoader.load(File(dataFolder, "ChestShop/ui/create.yml")),
             edit = MenuLoader.load(File(dataFolder, "ChestShop/ui/edit.yml")),
             stock = MenuLoader.load(File(dataFolder, "ChestShop/ui/stock.yml")),
@@ -64,6 +65,10 @@ object ChestShopModule : MatrixModule {
     }
 
     fun open(player: Player) {
+        open(player, null)
+    }
+
+    fun open(player: Player, shopViewId: String?) {
         if (!ensureReady(player)) {
             return
         }
@@ -75,7 +80,11 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&eLook at a chest shop chest or sign, then use /chestshop open.")
             return
         }
-        openShop(player, shop)
+        openShop(player, shop, shopViewId)
+    }
+
+    fun hasShopView(shopId: String?): Boolean {
+        return ShopMenuLoader.contains(menus.shopViews, shopId)
     }
 
     fun openCreate(player: Player) {
@@ -400,38 +409,44 @@ object ChestShopModule : MatrixModule {
     }
 
     private fun openShop(player: Player, shop: ChestShopShop) {
+        openShop(player, shop, null)
+    }
+
+    private fun openShop(player: Player, shop: ChestShopShop, shopViewId: String?) {
         val multiplier = viewMultipliers[player.uniqueId] ?: 1
         val actual = reloadShop(shop.id) ?: shop
+        val selectedMenu = ShopMenuLoader.resolve(menus.shopViews, shopViewId)
+        val view = selectedMenu.definition
         MenuRenderer.open(
             player = player,
-            definition = menus.shop,
+            definition = view,
             placeholders = shopPlaceholders(actual, multiplier),
             goodsRenderer = { holder, _ ->
-                buttonSlot(menus.shop, 'i')?.let { slot ->
+                buttonSlot(view, 'i')?.let { slot ->
                     holder.backingInventory.setItem(slot, buildPreviewItem(actual, multiplier))
                 }
-                wireShopControls(player, holder, actual, multiplier)
+                wireShopControls(player, holder, view, selectedMenu.id, actual, multiplier)
             }
         )
     }
 
-    private fun openEditMenu(player: Player, shop: ChestShopShop) {
+    private fun openEditMenu(player: Player, shop: ChestShopShop, shopViewId: String? = null) {
         val actual = reloadShop(shop.id) ?: shop
         MenuRenderer.open(
             player = player,
             definition = menus.edit,
             placeholders = shopPlaceholders(actual, 1),
-            backAction = { openShop(player, actual) },
+            backAction = { openShop(player, actual, shopViewId) },
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.edit, 'i')?.let { slot ->
                     holder.backingInventory.setItem(slot, buildPreviewItem(actual, 1))
                 }
-                wireEditControls(player, holder, actual)
+                wireEditControls(player, holder, actual, shopViewId)
             }
         )
     }
 
-    private fun openStockMenu(player: Player, shop: ChestShopShop, page: Int) {
+    private fun openStockMenu(player: Player, shop: ChestShopShop, page: Int, shopViewId: String? = null) {
         val actual = reloadShop(shop.id) ?: shop
         val items = stockInventories(actual).flatMap { inventory ->
             inventory.contents.filterNotNull().map { it.clone() }
@@ -451,7 +466,7 @@ object ChestShopModule : MatrixModule {
                 "stock" to countStock(actual).toString(),
                 "item" to itemDisplayName(actual.item)
             ),
-            backAction = { if (canManage(player, actual)) openEditMenu(player, actual) else openShop(player, actual) },
+            backAction = { if (canManage(player, actual)) openEditMenu(player, actual, shopViewId) else openShop(player, actual, shopViewId) },
             goodsRenderer = { holder, goods ->
                 entries.forEachIndexed { index, item ->
                     holder.backingInventory.setItem(goods[index], item)
@@ -461,14 +476,14 @@ object ChestShopModule : MatrixModule {
                     definition = menus.stock,
                     currentPage = currentPage,
                     maxPage = maxPage,
-                    onPage = { next -> openStockMenu(player, actual, next) },
-                    onBack = { if (canManage(player, actual)) openEditMenu(player, actual) else openShop(player, actual) }
+                    onPage = { next -> openStockMenu(player, actual, next, shopViewId) },
+                    onBack = { if (canManage(player, actual)) openEditMenu(player, actual, shopViewId) else openShop(player, actual, shopViewId) }
                 )
             }
         )
     }
 
-    private fun openHistoryMenu(player: Player, shop: ChestShopShop, page: Int) {
+    private fun openHistoryMenu(player: Player, shop: ChestShopShop, page: Int, shopViewId: String? = null) {
         val actual = reloadShop(shop.id) ?: shop
         val history = actual.history.sortedByDescending { it.createdAt }
         val slots = goodsSlots(menus.history)
@@ -484,7 +499,7 @@ object ChestShopModule : MatrixModule {
                 "max-page" to maxPage.toString(),
                 "shop-id" to actual.id
             ),
-            backAction = { if (canManage(player, actual)) openEditMenu(player, actual) else openShop(player, actual) },
+            backAction = { if (canManage(player, actual)) openEditMenu(player, actual, shopViewId) else openShop(player, actual, shopViewId) },
             goodsRenderer = { holder, goods ->
                 entries.forEachIndexed { index, entry ->
                     val icon = ItemStack(historyMaterial(entry.type))
@@ -507,60 +522,60 @@ object ChestShopModule : MatrixModule {
                     definition = menus.history,
                     currentPage = currentPage,
                     maxPage = maxPage,
-                    onPage = { next -> openHistoryMenu(player, actual, next) },
-                    onBack = { if (canManage(player, actual)) openEditMenu(player, actual) else openShop(player, actual) }
+                    onPage = { next -> openHistoryMenu(player, actual, next, shopViewId) },
+                    onBack = { if (canManage(player, actual)) openEditMenu(player, actual, shopViewId) else openShop(player, actual, shopViewId) }
                 )
             }
         )
     }
 
-    private fun wireShopControls(player: Player, holder: MatrixMenuHolder, shop: ChestShopShop, multiplier: Int) {
-        buttonSlot(menus.shop, 'B')?.let { slot ->
+    private fun wireShopControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, shopViewId: String, shop: ChestShopShop, multiplier: Int) {
+        buttonSlot(definition, 'B')?.let { slot ->
             holder.handlers[slot] = {
                 if (shop.mode == ChestShopMode.SELL || shop.mode == ChestShopMode.DUAL) {
                     buyFromShop(player, shop, multiplier)
-                    openShop(player, reloadShop(shop.id) ?: shop)
+                    openShop(player, reloadShop(shop.id) ?: shop, shopViewId)
                 } else {
                     Texts.send(player, "&cThis shop does not sell items.")
                 }
             }
         }
-        buttonSlot(menus.shop, 'S')?.let { slot ->
+        buttonSlot(definition, 'S')?.let { slot ->
             holder.handlers[slot] = {
                 if (shop.mode == ChestShopMode.BUY || shop.mode == ChestShopMode.DUAL) {
                     sellToShop(player, shop, multiplier)
-                    openShop(player, reloadShop(shop.id) ?: shop)
+                    openShop(player, reloadShop(shop.id) ?: shop, shopViewId)
                 } else {
                     Texts.send(player, "&cThis shop does not buy items.")
                 }
             }
         }
-        buttonSlot(menus.shop, 'M')?.let { slot ->
+        buttonSlot(definition, 'M')?.let { slot ->
             if (canManage(player, shop)) {
-                holder.handlers[slot] = { openEditMenu(player, shop) }
+                holder.handlers[slot] = { openEditMenu(player, shop, shopViewId) }
             }
         }
         listOf(1, 8, 64).forEachIndexed { index, value ->
             val symbol = listOf('1', '2', '3')[index]
-            buttonSlot(menus.shop, symbol)?.let { slot ->
+            buttonSlot(definition, symbol)?.let { slot ->
                 holder.handlers[slot] = {
                     viewMultipliers[player.uniqueId] = value
-                    openShop(player, shop)
+                    openShop(player, shop, shopViewId)
                 }
             }
         }
-        buttonSlot(menus.shop, 'I')?.let { slot ->
-            holder.handlers[slot] = { openStockMenu(player, shop, 1) }
+        buttonSlot(definition, 'I')?.let { slot ->
+            holder.handlers[slot] = { openStockMenu(player, shop, 1, shopViewId) }
         }
-        buttonSlot(menus.shop, 'H')?.let { slot ->
-            holder.handlers[slot] = { openHistoryMenu(player, shop, 1) }
+        buttonSlot(definition, 'H')?.let { slot ->
+            holder.handlers[slot] = { openHistoryMenu(player, shop, 1, shopViewId) }
         }
-        buttonSlot(menus.shop, 'R')?.let { slot ->
+        buttonSlot(definition, 'R')?.let { slot ->
             holder.handlers[slot] = { player.closeInventory() }
         }
     }
 
-    private fun wireEditControls(player: Player, holder: MatrixMenuHolder, shop: ChestShopShop) {
+    private fun wireEditControls(player: Player, holder: MatrixMenuHolder, shop: ChestShopShop, shopViewId: String?) {
         buttonSlot(menus.edit, 'P')?.let { slot ->
             holder.handlers[slot] = {
                 Texts.send(player, "&7Use /chestshop price <buy|sell> <value> to change prices.")
@@ -575,7 +590,7 @@ object ChestShopModule : MatrixModule {
                     shop.mode = nextMode
                     saveShop(shop)
                     updateSigns(shop)
-                    openEditMenu(player, shop)
+                    openEditMenu(player, shop, shopViewId)
                 }
             }
         }
@@ -584,7 +599,7 @@ object ChestShopModule : MatrixModule {
                 shop.tradeAmount = nextAmount(shop.tradeAmount)
                 saveShop(shop)
                 updateSigns(shop)
-                openEditMenu(player, shop)
+                openEditMenu(player, shop, shopViewId)
             }
         }
         buttonSlot(menus.edit, 'S')?.let { slot ->
@@ -593,11 +608,11 @@ object ChestShopModule : MatrixModule {
                 saveShop(shop)
                 updateSigns(shop)
                 Texts.send(player, "&aSigns rescanned and updated.")
-                openEditMenu(player, shop)
+                openEditMenu(player, shop, shopViewId)
             }
         }
         buttonSlot(menus.edit, 'L')?.let { slot ->
-            holder.handlers[slot] = { openStockMenu(player, shop, 1) }
+            holder.handlers[slot] = { openStockMenu(player, shop, 1, shopViewId) }
         }
         buttonSlot(menus.edit, 'D')?.let { slot ->
             holder.handlers[slot] = {
@@ -606,10 +621,10 @@ object ChestShopModule : MatrixModule {
             }
         }
         buttonSlot(menus.edit, 'H')?.let { slot ->
-            holder.handlers[slot] = { openHistoryMenu(player, shop, 1) }
+            holder.handlers[slot] = { openHistoryMenu(player, shop, 1, shopViewId) }
         }
         buttonSlot(menus.edit, 'O')?.let { slot ->
-            holder.handlers[slot] = { openShop(player, shop) }
+            holder.handlers[slot] = { openShop(player, shop, shopViewId) }
         }
         buttonSlot(menus.edit, 'R')?.let { slot ->
             holder.handlers[slot] = { player.closeInventory() }

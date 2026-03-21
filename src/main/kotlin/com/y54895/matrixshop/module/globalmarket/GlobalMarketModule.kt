@@ -5,6 +5,7 @@ import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
+import com.y54895.matrixshop.core.menu.ShopMenuLoader
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
@@ -37,15 +38,21 @@ object GlobalMarketModule : MatrixModule {
         GlobalMarketRepository.initialize()
         settings = loadSettings()
         menus = GlobalMarketMenus(
-            market = MenuLoader.load(File(ConfigFiles.dataFolder(), "GlobalMarket/ui/market.yml")),
+            marketViews = ShopMenuLoader.load("GlobalMarket", "market.yml"),
             manage = MenuLoader.load(File(ConfigFiles.dataFolder(), "GlobalMarket/ui/manage.yml")),
             upload = MenuLoader.load(File(ConfigFiles.dataFolder(), "GlobalMarket/ui/upload.yml"))
         )
     }
 
     fun openMarket(player: Player, page: Int = 1) {
+        openMarket(player, null, page)
+    }
+
+    fun openMarket(player: Player, shopId: String?, page: Int = 1) {
+        val selectedMenu = ShopMenuLoader.resolve(menus.marketViews, shopId)
+        val browseMenu = selectedMenu.definition
         val listings = activeListings()
-        val goodsSlots = goodsSlots(menus.market).size.coerceAtLeast(1)
+        val goodsSlots = goodsSlots(browseMenu).size.coerceAtLeast(1)
         val maxPage = ((listings.size + goodsSlots - 1) / goodsSlots).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val entries = listings.drop((currentPage - 1) * goodsSlots).take(goodsSlots)
@@ -55,13 +62,17 @@ object GlobalMarketModule : MatrixModule {
         )
         MenuRenderer.open(
             player = player,
-            definition = menus.market,
+            definition = browseMenu,
             placeholders = placeholders,
             goodsRenderer = { holder, slots ->
                 renderMarket(player, holder, entries, slots)
-                wireMarketControls(player, holder, currentPage, maxPage)
+                wireMarketControls(player, holder, browseMenu, selectedMenu.id, currentPage, maxPage)
             }
         )
+    }
+
+    fun hasMarketView(shopId: String?): Boolean {
+        return ShopMenuLoader.contains(menus.marketViews, shopId)
     }
 
     fun openManage(player: Player, page: Int = 1) {
@@ -267,12 +278,12 @@ object GlobalMarketModule : MatrixModule {
         }
     }
 
-    private fun wireMarketControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
-        buttonSlot(menus.market, 'P')?.let { holder.handlers[it] = { openMarket(player, (currentPage - 1).coerceAtLeast(1)) } }
-        buttonSlot(menus.market, 'N')?.let { holder.handlers[it] = { openMarket(player, (currentPage + 1).coerceAtMost(maxPage)) } }
-        buttonSlot(menus.market, 'U')?.let { holder.handlers[it] = { openUpload(player) } }
-        buttonSlot(menus.market, 'M')?.let { holder.handlers[it] = { openManage(player) } }
-        buttonSlot(menus.market, 'C')?.let { holder.handlers[it] = { CartModule.open(player) } }
+    private fun wireMarketControls(player: Player, holder: MatrixMenuHolder, definition: com.y54895.matrixshop.core.menu.MenuDefinition, shopId: String, currentPage: Int, maxPage: Int) {
+        buttonSlot(definition, 'P')?.let { holder.handlers[it] = { openMarket(player, shopId, (currentPage - 1).coerceAtLeast(1)) } }
+        buttonSlot(definition, 'N')?.let { holder.handlers[it] = { openMarket(player, shopId, (currentPage + 1).coerceAtMost(maxPage)) } }
+        buttonSlot(definition, 'U')?.let { holder.handlers[it] = { openUpload(player) } }
+        buttonSlot(definition, 'M')?.let { holder.handlers[it] = { openManage(player) } }
+        buttonSlot(definition, 'C')?.let { holder.handlers[it] = { CartModule.open(player) } }
     }
 
     private fun wireManageControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
