@@ -115,6 +115,10 @@ object PlayerShopModule : MatrixModule {
         return ShopMenuLoader.helpEntries(menus.browseViews)
     }
 
+    fun allShopEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.allEntries(menus.browseViews)
+    }
+
     fun standaloneEntries(): List<ShopMenuSelection> {
         return ShopMenuLoader.standaloneEntries(menus.browseViews)
     }

@@ -31,6 +31,9 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Changed the main player command so `/ms open <shop-id>` now resolves shop ids across `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction`
+- Added duplicate shop-id detection for `/ms open <shop-id>` and fallback to `SystemShop` category open when no shop id matches
+- Switched bound shop help examples from `/ms <binding> ...` to direct standalone `/<binding> ...` usage
 - Removed `id` from default `shops/*.yml` packs and switched shop identity to the file name itself
 - Updated `ShopMenuLoader` to ignore `id` keys and preserve the raw file name as `shopId`, which keeps Chinese file names intact
 - Changed `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction` open flows so opening now only happens through the `open` subcommand
@@ -83,6 +86,7 @@ This file is the handoff note for each development round.
 ## Validation
 
 - Local build passed with `./gradlew.bat build`
+- `/ms open <shop-id>` command-routing refactor passed with `./gradlew.bat build`
 - Filename-based shop id + open-only command refactor passed with `./gradlew.bat build`
 - Multi-shop bindings + shop-scoped data-layer refactor passed with `./gradlew.bat build`
 - Config-driven bindings and multi-shop refactor compiled successfully with `./gradlew.bat build`
@@ -92,6 +96,7 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction`; duplicate ids now return an ambiguity message instead of guessing
 - Shop ids now come only from `shops/<file-name>.yml`; renaming a shop file changes the runtime `shopId` and therefore the storage key used by shop-scoped modules
 - `Auction`, `GlobalMarket`, and `PlayerShop` are now shop-scoped in storage and commands, but `ChestShop` still only uses `shops/*.yml` as alternate views, not separate shop pools
 - `Transaction` now has shop entry configs and binding-based routing, but request/trade/confirm UIs are still shared module-level templates rather than per-shop UI packs

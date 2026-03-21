@@ -83,6 +83,10 @@ object GlobalMarketModule : MatrixModule {
         return ShopMenuLoader.helpEntries(menus.marketViews)
     }
 
+    fun allShopEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.allEntries(menus.marketViews)
+    }
+
     fun standaloneEntries(): List<ShopMenuSelection> {
         return ShopMenuLoader.standaloneEntries(menus.marketViews)
     }

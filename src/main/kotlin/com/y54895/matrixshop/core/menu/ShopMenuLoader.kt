@@ -78,6 +78,12 @@ object ShopMenuLoader {
             .map { ShopMenuSelection(it.id, it.definition, it.bindings) }
     }
 
+    fun allEntries(menus: Map<String, ConfiguredShopMenu>): List<ShopMenuSelection> {
+        return menus.values
+            .sortedByDescending { it.bindings.priority }
+            .map { ShopMenuSelection(it.id, it.definition, it.bindings) }
+    }
+
     fun standaloneEntries(menus: Map<String, ConfiguredShopMenu>): List<ShopMenuSelection> {
         return menus.values
             .filter { it.bindings.registerStandalone && it.bindings.keys.isNotEmpty() }

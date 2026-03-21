@@ -96,6 +96,10 @@ object AuctionModule : MatrixModule {
         return ShopMenuLoader.helpEntries(menus.auctionViews)
     }
 
+    fun allShopEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.allEntries(menus.auctionViews)
+    }
+
     fun standaloneEntries(): List<ShopMenuSelection> {
         return ShopMenuLoader.standaloneEntries(menus.auctionViews)
     }

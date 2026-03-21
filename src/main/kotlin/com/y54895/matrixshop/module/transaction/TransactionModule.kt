@@ -339,6 +339,10 @@ object TransactionModule : MatrixModule {
         return ShopMenuLoader.helpEntries(menus.shopViews)
     }
 
+    fun allShopEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.allEntries(menus.shopViews)
+    }
+
     fun standaloneEntries(): List<ShopMenuSelection> {
         return ShopMenuLoader.standaloneEntries(menus.shopViews)
     }
