@@ -72,11 +72,7 @@ object MatrixShopCommands {
     }
 
     private fun handleMain(sender: ProxyCommandSender, args: Array<String>) {
-        val player = sender.castSafely<Player>()
-        if (player == null) {
-            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
-            return
-        }
+        val player = requirePlayer(sender) ?: return
         if (args.isEmpty()) {
             if (Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
                 ModuleRegistry.systemShop.openMain(player)
@@ -472,34 +468,25 @@ object MatrixShopCommands {
     }
 
     private fun handleTradeAlias(sender: ProxyCommandSender, args: Array<String>) {
-        val player = sender.castSafely<Player>()
-        if (player == null) {
-            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
-            return
-        }
+        val player = requirePlayer(sender) ?: return
         handleTransaction(player, args.toList())
     }
 
     private fun handleAuctionAlias(sender: ProxyCommandSender, args: Array<String>) {
-        val player = sender.castSafely<Player>()
-        if (player == null) {
-            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
-            return
-        }
+        val player = requirePlayer(sender) ?: return
         handleAuction(player, args.toList())
     }
 
     private fun handleChestShopAlias(sender: ProxyCommandSender, args: Array<String>) {
-        val player = sender.castSafely<Player>()
-        if (player == null) {
-            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
-            return
-        }
+        val player = requirePlayer(sender) ?: return
         handleChestShop(player, args.toList())
     }
 
     private fun handleAdmin(sender: ProxyCommandSender, args: Array<String>) {
-        val commandSender = sender.castSafely<CommandSender>() ?: return
+        val commandSender = sender.origin as? CommandSender ?: run {
+            sender.sendMessage(Texts.prefixed("&cUnsupported command sender."))
+            return
+        }
         if (args.isEmpty() || args[0].equals("help", true)) {
             sendAdminHelp(commandSender)
             return
@@ -670,6 +657,14 @@ object MatrixShopCommands {
         if (visible) {
             lines += line
         }
+    }
+
+    private fun requirePlayer(sender: ProxyCommandSender): Player? {
+        val player = sender.origin as? Player
+        if (player == null) {
+            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
+        }
+        return player
     }
 
     private fun formatEpochMillis(value: String): String {

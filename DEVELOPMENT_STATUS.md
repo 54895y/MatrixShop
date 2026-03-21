@@ -31,6 +31,7 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Fixed `ProxyCommandSender` handling in `MatrixShopCommands` to avoid console-side `ClassCastException`
 - Migrated `AuctionDeliveryRepository` to JDBC-first with file fallback
 - Migrated `ChestShopRepository` to JDBC-first with file fallback
 - Added database metadata bootstrap in `DatabaseManager`
@@ -54,12 +55,14 @@ This file is the handoff note for each development round.
 - Expanded admin status output with migration/import timestamps and totals
 - Ran a live Paper 1.12.2 startup test with the current build
 - Verified `/matrixshopadmin status` and `/matrixshopadmin sync` on live Paper 1.12.2
+- Verified `ms`, `matrixshop`, `trade`, `auction`, and `chestshop` from the Paper 1.12.2 console now return player-only feedback instead of throwing exceptions
 
 ## Validation
 
 - Local build passed with `./gradlew.bat build`
 - Live startup test passed on local `1.12.2paper`
 - Live admin command test passed for `matrixshopadmin status` and `matrixshopadmin sync`
+- Live console smoke test passed for `ms`, `matrixshop`, `trade`, `auction`, and `chestshop` without MatrixShop stack traces
 
 ## Known Boundaries
 
@@ -69,6 +72,7 @@ This file is the handoff note for each development round.
 - Legacy file import is now centralized before module reload, but per-module import results are only stored as summary metadata
 - Redis is config-visible only; actual sync/invalidation transport is not implemented
 - Test environment currently uses a PlaceholderAPI build that throws `Bukkit.getAsyncScheduler()` on shutdown under Paper 1.12.2; this is external to MatrixShop
+- Non-interactive stdin replay can still report `Unknown command` for the first queued console line during early startup; use a fully interactive terminal when validating admin commands
 
 ## Next Tasks
 
@@ -78,6 +82,7 @@ This file is the handoff note for each development round.
 - Add more focused admin diagnostics for data-layer health and migration state
 - Consider whether legacy import summaries should also expose per-module timestamps and source-file counts
 - Start validating player-side command paths and one complete business flow on live Paper
+- Re-run interactive admin command validation in a persistent server terminal
 
 ### Medium Priority
 
