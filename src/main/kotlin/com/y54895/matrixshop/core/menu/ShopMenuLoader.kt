@@ -28,7 +28,7 @@ object ShopMenuLoader {
             ?.sortedBy { it.nameWithoutExtension }
             ?.forEach { file ->
                 val yaml = YamlConfiguration.loadConfiguration(file)
-                val id = yaml.getString("id", file.nameWithoutExtension).orEmpty().ifBlank { file.nameWithoutExtension }.lowercase()
+                val id = file.nameWithoutExtension.trim().ifBlank { "default" }
                 result[id] = ConfiguredShopMenu(
                     id = id,
                     definition = MenuLoader.load(file),
@@ -46,18 +46,20 @@ object ShopMenuLoader {
     }
 
     fun resolve(menus: Map<String, ConfiguredShopMenu>, requestedId: String?): ShopMenuSelection {
-        val normalized = requestedId?.trim()?.takeIf(String::isNotBlank)?.lowercase()
+        val normalized = normalizeShopId(requestedId)
         if (normalized != null) {
-            menus[normalized]?.let { return ShopMenuSelection(normalized, it.definition, it.bindings) }
+            menus.entries.firstOrNull { normalizeShopId(it.key) == normalized }?.value
+                ?.let { return ShopMenuSelection(it.id, it.definition, it.bindings) }
         }
-        menus["default"]?.let { return ShopMenuSelection("default", it.definition, it.bindings) }
+        menus.entries.firstOrNull { normalizeShopId(it.key) == "default" }?.value
+            ?.let { return ShopMenuSelection(it.id, it.definition, it.bindings) }
         val first = menus.entries.first()
-        return ShopMenuSelection(first.key, first.value.definition, first.value.bindings)
+        return ShopMenuSelection(first.value.id, first.value.definition, first.value.bindings)
     }
 
     fun contains(menus: Map<String, ConfiguredShopMenu>, shopId: String?): Boolean {
-        val normalized = shopId?.trim()?.takeIf(String::isNotBlank)?.lowercase() ?: return false
-        return menus.containsKey(normalized)
+        val normalized = normalizeShopId(shopId) ?: return false
+        return menus.keys.any { normalizeShopId(it) == normalized }
     }
 
     fun resolveByBinding(menus: Map<String, ConfiguredShopMenu>, token: String?): ShopMenuSelection? {
@@ -93,5 +95,9 @@ object ShopMenuLoader {
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", false),
             priority = yaml.getInt("Bindings.Commands.Priority", 0)
         )
+    }
+
+    private fun normalizeShopId(value: String?): String? {
+        return value?.trim()?.takeIf(String::isNotBlank)?.lowercase()
     }
 }

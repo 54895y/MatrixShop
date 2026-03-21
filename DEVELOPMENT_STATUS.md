@@ -31,6 +31,10 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Removed `id` from default `shops/*.yml` packs and switched shop identity to the file name itself
+- Updated `ShopMenuLoader` to ignore `id` keys and preserve the raw file name as `shopId`, which keeps Chinese file names intact
+- Changed `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction` open flows so opening now only happens through the `open` subcommand
+- Updated `/ms help` examples to show `open`-scoped entry usage for the four multi-shop modules
 - Added true shop-scoped bindings for `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction`
 - Switched `/ms` routing to resolve shop bindings from `shops/*.yml` before module-level bindings
 - Added shop-bound standalone command registration with duplicate-name protection
@@ -79,6 +83,7 @@ This file is the handoff note for each development round.
 ## Validation
 
 - Local build passed with `./gradlew.bat build`
+- Filename-based shop id + open-only command refactor passed with `./gradlew.bat build`
 - Multi-shop bindings + shop-scoped data-layer refactor passed with `./gradlew.bat build`
 - Config-driven bindings and multi-shop refactor compiled successfully with `./gradlew.bat build`
 - Live startup test passed on local `1.12.2paper`
@@ -87,6 +92,7 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- Shop ids now come only from `shops/<file-name>.yml`; renaming a shop file changes the runtime `shopId` and therefore the storage key used by shop-scoped modules
 - `Auction`, `GlobalMarket`, and `PlayerShop` are now shop-scoped in storage and commands, but `ChestShop` still only uses `shops/*.yml` as alternate views, not separate shop pools
 - `Transaction` now has shop entry configs and binding-based routing, but request/trade/confirm UIs are still shared module-level templates rather than per-shop UI packs
 - `SystemShop` is still config-driven and does not use JDBC runtime storage
