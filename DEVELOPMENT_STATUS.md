@@ -31,6 +31,8 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added typed `/ms open <type:id>` resolution so duplicate short shop ids can be disambiguated without removing short ids
+- Added explicit typed open support for `systemshop:<category>` plus typed route suggestions in ambiguity messages
 - Added a new `Menu` module as a bindings-driven hub that opens other modules through configurable button actions
 - Added `MenuModule` and connected it to module reload, module toggles, help output, bound-shop routing, standalone shop command registration, and `/ms open <shop-id>`
 - Added `Menu/settings.yml`, `Menu/shops/main.yml`, and `Menu/ui/default.yml`
@@ -111,6 +113,7 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- Typed open-id routing compiled successfully with `./gradlew.bat build`
 - Menu module integration compiled successfully with `./gradlew.bat build`
 - Plan-aligned cart checkout/conflict + record filter/view-config refactor compiled successfully with `./gradlew.bat build`
 - Local build passed with `./gradlew.bat build`
@@ -125,6 +128,7 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- Short `/ms open <id>` still works as before; typed `/ms open <type:id>` is only the explicit disambiguation path when ids collide
 - The default `Menu` hub opens other modules by executing their current command bindings, so if you rename those bindings later you should also update `Menu/shops/*.yml`
 - `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, `Transaction`, `Cart`, `Record`, and `ChestShop`; duplicate ids now return an ambiguity message instead of guessing
 - Shop ids now come only from `shops/<file-name>.yml`; renaming a shop file changes the runtime `shopId` and therefore the storage key used by shop-scoped modules

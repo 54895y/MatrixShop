@@ -108,11 +108,38 @@ object MatrixShopCommands {
             }
             return
         }
+        when (val explicit = resolveExplicitOpenTarget(args[0])) {
+            is ExplicitOpenResolution.ShopFound -> {
+                handleBoundShop(player, explicit.route, listOf("open") + args.drop(1))
+                return
+            }
+            is ExplicitOpenResolution.ShopAmbiguous -> {
+                val modules = explicit.routes.joinToString(", ") { typedRouteToken(it) }
+                Texts.send(player, "&cShop id &f${args[0]} &cexists in multiple routes: &f$modules")
+                return
+            }
+            is ExplicitOpenResolution.SystemCategory -> {
+                if (!Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
+                    return
+                }
+                ModuleRegistry.systemShop.openCategory(player, explicit.categoryId)
+                return
+            }
+            is ExplicitOpenResolution.InvalidPrefix -> {
+                Texts.send(player, "&cUnknown shop type prefix: &f${explicit.prefix}")
+                return
+            }
+            is ExplicitOpenResolution.NotFound -> {
+                Texts.send(player, "&cNo shop or category found for &f${typedTargetToken(explicit.moduleId, explicit.targetId)}")
+                return
+            }
+            null -> Unit
+        }
         when (val resolution = resolveShopIdRoute(args[0])) {
             is ShopIdResolution.Found -> handleBoundShop(player, resolution.route, listOf("open") + args.drop(1))
             is ShopIdResolution.Ambiguous -> {
-                val modules = resolution.routes.joinToString(", ") { "${it.moduleId}:${it.shopId}" }
-                Texts.send(player, "&cShop id &f${args[0]} &cexists in multiple modules: &f$modules")
+                val modules = resolution.routes.joinToString(", ") { typedRouteToken(it) }
+                Texts.send(player, "&cShop id &f${args[0]} &cexists in multiple modules. Use one of: &f$modules")
             }
             ShopIdResolution.NotFound -> {
                 if (!Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
@@ -999,6 +1026,48 @@ object MatrixShopCommands {
         }
     }
 
+    private fun resolveExplicitOpenTarget(token: String): ExplicitOpenResolution? {
+        val separator = token.indexOfAny(charArrayOf(':', '：'))
+        if (separator <= 0 || separator >= token.length - 1) {
+            return null
+        }
+        val prefix = token.substring(0, separator).trim()
+        val targetId = token.substring(separator + 1).trim()
+        if (prefix.isBlank() || targetId.isBlank()) {
+            return null
+        }
+        val moduleId = ModuleBindings.resolveModule(prefix) ?: resolveModuleId(prefix)
+            ?: return ExplicitOpenResolution.InvalidPrefix(prefix)
+        if (moduleId == "system-shop") {
+            return ExplicitOpenResolution.SystemCategory(targetId)
+        }
+        val matches = boundShopEntries(moduleId)
+            .map { it.route }
+            .filter { it.shopId.equals(targetId, true) }
+        return when {
+            matches.isEmpty() -> ExplicitOpenResolution.NotFound(moduleId, targetId)
+            matches.size == 1 -> ExplicitOpenResolution.ShopFound(matches.first())
+            else -> ExplicitOpenResolution.ShopAmbiguous(matches)
+        }
+    }
+
+    private fun typedRouteToken(route: ShopBindingRoute): String {
+        return typedTargetToken(route.moduleId, route.shopId)
+    }
+
+    private fun typedTargetToken(moduleId: String, targetId: String): String {
+        return "${typedPrefix(moduleId)}:$targetId"
+    }
+
+    private fun typedPrefix(moduleId: String): String {
+        return when (moduleId) {
+            "system-shop" -> "systemshop"
+            "player-shop" -> "playershop"
+            "global-market" -> "globalmarket"
+            else -> moduleId.replace("-", "")
+        }
+    }
+
     private fun standaloneBoundShopEntries(moduleId: String): List<BoundShopEntry> {
         val entries = mutableListOf<BoundShopEntry>()
         when (moduleId) {
@@ -1038,4 +1107,12 @@ private sealed class ShopIdResolution {
     data class Found(val route: ShopBindingRoute) : ShopIdResolution()
     data class Ambiguous(val routes: List<ShopBindingRoute>) : ShopIdResolution()
     data object NotFound : ShopIdResolution()
+}
+
+private sealed class ExplicitOpenResolution {
+    data class ShopFound(val route: ShopBindingRoute) : ExplicitOpenResolution()
+    data class ShopAmbiguous(val routes: List<ShopBindingRoute>) : ExplicitOpenResolution()
+    data class SystemCategory(val categoryId: String) : ExplicitOpenResolution()
+    data class InvalidPrefix(val prefix: String) : ExplicitOpenResolution()
+    data class NotFound(val moduleId: String, val targetId: String) : ExplicitOpenResolution()
 }
