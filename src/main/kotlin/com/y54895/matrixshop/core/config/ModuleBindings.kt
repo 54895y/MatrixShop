@@ -13,6 +13,7 @@ data class ModuleCommandBinding(
 object ModuleBindings {
 
     private val settingsPaths = mapOf(
+        "menu" to "Menu/settings.yml",
         "system-shop" to "SystemShop/settings.yml",
         "player-shop" to "PlayerShop/settings.yml",
         "global-market" to "GlobalMarket/settings.yml",
@@ -24,6 +25,7 @@ object ModuleBindings {
     )
 
     private val defaults = linkedMapOf(
+        "menu" to ModuleCommandBinding(listOf("menu", "menus"), registerStandalone = false, showInHelp = true, priority = 110),
         "system-shop" to ModuleCommandBinding(listOf("system", "systemshop"), registerStandalone = false, showInHelp = true, priority = 100),
         "player-shop" to ModuleCommandBinding(listOf("player_shop", "playershop", "pshop"), registerStandalone = false, showInHelp = true, priority = 90),
         "global-market" to ModuleCommandBinding(listOf("global_market", "globalmarket", "market", "gm"), registerStandalone = false, showInHelp = true, priority = 80),

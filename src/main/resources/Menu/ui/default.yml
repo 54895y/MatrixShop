@@ -1,0 +1,76 @@
+Title:
+  - '&8MatrixShop Menu &7{shop-id}'
+
+layout:
+  - '#########'
+  - '#S#P#G#A#'
+  - '#########'
+  - '#T#C#R#X#'
+  - '#########'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'S':
+    material: 'DIAMOND'
+    name: '&bSystem Shop'
+    lore:
+      - '&7Open the default system shop'
+    actions:
+      left:
+        - 'matrixshop'
+  'P':
+    material: 'CHEST'
+    name: '&aPlayer Shop'
+    lore:
+      - '&7Open your player shop'
+    actions:
+      left:
+        - 'playershop open'
+  'G':
+    material: 'ENDER_CHEST'
+    name: '&6Global Market'
+    lore:
+      - '&7Open the global market'
+    actions:
+      left:
+        - 'market open'
+  'A':
+    material: 'GOLD_INGOT'
+    name: '&eAuction'
+    lore:
+      - '&7Open the auction hall'
+    actions:
+      left:
+        - 'auction open'
+  'T':
+    material: 'NAME_TAG'
+    name: '&dTrade'
+    lore:
+      - '&7Open the trade hub'
+    actions:
+      left:
+        - 'trade open'
+  'C':
+    material: 'MINECART'
+    name: '&fCart'
+    lore:
+      - '&7Open your shopping cart'
+    actions:
+      left:
+        - 'cart open'
+  'R':
+    material: 'BOOK'
+    name: '&fRecord'
+    lore:
+      - '&7Open your ledger'
+    actions:
+      left:
+        - 'record open'
+  'X':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'

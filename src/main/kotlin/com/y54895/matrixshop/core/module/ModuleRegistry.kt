@@ -5,6 +5,7 @@ import com.y54895.matrixshop.module.auction.AuctionModule
 import com.y54895.matrixshop.module.cart.CartModule
 import com.y54895.matrixshop.module.chestshop.ChestShopModule
 import com.y54895.matrixshop.module.globalmarket.GlobalMarketModule
+import com.y54895.matrixshop.module.menu.MenuModule
 import com.y54895.matrixshop.module.playershop.PlayerShopModule
 import com.y54895.matrixshop.module.record.RecordModule
 import com.y54895.matrixshop.module.systemshop.SystemShopModule
@@ -21,6 +22,7 @@ object ModuleRegistry {
 
     val auction = AuctionModule
     val chestShop = ChestShopModule
+    val menu = MenuModule
     val systemShop = SystemShopModule
     val playerShop = PlayerShopModule
     val cart = CartModule
@@ -31,6 +33,7 @@ object ModuleRegistry {
     private val modules = listOf<MatrixModule>(
         auction,
         chestShop,
+        menu,
         systemShop,
         playerShop,
         cart,

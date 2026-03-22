@@ -1,0 +1,11 @@
+Enabled: true
+
+Bindings:
+  Commands:
+    Bindings:
+      - 'menu'
+      - 'menus'
+    Register: false
+    Show-In-Help: true
+    Priority: 110
+    Condition: 'perm matrixshop.menu.use'

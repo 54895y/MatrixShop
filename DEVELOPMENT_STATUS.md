@@ -31,6 +31,11 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added a new `Menu` module as a bindings-driven hub that opens other modules through configurable button actions
+- Added `MenuModule` and connected it to module reload, module toggles, help output, bound-shop routing, standalone shop command registration, and `/ms open <shop-id>`
+- Added `Menu/settings.yml`, `Menu/shops/main.yml`, and `Menu/ui/default.yml`
+- Added `matrixshop.menu.use` permission and `menu` module binding defaults
+- Added default menu hub buttons for `SystemShop`, `PlayerShop`, `GlobalMarket`, `Auction`, `Transaction`, `Cart`, and `Record`
 - Added plan-aligned `Cart/ui/checkout.yml` and `Cart/ui/conflict.yml` flows and wired `/cart checkout`, `/cart checkout confirm`, and `/cart conflict`
 - Changed `Cart` command handling so bound cart views now scope `clear`, `remove`, `remove_invalid`, `amount`, and checkout actions to the selected `shop-id`
 - Added cart shop-view filtering through `Cart/shops/*.yml -> Options.Source-Modules`, so different cart bindings can expose different source-module subsets
@@ -106,6 +111,7 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- Menu module integration compiled successfully with `./gradlew.bat build`
 - Plan-aligned cart checkout/conflict + record filter/view-config refactor compiled successfully with `./gradlew.bat build`
 - Local build passed with `./gradlew.bat build`
 - `Cart / Record / ChestShop` shop-binding refactor compiled successfully with `./gradlew.bat build`
@@ -119,6 +125,7 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- The default `Menu` hub opens other modules by executing their current command bindings, so if you rename those bindings later you should also update `Menu/shops/*.yml`
 - `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, `Transaction`, `Cart`, `Record`, and `ChestShop`; duplicate ids now return an ambiguity message instead of guessing
 - Shop ids now come only from `shops/<file-name>.yml`; renaming a shop file changes the runtime `shopId` and therefore the storage key used by shop-scoped modules
 - `Auction`, `GlobalMarket`, and `PlayerShop` are now shop-scoped in storage and commands, but `ChestShop` still only uses `shops/*.yml` as alternate views, not separate shop pools
@@ -137,6 +144,7 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Run live Paper validation for the new `Menu` hub buttons and at least one custom `Menu/shops/*.yml` pack
 - Run live Paper validation for cart checkout/conflict and record filter on at least two custom shop packs per module
 - Decide whether `Cart` should gain per-shop persistence pools or remain a global player cart with filtered shop views
 - Decide whether `Record` should add a true filter menu UI instead of the current command/cycle-based filter interaction

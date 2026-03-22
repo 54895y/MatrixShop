@@ -16,6 +16,8 @@ object PermissionNodes {
     const val ADMIN_AUCTION_MANAGE_OTHERS = "matrixshop.admin.auction.manage.others"
     const val ADMIN_CHESTSHOP_MANAGE_OTHERS = "matrixshop.admin.chestshop.manage.others"
 
+    const val MENU_USE = "matrixshop.menu.use"
+
     const val SYSTEMSHOP_USE = "matrixshop.systemshop.use"
 
     const val PLAYERSHOP_USE = "matrixshop.playershop.use"

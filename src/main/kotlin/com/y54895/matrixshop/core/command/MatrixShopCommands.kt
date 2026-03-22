@@ -44,11 +44,13 @@ object MatrixShopCommands {
         ) { sender, args ->
             handleAdmin(sender, args)
         }
+        registerStandaloneCommand("menu", "menu", "MatrixShop menu command", "/menu", "matrixshop.menu.use", ::handleMenuAlias, reserved)
         registerStandaloneCommand("cart", "cart", "MatrixShop cart command", "/cart", "matrixshop.cart.use", ::handleCartAlias, reserved)
         registerStandaloneCommand("record", "record", "MatrixShop record command", "/record", "matrixshop.record.use", ::handleRecordAlias, reserved)
         registerStandaloneCommand("transaction", "trade", "MatrixShop trade command", "/trade", "matrixshop.transaction.use", ::handleTradeAlias, reserved)
         registerStandaloneCommand("auction", "auction", "MatrixShop auction command", "/auction", "matrixshop.auction.use", ::handleAuctionAlias, reserved)
         registerStandaloneCommand("chestshop", "chestshop", "MatrixShop chest shop command", "/chestshop", "matrixshop.chestshop.use", ::handleChestShopAlias, reserved)
+        registerStandaloneShopCommands("menu", "MatrixShop menu command", "/menu", "matrixshop.menu.use", reserved)
         registerStandaloneShopCommands("cart", "MatrixShop cart command", "/cart", "matrixshop.cart.use", reserved)
         registerStandaloneShopCommands("record", "MatrixShop record command", "/record", "matrixshop.record.use", reserved)
         registerStandaloneShopCommands("chestshop", "MatrixShop chest shop command", "/chestshop", "matrixshop.chestshop.use", reserved)
@@ -72,6 +74,7 @@ object MatrixShopCommands {
             args[0].equals("help", true) -> sendPlayerHelp(player)
             args[0].equals("open", true) -> handleMainOpen(player, args.drop(1))
             shopRoute != null -> handleBoundShop(player, shopRoute, args.drop(1))
+            moduleRoute == "menu" -> handleMenu(player, args.drop(1))
             moduleRoute == "auction" -> handleAuction(player, args.drop(1))
             moduleRoute == "system-shop" -> handleSystem(player, args.drop(1))
             moduleRoute == "player-shop" -> handlePlayerShop(player, args.drop(1))
@@ -81,6 +84,20 @@ object MatrixShopCommands {
             moduleRoute == "transaction" -> handleTransaction(player, args.drop(1))
             moduleRoute == "chestshop" -> handleChestShop(player, args.drop(1))
             else -> sendPlayerHelp(player)
+        }
+    }
+
+    private fun handleMenu(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!Permissions.require(player, PermissionNodes.MENU_USE)) {
+            return
+        }
+        if (args.isEmpty()) {
+            ModuleRegistry.menu.open(player, defaultShopId)
+            return
+        }
+        when (args[0].lowercase()) {
+            "open" -> ModuleRegistry.menu.open(player, args.getOrNull(1) ?: defaultShopId)
+            else -> Texts.send(player, "&cUsage: ${boundUsage("menu", defaultShopId, "open")}")
         }
     }
 
@@ -573,6 +590,11 @@ object MatrixShopCommands {
         handleCart(player, args.toList())
     }
 
+    private fun handleMenuAlias(sender: ProxyCommandSender, args: Array<String>) {
+        val player = requirePlayer(sender) ?: return
+        handleMenu(player, args.toList())
+    }
+
     private fun handleRecordAlias(sender: ProxyCommandSender, args: Array<String>) {
         val player = requirePlayer(sender) ?: return
         handleRecord(player, args.toList())
@@ -686,6 +708,7 @@ object MatrixShopCommands {
         addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/matrixshop &8- &fOpen SystemShop")
         addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7${msUsage("system-shop", "open [category]")} &8- &fOpen a SystemShop category")
         addHelp(lines, Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/ms open <shop-id|category> &8- &fOpen a configured shop by file name, or a SystemShop category")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("menu") && Permissions.has(player, PermissionNodes.MENU_USE), shopHelpEntries("menu"), "open", "Open menu hub")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), shopHelpEntries("auction"), "open", "Open auction shop")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), shopHelpEntries("auction"), "upload <english|dutch> <start> [buyout|end] [duration]", "List the main-hand item")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), shopHelpEntries("auction"), "bid <id> [price]", "Place an auction bid")
@@ -761,6 +784,7 @@ object MatrixShopCommands {
 
     private fun resolveModuleId(raw: String?): String? {
         return when (raw?.lowercase()) {
+            "menu", "menus" -> "menu"
             "system", "systemshop", "system-shop" -> "system-shop"
             "playershop", "player_shop", "player-shop" -> "player-shop"
             "globalmarket", "global_market", "global-market", "market" -> "global-market"
@@ -800,6 +824,7 @@ object MatrixShopCommands {
             return emptyList()
         }
         return when (moduleId) {
+            "menu" -> ModuleRegistry.menu.helpEntries()
             "auction" -> ModuleRegistry.auction.helpEntries()
             "player-shop" -> ModuleRegistry.playerShop.helpEntries()
             "global-market" -> ModuleRegistry.globalMarket.helpEntries()
@@ -914,6 +939,7 @@ object MatrixShopCommands {
 
     private fun handleBoundShop(player: Player, route: ShopBindingRoute, args: List<String>) {
         when (route.moduleId) {
+            "menu" -> handleMenu(player, args, route.shopId)
             "auction" -> handleAuction(player, args, route.shopId)
             "global-market" -> handleGlobalMarket(player, args, route.shopId)
             "player-shop" -> handlePlayerShop(player, args, route.shopId)
@@ -936,6 +962,9 @@ object MatrixShopCommands {
         val routes = mutableListOf<BoundShopEntry>()
         if ((moduleId == null || moduleId == "global-market") && ModuleRegistry.isEnabled("global-market")) {
             ModuleRegistry.globalMarket.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("global-market", it.id), it) }
+        }
+        if ((moduleId == null || moduleId == "menu") && ModuleRegistry.isEnabled("menu")) {
+            ModuleRegistry.menu.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("menu", it.id), it) }
         }
         if ((moduleId == null || moduleId == "cart") && ModuleRegistry.isEnabled("cart")) {
             ModuleRegistry.cart.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("cart", it.id), it) }
@@ -973,6 +1002,7 @@ object MatrixShopCommands {
     private fun standaloneBoundShopEntries(moduleId: String): List<BoundShopEntry> {
         val entries = mutableListOf<BoundShopEntry>()
         when (moduleId) {
+            "menu" -> if (ModuleRegistry.isEnabled("menu")) ModuleRegistry.menu.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("menu", it.id), it) }
             "cart" -> if (ModuleRegistry.isEnabled("cart")) ModuleRegistry.cart.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("cart", it.id), it) }
             "record" -> if (ModuleRegistry.isEnabled("record")) ModuleRegistry.record.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("record", it.id), it) }
             "global-market" -> if (ModuleRegistry.isEnabled("global-market")) ModuleRegistry.globalMarket.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("global-market", it.id), it) }
