@@ -31,6 +31,16 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Extended shop-scoped binding routing to `Cart`, `Record`, and `ChestShop`
+- Added `Cart/shops/cart.yml` and `Record/shops/record.yml` as real bindings-driven entry menus instead of UI-only defaults
+- Added `Bindings` support to `ChestShop/shops/default.yml` and removed the stale `id` field from that entry pack
+- Changed `/ms open <shop-id>` to also resolve `Cart`, `Record`, and `ChestShop` shop ids
+- Added standalone shop-bound command registration for `Cart`, `Record`, and custom `ChestShop` shop packs
+- Changed `Cart`, `Record`, and `ChestShop` command handlers to follow the same explicit `open` flow as the other shop-bound modules
+- Updated player help output so `ChestShop`, `Cart`, and `Record` now render from shop-bound bindings instead of only module settings
+- Changed `CartModule` to load `shops/*.yml` entry menus with legacy `ui/cart.yml` fallback
+- Changed `RecordModule` to load `shops/*.yml` entry menus with legacy `ui/record.yml` fallback
+- Propagated selected `shop-id` through `Record` list/detail/stats navigation and `Cart` pagination/reopen flows
 - Changed the main player command so `/ms open <shop-id>` now resolves shop ids across `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction`
 - Added duplicate shop-id detection for `/ms open <shop-id>` and fallback to `SystemShop` category open when no shop id matches
 - Switched bound shop help examples from `/ms <binding> ...` to direct standalone `/<binding> ...` usage
@@ -86,6 +96,7 @@ This file is the handoff note for each development round.
 ## Validation
 
 - Local build passed with `./gradlew.bat build`
+- `Cart / Record / ChestShop` shop-binding refactor compiled successfully with `./gradlew.bat build`
 - `/ms open <shop-id>` command-routing refactor passed with `./gradlew.bat build`
 - Filename-based shop id + open-only command refactor passed with `./gradlew.bat build`
 - Multi-shop bindings + shop-scoped data-layer refactor passed with `./gradlew.bat build`
@@ -96,9 +107,10 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
-- `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction`; duplicate ids now return an ambiguity message instead of guessing
+- `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, `Transaction`, `Cart`, `Record`, and `ChestShop`; duplicate ids now return an ambiguity message instead of guessing
 - Shop ids now come only from `shops/<file-name>.yml`; renaming a shop file changes the runtime `shopId` and therefore the storage key used by shop-scoped modules
 - `Auction`, `GlobalMarket`, and `PlayerShop` are now shop-scoped in storage and commands, but `ChestShop` still only uses `shops/*.yml` as alternate views, not separate shop pools
+- `Cart` and `Record` now support shop-bound entry menus and bindings, but their runtime data is still global per player rather than partitioned by shop id
 - `Transaction` now has shop entry configs and binding-based routing, but request/trade/confirm UIs are still shared module-level templates rather than per-shop UI packs
 - `SystemShop` is still config-driven and does not use JDBC runtime storage
 - Database access still uses direct JDBC helpers; there is no shared transaction helper yet

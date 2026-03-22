@@ -1,10 +1,12 @@
 package com.y54895.matrixshop.module.cart
 
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
-import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
+import com.y54895.matrixshop.core.menu.ShopMenuLoader
+import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
@@ -14,8 +16,6 @@ import com.y54895.matrixshop.module.systemshop.ModuleOperationResult
 import com.y54895.matrixshop.module.systemshop.SystemShopModule
 import org.bukkit.Material
 import org.bukkit.entity.Player
-import org.bukkit.inventory.ItemStack
-import java.io.File
 import java.util.UUID
 
 object CartModule : MatrixModule {
@@ -23,7 +23,7 @@ object CartModule : MatrixModule {
     override val id: String = "cart"
     override val displayName: String = "Cart"
 
-    private lateinit var menu: MenuDefinition
+    private lateinit var menus: LinkedHashMap<String, ConfiguredShopMenu>
 
     override fun isEnabled(): Boolean {
         return ConfigFiles.isModuleEnabled(id, true)
@@ -34,19 +34,38 @@ object CartModule : MatrixModule {
             return
         }
         CartRepository.initialize()
-        menu = MenuLoader.load(File(ConfigFiles.dataFolder(), "Cart/ui/cart.yml"))
+        menus = ShopMenuLoader.load("Cart", "cart.yml")
     }
 
-    fun open(player: Player, page: Int = 1) {
+    fun hasShopView(shopId: String?): Boolean {
+        return ShopMenuLoader.contains(menus, shopId)
+    }
+
+    fun helpEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.helpEntries(menus)
+    }
+
+    fun allShopEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.allEntries(menus)
+    }
+
+    fun standaloneEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.standaloneEntries(menus)
+    }
+
+    fun open(player: Player, page: Int = 1, shopId: String? = null) {
         val store = CartRepository.load(player.uniqueId)
-        val goodsSlots = goodsSlots(menu)
+        val selectedMenu = ShopMenuLoader.resolve(menus, shopId)
+        val definition = selectedMenu.definition
+        val goodsSlots = goodsSlots(definition)
         val maxPage = ((store.entries.size + goodsSlots.size - 1) / goodsSlots.size).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val entries = orderedEntries(store).drop((currentPage - 1) * goodsSlots.size).take(goodsSlots.size)
         MenuRenderer.open(
             player = player,
-            definition = menu,
+            definition = definition,
             placeholders = mapOf(
+                "shop-id" to selectedMenu.id,
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
                 "size" to store.entries.size.toString(),
@@ -54,8 +73,8 @@ object CartModule : MatrixModule {
                 "auction-watch-size" to store.entries.count { it.watchOnly }.toString()
             ),
             goodsRenderer = { holder, slots ->
-                renderEntries(player, holder, entries, slots)
-                wireControls(player, holder, currentPage, maxPage)
+                renderEntries(player, holder, entries, slots, selectedMenu.id)
+                wireControls(player, holder, definition, currentPage, maxPage, selectedMenu.id)
             }
         )
     }
@@ -283,7 +302,7 @@ object CartModule : MatrixModule {
         }
     }
 
-    private fun renderEntries(player: Player, holder: MatrixMenuHolder, entries: List<CartEntry>, slots: List<Int>) {
+    private fun renderEntries(player: Player, holder: MatrixMenuHolder, entries: List<CartEntry>, slots: List<Int>, shopId: String) {
         val ordered = orderedEntries(CartRepository.load(player.uniqueId))
         entries.forEachIndexed { index, entry ->
             val validation = validate(entry)
@@ -304,7 +323,7 @@ object CartModule : MatrixModule {
             holder.handlers[slot] = { event ->
                 if (event.click.isRightClick) {
                     remove(player, slotNumber)
-                    open(player)
+                    open(player, shopId = shopId)
                 } else {
                     Texts.send(player, "&7Use /matrixshop cart amount $slotNumber <number> to change the amount.")
                 }
@@ -312,13 +331,13 @@ object CartModule : MatrixModule {
         }
     }
 
-    private fun wireControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int) {
-        buttonSlot(menu, 'P')?.let { holder.handlers[it] = { open(player, (currentPage - 1).coerceAtLeast(1)) } }
-        buttonSlot(menu, 'N')?.let { holder.handlers[it] = { open(player, (currentPage + 1).coerceAtMost(maxPage)) } }
-        buttonSlot(menu, 'C')?.let { holder.handlers[it] = { checkout(player, false) } }
-        buttonSlot(menu, 'X')?.let { holder.handlers[it] = { clear(player); open(player, currentPage) } }
-        buttonSlot(menu, 'V')?.let { holder.handlers[it] = { removeInvalid(player); open(player, currentPage) } }
-        buttonSlot(menu, 'A')?.let { holder.handlers[it] = { Texts.send(player, "&7Use /matrixshop cart amount <slot> <number> to change the amount.") } }
+    private fun wireControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, currentPage: Int, maxPage: Int, shopId: String) {
+        buttonSlot(definition, 'P')?.let { holder.handlers[it] = { open(player, (currentPage - 1).coerceAtLeast(1), shopId) } }
+        buttonSlot(definition, 'N')?.let { holder.handlers[it] = { open(player, (currentPage + 1).coerceAtMost(maxPage), shopId) } }
+        buttonSlot(definition, 'C')?.let { holder.handlers[it] = { checkout(player, false) } }
+        buttonSlot(definition, 'X')?.let { holder.handlers[it] = { clear(player); open(player, currentPage, shopId) } }
+        buttonSlot(definition, 'V')?.let { holder.handlers[it] = { removeInvalid(player); open(player, currentPage, shopId) } }
+        buttonSlot(definition, 'A')?.let { holder.handlers[it] = { Texts.send(player, "&7Use /matrixshop cart amount <slot> <number> to change the amount.") } }
     }
 
     private fun goodsSlots(definition: MenuDefinition): List<Int> {

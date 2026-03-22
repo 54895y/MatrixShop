@@ -7,6 +7,7 @@ import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.ShopMenuLoader
+import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
@@ -87,6 +88,22 @@ object ChestShopModule : MatrixModule {
         return ShopMenuLoader.contains(menus.shopViews, shopId)
     }
 
+    fun resolveBoundShop(token: String?): String? {
+        return ShopMenuLoader.resolveByBinding(menus.shopViews, token)?.id
+    }
+
+    fun helpEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.helpEntries(menus.shopViews)
+    }
+
+    fun allShopEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.allEntries(menus.shopViews)
+    }
+
+    fun standaloneEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.standaloneEntries(menus.shopViews)
+    }
+
     fun openCreate(player: Player) {
         if (!ensureReady(player)) {
             return
@@ -110,7 +127,7 @@ object ChestShopModule : MatrixModule {
         )
     }
 
-    fun openEdit(player: Player) {
+    fun openEdit(player: Player, shopViewId: String? = null) {
         if (!ensureReady(player)) {
             return
         }
@@ -125,10 +142,10 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&cOnly the shop owner can edit this chest shop.")
             return
         }
-        openEditMenu(player, shop)
+        openEditMenu(player, shop, shopViewId)
     }
 
-    fun openStock(player: Player, page: Int = 1) {
+    fun openStock(player: Player, page: Int = 1, shopViewId: String? = null) {
         if (!ensureReady(player)) {
             return
         }
@@ -139,10 +156,10 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
         }
-        openStockMenu(player, shop, page)
+        openStockMenu(player, shop, page, shopViewId)
     }
 
-    fun openHistory(player: Player, page: Int = 1) {
+    fun openHistory(player: Player, page: Int = 1, shopViewId: String? = null) {
         if (!ensureReady(player)) {
             return
         }
@@ -153,7 +170,7 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
         }
-        openHistoryMenu(player, shop, page)
+        openHistoryMenu(player, shop, page, shopViewId)
     }
 
     fun create(player: Player, modeRaw: String?, firstPrice: Double?, secondPrice: Double?, amountRaw: Int?) {

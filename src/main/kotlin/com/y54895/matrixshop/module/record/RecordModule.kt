@@ -1,10 +1,13 @@
 package com.y54895.matrixshop.module.record
 
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
+import com.y54895.matrixshop.core.menu.ShopMenuLoader
+import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordAggregate
 import com.y54895.matrixshop.core.record.RecordEntry
@@ -40,27 +43,45 @@ object RecordModule : MatrixModule {
         val dataFolder = ConfigFiles.dataFolder()
         settings = loadSettings()
         menus = RecordMenus(
-            record = MenuLoader.load(File(dataFolder, "Record/ui/record.yml")),
+            recordViews = ShopMenuLoader.load("Record", "record.yml"),
             detail = MenuLoader.load(File(dataFolder, "Record/ui/detail.yml")),
             income = MenuLoader.load(File(dataFolder, "Record/ui/income.yml")),
             expense = MenuLoader.load(File(dataFolder, "Record/ui/expense.yml"))
         )
     }
 
-    fun open(player: Player, keyword: String? = null, page: Int = 1) {
+    fun hasShopView(shopId: String?): Boolean {
+        return ShopMenuLoader.contains(menus.recordViews, shopId)
+    }
+
+    fun helpEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.helpEntries(menus.recordViews)
+    }
+
+    fun allShopEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.allEntries(menus.recordViews)
+    }
+
+    fun standaloneEntries(): List<ShopMenuSelection> {
+        return ShopMenuLoader.standaloneEntries(menus.recordViews)
+    }
+
+    fun open(player: Player, keyword: String? = null, page: Int = 1, shopId: String? = null) {
         if (!ensureReady(player)) {
             return
         }
+        val selectedShop = ShopMenuLoader.resolve(menus.recordViews, shopId)
         val allEntries = visibleEntries(player, keyword)
-        val goodsSlots = goodsSlots(menus.record)
+        val goodsSlots = goodsSlots(selectedShop.definition)
         val maxPage = ((allEntries.size + goodsSlots.size - 1) / goodsSlots.size).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val pageEntries = allEntries.drop((currentPage - 1) * goodsSlots.size).take(goodsSlots.size)
         val actorEntries = actorEntries(player)
         MenuRenderer.open(
             player = player,
-            definition = menus.record,
+            definition = selectedShop.definition,
             placeholders = mapOf(
+                "shop-id" to selectedShop.id,
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
                 "size" to allEntries.size.toString(),
@@ -69,13 +90,13 @@ object RecordModule : MatrixModule {
                 "expense-total" to trimDouble(actorEntries.filter { it.moneyChange < 0 }.sumOf { -it.moneyChange })
             ),
             goodsRenderer = { holder, slots ->
-                renderEntries(player, holder, pageEntries, slots, currentPage, keyword)
-                wireRecordControls(player, holder, currentPage, maxPage, keyword)
+                renderEntries(player, holder, pageEntries, slots, currentPage, keyword, selectedShop.id)
+                wireRecordControls(player, holder, selectedShop.definition, currentPage, maxPage, keyword, selectedShop.id)
             }
         )
     }
 
-    fun openDetail(player: Player, recordId: String, keyword: String? = null, page: Int = 1) {
+    fun openDetail(player: Player, recordId: String, keyword: String? = null, page: Int = 1, shopId: String? = null) {
         if (!ensureReady(player)) {
             return
         }
@@ -93,23 +114,23 @@ object RecordModule : MatrixModule {
                 "type" to entry.type,
                 "time" to timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))
             ),
-            backAction = { open(player, keyword, page) },
+            backAction = { open(player, keyword, page, shopId) },
             goodsRenderer = { holder, _ ->
                 renderDetail(holder, entry)
-                wireDetailControls(player, holder, keyword, page)
+                wireDetailControls(player, holder, keyword, page, shopId)
             }
         )
     }
 
-    fun openIncome(player: Player, page: Int = 1) {
-        openStats(player, page, positive = true)
+    fun openIncome(player: Player, page: Int = 1, shopId: String? = null) {
+        openStats(player, page, positive = true, shopId = shopId)
     }
 
-    fun openExpense(player: Player, page: Int = 1) {
-        openStats(player, page, positive = false)
+    fun openExpense(player: Player, page: Int = 1, shopId: String? = null) {
+        openStats(player, page, positive = false, shopId = shopId)
     }
 
-    private fun openStats(player: Player, page: Int, positive: Boolean) {
+    private fun openStats(player: Player, page: Int, positive: Boolean, shopId: String?) {
         if (!ensureReady(player)) {
             return
         }
@@ -129,10 +150,10 @@ object RecordModule : MatrixModule {
                 "total" to trimDouble(total),
                 "count" to allStats.sumOf { it.count }.toString()
             ),
-            backAction = { open(player) },
+            backAction = { open(player, shopId = shopId) },
             goodsRenderer = { holder, slots ->
                 renderStats(holder, slots, pageEntries, positive)
-                wireStatsControls(player, holder, definition, currentPage, maxPage, positive)
+                wireStatsControls(player, holder, definition, currentPage, maxPage, positive, shopId)
             }
         )
     }
@@ -143,7 +164,8 @@ object RecordModule : MatrixModule {
         entries: List<RecordEntry>,
         slots: List<Int>,
         currentPage: Int,
-        keyword: String?
+        keyword: String?,
+        shopId: String
     ) {
         entries.forEachIndexed { index, entry ->
             val slot = slots[index]
@@ -158,7 +180,7 @@ object RecordModule : MatrixModule {
             }
             holder.backingInventory.setItem(slot, item)
             holder.handlers[slot] = {
-                openDetail(player, entry.id, keyword, currentPage)
+                openDetail(player, entry.id, keyword, currentPage, shopId)
             }
         }
     }
@@ -196,33 +218,33 @@ object RecordModule : MatrixModule {
         }
     }
 
-    private fun wireRecordControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int, keyword: String?) {
-        buttonSlot(menus.record, 'P')?.let { slot ->
-            holder.handlers[slot] = { open(player, keyword, (currentPage - 1).coerceAtLeast(1)) }
+    private fun wireRecordControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, currentPage: Int, maxPage: Int, keyword: String?, shopId: String) {
+        buttonSlot(definition, 'P')?.let { slot ->
+            holder.handlers[slot] = { open(player, keyword, (currentPage - 1).coerceAtLeast(1), shopId) }
         }
-        buttonSlot(menus.record, 'N')?.let { slot ->
-            holder.handlers[slot] = { open(player, keyword, (currentPage + 1).coerceAtMost(maxPage)) }
+        buttonSlot(definition, 'N')?.let { slot ->
+            holder.handlers[slot] = { open(player, keyword, (currentPage + 1).coerceAtMost(maxPage), shopId) }
         }
-        buttonSlot(menus.record, 'I')?.let { slot ->
-            holder.handlers[slot] = { openIncome(player) }
+        buttonSlot(definition, 'I')?.let { slot ->
+            holder.handlers[slot] = { openIncome(player, shopId = shopId) }
         }
-        buttonSlot(menus.record, 'E')?.let { slot ->
-            holder.handlers[slot] = { openExpense(player) }
+        buttonSlot(definition, 'E')?.let { slot ->
+            holder.handlers[slot] = { openExpense(player, shopId = shopId) }
         }
     }
 
-    private fun wireDetailControls(player: Player, holder: MatrixMenuHolder, keyword: String?, page: Int) {
+    private fun wireDetailControls(player: Player, holder: MatrixMenuHolder, keyword: String?, page: Int, shopId: String?) {
         buttonSlot(menus.detail, 'L')?.let { slot ->
-            holder.handlers[slot] = { open(player, keyword, page) }
+            holder.handlers[slot] = { open(player, keyword, page, shopId) }
         }
         buttonSlot(menus.detail, 'I')?.let { slot ->
             holder.handlers.remove(slot)
         }
         buttonSlot(menus.detail, 'S')?.let { slot ->
-            holder.handlers[slot] = { openIncome(player) }
+            holder.handlers[slot] = { openIncome(player, shopId = shopId) }
         }
         buttonSlot(menus.detail, 'E')?.let { slot ->
-            holder.handlers[slot] = { openExpense(player) }
+            holder.handlers[slot] = { openExpense(player, shopId = shopId) }
         }
     }
 
@@ -232,19 +254,20 @@ object RecordModule : MatrixModule {
         definition: MenuDefinition,
         currentPage: Int,
         maxPage: Int,
-        positive: Boolean
+        positive: Boolean,
+        shopId: String?
     ) {
         buttonSlot(definition, 'P')?.let { slot ->
-            holder.handlers[slot] = { openStats(player, (currentPage - 1).coerceAtLeast(1), positive) }
+            holder.handlers[slot] = { openStats(player, (currentPage - 1).coerceAtLeast(1), positive, shopId) }
         }
         buttonSlot(definition, 'N')?.let { slot ->
-            holder.handlers[slot] = { openStats(player, (currentPage + 1).coerceAtMost(maxPage), positive) }
+            holder.handlers[slot] = { openStats(player, (currentPage + 1).coerceAtMost(maxPage), positive, shopId) }
         }
         buttonSlot(definition, 'L')?.let { slot ->
-            holder.handlers[slot] = { open(player) }
+            holder.handlers[slot] = { open(player, shopId = shopId) }
         }
         buttonSlot(definition, 'X')?.let { slot ->
-            holder.handlers[slot] = { openStats(player, 1, !positive) }
+            holder.handlers[slot] = { openStats(player, 1, !positive, shopId) }
         }
     }
 
@@ -404,7 +427,7 @@ private data class RecordSettings(
 )
 
 private data class RecordMenus(
-    val record: MenuDefinition,
+    val recordViews: LinkedHashMap<String, ConfiguredShopMenu>,
     val detail: MenuDefinition,
     val income: MenuDefinition,
     val expense: MenuDefinition

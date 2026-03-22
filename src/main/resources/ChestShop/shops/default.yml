@@ -1,4 +1,11 @@
-id: default
+Bindings:
+  Commands:
+    Bindings:
+      - 'chestshop'
+      - 'cshop'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
 
 Title:
   - '&8ChestShop &7{shop-id}'

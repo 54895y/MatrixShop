@@ -1,0 +1,60 @@
+Bindings:
+  Commands:
+    Bindings:
+      - 'cart'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
+
+Title:
+  - '&8Cart &7{shop-id} &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##K#V#X##'
+  - 'P#A#C#R#N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'K':
+    material: 'BOOK'
+    name: '&fCart Info'
+    lore:
+      - '&7Entries: &f{size}'
+      - '&7Estimated total: &e{estimate-total}'
+      - '&7Auction watch only: &f{auction-watch-size}'
+  'V':
+    material: 'HOPPER'
+    name: '&eRemove Invalid'
+  'X':
+    material: 'LAVA_BUCKET'
+    name: '&cClear Cart'
+  'A':
+    material: 'PAPER'
+    name: '&bChange Amount'
+    lore:
+      - '&7Use command:'
+      - '&f/matrixshop cart amount <slot> <number>'
+  'C':
+    material: 'LIME_WOOL'
+    name: '&aCheckout Cart'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'
