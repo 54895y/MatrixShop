@@ -28,7 +28,7 @@ icons:
       - '&7Open the default system shop'
     actions:
       left:
-        - 'matrixshop'
+        - 'matrixshop open systemshop:weapon'
   'P':
     material: 'CHEST'
     name: '&aPlayer Shop'
@@ -36,7 +36,7 @@ icons:
       - '&7Open your player shop'
     actions:
       left:
-        - 'playershop open'
+        - 'matrixshop open playershop:default'
   'G':
     material: 'ENDER_CHEST'
     name: '&6Global Market'
@@ -44,7 +44,7 @@ icons:
       - '&7Open the global market'
     actions:
       left:
-        - 'market open'
+        - 'matrixshop open globalmarket:default'
   'A':
     material: 'GOLD_INGOT'
     name: '&eAuction'
@@ -52,7 +52,7 @@ icons:
       - '&7Open the auction hall'
     actions:
       left:
-        - 'auction open'
+        - 'matrixshop open auction:default'
   'T':
     material: 'NAME_TAG'
     name: '&dTrade'
@@ -60,7 +60,7 @@ icons:
       - '&7Open the trade hub'
     actions:
       left:
-        - 'trade open'
+        - 'matrixshop open transaction:default'
   'C':
     material: 'MINECART'
     name: '&fCart'
@@ -68,7 +68,7 @@ icons:
       - '&7Open your shopping cart'
     actions:
       left:
-        - 'cart open'
+        - 'matrixshop open cart:cart'
   'R':
     material: 'BOOK'
     name: '&fRecord'
@@ -76,7 +76,7 @@ icons:
       - '&7Open your ledger'
     actions:
       left:
-        - 'record open'
+        - 'matrixshop open record:record'
   'X':
     material: 'BARRIER'
     name: '&cClose'
