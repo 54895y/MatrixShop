@@ -1,0 +1,46 @@
+Title:
+  - '&8Cart Conflict &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##R#V#D##'
+  - 'P###C###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'conflict'
+  'R':
+    material: 'CLOCK'
+    name: '&eRecheck'
+  'V':
+    material: 'LIME_WOOL'
+    name: '&aCheckout Valid Only'
+  'D':
+    material: 'REDSTONE'
+    name: '&cRemove Invalid'
+  'C':
+    material: 'BARRIER'
+    name: '&fBack to Checkout'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'
+
+template:
+  name: '&c{name}'
+  lore:
+    - '&7Source: &f{source-module}'
+    - '&7Conflict: &c{conflict-type}'
+    - '&7Reason: &f{reason}'
+    - '&7Snapshot price: &e{snapshot-price} {currency}'
+    - '&7Current price: &6{current-price} {currency}'
+    - '&7Amount: &f{amount}'

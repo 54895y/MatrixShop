@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.cart
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
+import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.menu.ShopMenuLoader
@@ -14,8 +15,13 @@ import com.y54895.matrixshop.module.globalmarket.GlobalMarketModule
 import com.y54895.matrixshop.module.playershop.PlayerShopModule
 import com.y54895.matrixshop.module.systemshop.ModuleOperationResult
 import com.y54895.matrixshop.module.systemshop.SystemShopModule
-import org.bukkit.Material
+import org.bukkit.ChatColor
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
+import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 object CartModule : MatrixModule {
@@ -24,6 +30,11 @@ object CartModule : MatrixModule {
     override val displayName: String = "Cart"
 
     private lateinit var menus: LinkedHashMap<String, ConfiguredShopMenu>
+    private lateinit var checkoutMenu: MenuDefinition
+    private lateinit var conflictMenu: MenuDefinition
+    private var viewConfigs: Map<String, CartViewConfig> = emptyMap()
+    private val timeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        .withZone(ZoneId.systemDefault())
 
     override fun isEnabled(): Boolean {
         return ConfigFiles.isModuleEnabled(id, true)
@@ -33,8 +44,12 @@ object CartModule : MatrixModule {
         if (!isEnabled()) {
             return
         }
+        val dataFolder = ConfigFiles.dataFolder()
         CartRepository.initialize()
         menus = ShopMenuLoader.load("Cart", "cart.yml")
+        checkoutMenu = MenuLoader.load(File(dataFolder, "Cart/ui/checkout.yml"))
+        conflictMenu = MenuLoader.load(File(dataFolder, "Cart/ui/conflict.yml"))
+        viewConfigs = loadViewConfigs()
     }
 
     fun hasShopView(shopId: String?): Boolean {
@@ -57,10 +72,12 @@ object CartModule : MatrixModule {
         val store = CartRepository.load(player.uniqueId)
         val selectedMenu = ShopMenuLoader.resolve(menus, shopId)
         val definition = selectedMenu.definition
+        val visibleEntries = visibleEntries(store, selectedMenu.id)
         val goodsSlots = goodsSlots(definition)
-        val maxPage = ((store.entries.size + goodsSlots.size - 1) / goodsSlots.size).coerceAtLeast(1)
+        val maxPage = ((visibleEntries.size + goodsSlots.size - 1) / goodsSlots.size).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
-        val entries = orderedEntries(store).drop((currentPage - 1) * goodsSlots.size).take(goodsSlots.size)
+        val entries = visibleEntries.drop((currentPage - 1) * goodsSlots.size).take(goodsSlots.size)
+        val summary = summarize(store, selectedMenu.id)
         MenuRenderer.open(
             player = player,
             definition = definition,
@@ -68,13 +85,71 @@ object CartModule : MatrixModule {
                 "shop-id" to selectedMenu.id,
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
-                "size" to store.entries.size.toString(),
-                "estimate-total" to trimDouble(store.entries.filter { !it.watchOnly }.sumOf { it.snapshotPrice * it.amount }),
-                "auction-watch-size" to store.entries.count { it.watchOnly }.toString()
+                "size" to visibleEntries.size.toString(),
+                "estimate-total" to trimDouble(summary.finalTotal),
+                "auction-watch-size" to summary.watchOnly.size.toString(),
+                "source-filter" to sourceFilterLabel(selectedMenu.id)
             ),
             goodsRenderer = { holder, slots ->
-                renderEntries(player, holder, entries, slots, selectedMenu.id)
+                renderEntries(player, holder, definition, entries, slots, selectedMenu.id)
                 wireControls(player, holder, definition, currentPage, maxPage, selectedMenu.id)
+            }
+        )
+    }
+
+    fun openCheckout(player: Player, validOnly: Boolean = false, page: Int = 1, shopId: String? = null) {
+        val store = CartRepository.load(player.uniqueId)
+        val selectedShop = ShopMenuLoader.resolve(menus, shopId)
+        val summary = summarize(store, selectedShop.id)
+        val entries = if (validOnly) summary.valid else summary.checkoutEntries
+        val slots = goodsSlots(checkoutMenu)
+        val maxPage = ((entries.size + slots.size - 1) / slots.size).coerceAtLeast(1)
+        val currentPage = page.coerceIn(1, maxPage)
+        val pageEntries = entries.drop((currentPage - 1) * slots.size).take(slots.size)
+        MenuRenderer.open(
+            player = player,
+            definition = checkoutMenu,
+            placeholders = mapOf(
+                "shop-id" to selectedShop.id,
+                "page" to currentPage.toString(),
+                "max-page" to maxPage.toString(),
+                "valid-size" to summary.valid.size.toString(),
+                "invalid-size" to summary.invalid.size.toString(),
+                "auction-watch-size" to summary.watchOnly.size.toString(),
+                "final-total" to trimDouble(summary.finalTotal),
+                "source-filter" to sourceFilterLabel(selectedShop.id),
+                "checkout-mode" to if (validOnly) "valid_only" else "all"
+            ),
+            backAction = { open(player, shopId = selectedShop.id) },
+            goodsRenderer = { holder, renderSlots ->
+                renderCheckoutEntries(player, holder, pageEntries, renderSlots, selectedShop.id)
+                wireCheckoutControls(player, holder, currentPage, maxPage, validOnly, selectedShop.id)
+            }
+        )
+    }
+
+    fun openConflict(player: Player, page: Int = 1, shopId: String? = null) {
+        val store = CartRepository.load(player.uniqueId)
+        val selectedShop = ShopMenuLoader.resolve(menus, shopId)
+        val conflicts = summarize(store, selectedShop.id).invalid
+        val slots = goodsSlots(conflictMenu)
+        val maxPage = ((conflicts.size + slots.size - 1) / slots.size).coerceAtLeast(1)
+        val currentPage = page.coerceIn(1, maxPage)
+        val pageEntries = conflicts.drop((currentPage - 1) * slots.size).take(slots.size)
+        MenuRenderer.open(
+            player = player,
+            definition = conflictMenu,
+            placeholders = mapOf(
+                "shop-id" to selectedShop.id,
+                "page" to currentPage.toString(),
+                "max-page" to maxPage.toString(),
+                "size" to conflicts.size.toString(),
+                "source-filter" to sourceFilterLabel(selectedShop.id)
+            ),
+            backAction = { openCheckout(player, false, shopId = selectedShop.id) },
+            goodsRenderer = { holder, renderSlots ->
+                renderConflictEntries(holder, pageEntries, renderSlots)
+                wireConflictControls(player, holder, currentPage, maxPage, selectedShop.id)
             }
         )
     }
@@ -171,9 +246,10 @@ object CartModule : MatrixModule {
         Texts.send(player, "&aAdded to cart: &f${listing.item.itemMeta?.displayName ?: listing.item.type.name}")
     }
 
-    fun remove(player: Player, index: Int) {
+    fun remove(player: Player, index: Int, shopId: String? = null) {
         val store = CartRepository.load(player.uniqueId)
-        val entry = orderedEntries(store).getOrNull(index - 1)
+        val resolvedShopId = resolvedViewId(shopId)
+        val entry = visibleEntries(store, resolvedShopId).getOrNull(index - 1)
         if (entry == null) {
             Texts.send(player, "&cCart entry not found.")
             return
@@ -183,25 +259,36 @@ object CartModule : MatrixModule {
         Texts.send(player, "&aRemoved cart entry: &f${entry.name}")
     }
 
-    fun clear(player: Player) {
+    fun clear(player: Player, shopId: String? = null) {
         val store = CartRepository.load(player.uniqueId)
+        val resolvedShopId = resolvedViewId(shopId)
+        val removableIds = visibleEntries(store, resolvedShopId)
+            .filter { !it.protectedOnClear }
+            .map { it.id }
+            .toSet()
         val before = store.entries.size
-        store.entries.removeIf { !it.protectedOnClear }
+        store.entries.removeIf { it.id in removableIds }
         CartRepository.save(store)
         Texts.send(player, "&aCleared cart entries: &f${before - store.entries.size}")
     }
 
-    fun removeInvalid(player: Player) {
+    fun removeInvalid(player: Player, shopId: String? = null) {
         val store = CartRepository.load(player.uniqueId)
+        val resolvedShopId = resolvedViewId(shopId)
+        val removableIds = visibleEntries(store, resolvedShopId)
+            .filter { !validate(it).valid }
+            .map { it.id }
+            .toSet()
         val before = store.entries.size
-        store.entries.removeIf { !validate(it).valid }
+        store.entries.removeIf { it.id in removableIds }
         CartRepository.save(store)
         Texts.send(player, "&aRemoved invalid cart entries: &f${before - store.entries.size}")
     }
 
-    fun changeAmount(player: Player, index: Int, amount: Int) {
+    fun changeAmount(player: Player, index: Int, amount: Int, shopId: String? = null) {
         val store = CartRepository.load(player.uniqueId)
-        val entry = orderedEntries(store).getOrNull(index - 1)
+        val resolvedShopId = resolvedViewId(shopId)
+        val entry = visibleEntries(store, resolvedShopId).getOrNull(index - 1)
         if (entry == null) {
             Texts.send(player, "&cCart entry not found.")
             return
@@ -224,17 +311,19 @@ object CartModule : MatrixModule {
         Texts.send(player, "&aUpdated cart amount: &f${entry.name} &7x&f$amount")
     }
 
-    fun checkout(player: Player, validOnly: Boolean) {
+    fun checkout(player: Player, validOnly: Boolean, shopId: String? = null) {
         val store = CartRepository.load(player.uniqueId)
+        val resolvedShopId = resolvedViewId(shopId)
+        val summary = summarize(store, resolvedShopId)
         var success = 0
         var invalid = 0
-        orderedEntries(store).forEach { entry ->
+        summary.checkoutEntries.forEach { entry ->
             val validation = validate(entry)
             if (!validation.valid) {
                 invalid++
                 return@forEach
             }
-            val result = when (entry.sourceModule) {
+            val result = when (entry.sourceModule.lowercase()) {
                 "system_shop" -> SystemShopModule.purchaseDirect(
                     player,
                     entry.metadata["category-id"].orEmpty(),
@@ -271,73 +360,301 @@ object CartModule : MatrixModule {
             module = "cart",
             type = "checkout",
             actor = player.name,
-            detail = "success=$success;invalid=$invalid;remaining=${store.entries.size}"
+            detail = "shop=$resolvedShopId;success=$success;invalid=$invalid;remaining=${store.entries.size}"
         )
     }
 
     fun validate(entry: CartEntry): CartValidation {
-        return when (entry.sourceModule) {
+        return when (entry.sourceModule.lowercase()) {
             "system_shop" -> {
                 val result = SystemShopModule.validateProduct(
                     entry.metadata["category-id"].orEmpty(),
                     entry.metadata["product-id"].orEmpty(),
                     entry.amount
                 )
-                if (result.success) CartValidation(true, "valid", "") else CartValidation(false, "invalid", Texts.color(result.message))
+                val currentPrice = SystemShopModule.currentPrice(
+                    entry.metadata["category-id"].orEmpty(),
+                    entry.metadata["product-id"].orEmpty()
+                )
+                if (result.success) {
+                    CartValidation(true, "valid", "", "", currentPrice)
+                } else {
+                    CartValidation(false, "invalid", Texts.color(result.message), "product", currentPrice)
+                }
             }
             "player_shop" -> {
-                val result = PlayerShopModule.validateListing(
-                    UUID.fromString(entry.metadata["owner-id"].orEmpty()),
+                val ownerId = UUID.fromString(entry.metadata["owner-id"].orEmpty())
+                val currentPrice = PlayerShopModule.currentListingPrice(
+                    ownerId,
                     entry.metadata["owner-name"].orEmpty(),
                     entry.metadata["shop-id"],
                     entry.metadata["listing-id"].orEmpty()
                 )
-                if (result.success) CartValidation(true, "valid", "") else CartValidation(false, "invalid", Texts.color(result.message))
+                val result = PlayerShopModule.validateListing(
+                    ownerId,
+                    entry.metadata["owner-name"].orEmpty(),
+                    entry.metadata["shop-id"],
+                    entry.metadata["listing-id"].orEmpty()
+                )
+                if (result.success) {
+                    CartValidation(true, "valid", "", "", currentPrice)
+                } else {
+                    CartValidation(false, "invalid", Texts.color(result.message), "listing", currentPrice)
+                }
             }
             "global_market" -> {
-                val result = GlobalMarketModule.validateListing(entry.metadata["shop-id"], entry.metadata["listing-id"].orEmpty())
-                if (result.success) CartValidation(true, "valid", "") else CartValidation(false, "invalid", Texts.color(result.message))
+                val currentPrice = GlobalMarketModule.currentListingPrice(
+                    entry.metadata["shop-id"],
+                    entry.metadata["listing-id"].orEmpty()
+                )
+                val result = GlobalMarketModule.validateListing(
+                    entry.metadata["shop-id"],
+                    entry.metadata["listing-id"].orEmpty()
+                )
+                if (result.success) {
+                    CartValidation(true, "valid", "", "", currentPrice)
+                } else {
+                    CartValidation(false, "invalid", Texts.color(result.message), "listing", currentPrice)
+                }
             }
-            else -> CartValidation(false, "invalid", Texts.color("&cUnknown cart source."))
+            else -> CartValidation(false, "invalid", Texts.color("&cUnknown cart source."), "source")
         }
     }
 
-    private fun renderEntries(player: Player, holder: MatrixMenuHolder, entries: List<CartEntry>, slots: List<Int>, shopId: String) {
-        val ordered = orderedEntries(CartRepository.load(player.uniqueId))
+    private fun renderEntries(
+        player: Player,
+        holder: MatrixMenuHolder,
+        definition: MenuDefinition,
+        entries: List<CartEntry>,
+        slots: List<Int>,
+        shopId: String
+    ) {
+        val ordered = visibleEntries(CartRepository.load(player.uniqueId), shopId)
         entries.forEachIndexed { index, entry ->
             val validation = validate(entry)
             val slotNumber = (ordered.indexOfFirst { it.id == entry.id } + 1).coerceAtLeast(1)
-            val item = entry.item.clone()
-            item.itemMeta = item.itemMeta?.apply {
-                lore = (lore ?: emptyList()) + listOf(
-                    Texts.color("&7Source: &f${entry.sourceModule}"),
-                    Texts.color("&7Amount: &f${entry.amount}"),
-                    Texts.color("&7Unit Price: &e${trimDouble(entry.snapshotPrice)} ${entry.currency}"),
-                    Texts.color("&7State: &f${validation.state}"),
-                    Texts.color("&7Slot: &f$slotNumber"),
-                    Texts.color(if (entry.editableAmount) "&eRight click to remove. Use command to change amount." else "&eRight click to remove.")
-                ) + if (validation.reason.isNotBlank()) listOf(validation.reason) else emptyList()
-            }
             val slot = slots[index]
-            holder.backingInventory.setItem(slot, item)
+            holder.backingInventory.setItem(slot, buildEntryItem(entry, definition.template, validation, slotNumber, shopId))
             holder.handlers[slot] = { event ->
                 if (event.click.isRightClick) {
-                    remove(player, slotNumber)
+                    remove(player, slotNumber, shopId)
                     open(player, shopId = shopId)
                 } else {
-                    Texts.send(player, "&7Use /matrixshop cart amount $slotNumber <number> to change the amount.")
+                    Texts.send(player, "&7Use /cart amount $slotNumber <number> to change the amount.")
                 }
             }
+        }
+    }
+
+    private fun renderCheckoutEntries(
+        player: Player,
+        holder: MatrixMenuHolder,
+        entries: List<CartEntry>,
+        slots: List<Int>,
+        shopId: String
+    ) {
+        entries.forEachIndexed { index, entry ->
+            val validation = validate(entry)
+            val slot = slots[index]
+            holder.backingInventory.setItem(slot, buildEntryItem(entry, checkoutMenu.template, validation, index + 1, shopId))
+            holder.handlers[slot] = { openConflict(player, shopId = shopId) }
+        }
+    }
+
+    private fun renderConflictEntries(holder: MatrixMenuHolder, entries: List<CartConflictEntry>, slots: List<Int>) {
+        entries.forEachIndexed { index, conflict ->
+            val slot = slots[index]
+            holder.backingInventory.setItem(slot, buildConflictItem(conflict))
         }
     }
 
     private fun wireControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, currentPage: Int, maxPage: Int, shopId: String) {
         buttonSlot(definition, 'P')?.let { holder.handlers[it] = { open(player, (currentPage - 1).coerceAtLeast(1), shopId) } }
         buttonSlot(definition, 'N')?.let { holder.handlers[it] = { open(player, (currentPage + 1).coerceAtMost(maxPage), shopId) } }
-        buttonSlot(definition, 'C')?.let { holder.handlers[it] = { checkout(player, false) } }
-        buttonSlot(definition, 'X')?.let { holder.handlers[it] = { clear(player); open(player, currentPage, shopId) } }
-        buttonSlot(definition, 'V')?.let { holder.handlers[it] = { removeInvalid(player); open(player, currentPage, shopId) } }
-        buttonSlot(definition, 'A')?.let { holder.handlers[it] = { Texts.send(player, "&7Use /matrixshop cart amount <slot> <number> to change the amount.") } }
+        buttonSlot(definition, 'C')?.let { holder.handlers[it] = { openCheckout(player, shopId = shopId) } }
+        buttonSlot(definition, 'X')?.let { holder.handlers[it] = { clear(player, shopId); open(player, currentPage, shopId) } }
+        buttonSlot(definition, 'V')?.let { holder.handlers[it] = { removeInvalid(player, shopId); open(player, currentPage, shopId) } }
+        buttonSlot(definition, 'A')?.let { holder.handlers[it] = { Texts.send(player, "&7Use /cart amount <slot> <number> to change the amount.") } }
+        buttonSlot(definition, 'R')?.let { holder.handlers[it] = { player.closeInventory() } }
+    }
+
+    private fun wireCheckoutControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int, validOnly: Boolean, shopId: String) {
+        buttonSlot(checkoutMenu, 'P')?.let { holder.handlers[it] = { openCheckout(player, validOnly, (currentPage - 1).coerceAtLeast(1), shopId) } }
+        buttonSlot(checkoutMenu, 'N')?.let { holder.handlers[it] = { openCheckout(player, validOnly, (currentPage + 1).coerceAtMost(maxPage), shopId) } }
+        buttonSlot(checkoutMenu, 'C')?.let { holder.handlers[it] = { checkout(player, validOnly, shopId); open(player, shopId = shopId) } }
+        buttonSlot(checkoutMenu, 'F')?.let { holder.handlers[it] = { openConflict(player, shopId = shopId) } }
+        buttonSlot(checkoutMenu, 'R')?.let { holder.handlers[it] = { open(player, shopId = shopId) } }
+    }
+
+    private fun wireConflictControls(player: Player, holder: MatrixMenuHolder, currentPage: Int, maxPage: Int, shopId: String) {
+        buttonSlot(conflictMenu, 'P')?.let { holder.handlers[it] = { openConflict(player, (currentPage - 1).coerceAtLeast(1), shopId) } }
+        buttonSlot(conflictMenu, 'N')?.let { holder.handlers[it] = { openConflict(player, (currentPage + 1).coerceAtMost(maxPage), shopId) } }
+        buttonSlot(conflictMenu, 'R')?.let { holder.handlers[it] = { openConflict(player, currentPage, shopId) } }
+        buttonSlot(conflictMenu, 'V')?.let { holder.handlers[it] = { openCheckout(player, true, shopId = shopId) } }
+        buttonSlot(conflictMenu, 'D')?.let { holder.handlers[it] = { removeInvalid(player, shopId); openConflict(player, 1, shopId) } }
+        buttonSlot(conflictMenu, 'C')?.let { holder.handlers[it] = { openCheckout(player, shopId = shopId) } }
+    }
+
+    private fun buildEntryItem(
+        entry: CartEntry,
+        template: com.y54895.matrixshop.core.menu.MenuTemplate,
+        validation: CartValidation,
+        slotNumber: Int,
+        shopId: String
+    ): org.bukkit.inventory.ItemStack {
+        val currentPrice = validation.currentPrice ?: entry.snapshotPrice
+        val placeholders = mapOf(
+            "name" to currentEntryName(entry),
+            "source-module" to entry.sourceModule,
+            "source-id" to entry.sourceId,
+            "snapshot-price" to trimDouble(entry.snapshotPrice),
+            "current-price" to trimDouble(currentPrice),
+            "currency" to entry.currency,
+            "amount" to entry.amount.toString(),
+            "state" to entryStateLabel(entry, validation),
+            "limitation" to entryLimitation(entry),
+            "created-at" to timeFormatter.format(Instant.ofEpochMilli(entry.createdAt)),
+            "shop-id" to shopId,
+            "slot" to slotNumber.toString(),
+            "reason" to ChatColor.stripColor(validation.reason).orEmpty(),
+            "conflict-type" to validation.conflictType.ifBlank { validation.state }
+        )
+        val item = entry.item.clone()
+        val meta = item.itemMeta ?: return item
+        val name = if (template.name.isNotBlank()) {
+            Texts.apply(template.name, placeholders)
+        } else {
+            Texts.color("&f${currentEntryName(entry)}")
+        }
+        val lore = if (template.lore.isNotEmpty()) {
+            Texts.apply(template.lore, placeholders)
+        } else {
+            defaultEntryLore(entry, validation, slotNumber, currentPrice)
+        }
+        MenuRenderer.decorate(meta, name, lore)
+        item.itemMeta = meta
+        return item
+    }
+
+    private fun buildConflictItem(conflict: CartConflictEntry): org.bukkit.inventory.ItemStack {
+        val entry = conflict.entry
+        val validation = conflict.validation
+        val item = entry.item.clone()
+        val meta = item.itemMeta ?: return item
+        val placeholders = mapOf(
+            "name" to currentEntryName(entry),
+            "source-module" to entry.sourceModule,
+            "source-id" to entry.sourceId,
+            "snapshot-price" to trimDouble(entry.snapshotPrice),
+            "current-price" to trimDouble(validation.currentPrice ?: entry.snapshotPrice),
+            "currency" to entry.currency,
+            "amount" to entry.amount.toString(),
+            "state" to validation.state,
+            "limitation" to entryLimitation(entry),
+            "created-at" to timeFormatter.format(Instant.ofEpochMilli(entry.createdAt)),
+            "reason" to ChatColor.stripColor(validation.reason).orEmpty(),
+            "conflict-type" to validation.conflictType.ifBlank { validation.state }
+        )
+        val name = if (conflictMenu.template.name.isNotBlank()) {
+            Texts.apply(conflictMenu.template.name, placeholders)
+        } else {
+            Texts.color("&c${currentEntryName(entry)}")
+        }
+        val lore = if (conflictMenu.template.lore.isNotEmpty()) {
+            Texts.apply(conflictMenu.template.lore, placeholders)
+        } else {
+            listOf(
+                Texts.color("&7Source: &f${entry.sourceModule}"),
+                Texts.color("&7Conflict: &c${validation.conflictType.ifBlank { validation.state }}"),
+                Texts.color("&7Reason: &f${ChatColor.stripColor(validation.reason).orEmpty()}"),
+                Texts.color("&7Snapshot price: &e${trimDouble(entry.snapshotPrice)} ${entry.currency}"),
+                Texts.color("&7Current price: &6${trimDouble(validation.currentPrice ?: entry.snapshotPrice)} ${entry.currency}")
+            )
+        }
+        MenuRenderer.decorate(meta, name, lore)
+        item.itemMeta = meta
+        return item
+    }
+
+    private fun defaultEntryLore(entry: CartEntry, validation: CartValidation, slotNumber: Int, currentPrice: Double): List<String> {
+        val lore = mutableListOf(
+            Texts.color("&7Source: &f${entry.sourceModule}"),
+            Texts.color("&7Amount: &f${entry.amount}"),
+            Texts.color("&7Snapshot price: &e${trimDouble(entry.snapshotPrice)} ${entry.currency}"),
+            Texts.color("&7Current price: &6${trimDouble(currentPrice)} ${entry.currency}"),
+            Texts.color("&7State: &f${entryStateLabel(entry, validation)}"),
+            Texts.color("&7Slot: &f$slotNumber"),
+            Texts.color("&7Created at: &f${timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))}")
+        )
+        if (validation.reason.isNotBlank()) {
+            lore += Texts.color("&7Reason: &f${ChatColor.stripColor(validation.reason).orEmpty()}")
+        }
+        lore += Texts.color(if (entry.editableAmount) "&eRight click to remove. Use command to change amount." else "&eRight click to remove.")
+        return lore
+    }
+
+    private fun summarize(store: CartStore, shopId: String): CartSummary {
+        val visible = visibleEntries(store, shopId)
+        val watchOnly = visible.filter { it.watchOnly }
+        val checkoutEntries = visible.filter { !it.watchOnly }
+        val valid = mutableListOf<CartEntry>()
+        val invalid = mutableListOf<CartConflictEntry>()
+        checkoutEntries.forEach { entry ->
+            val validation = validate(entry)
+            if (validation.valid) {
+                valid += entry
+            } else {
+                invalid += CartConflictEntry(entry, validation)
+            }
+        }
+        val total = valid.sumOf { effectiveCheckoutTotal(it) }
+        return CartSummary(
+            visibleEntries = visible,
+            watchOnly = watchOnly,
+            checkoutEntries = checkoutEntries,
+            valid = valid,
+            invalid = invalid,
+            finalTotal = total
+        )
+    }
+
+    private fun effectiveCheckoutTotal(entry: CartEntry): Double {
+        return when (entry.sourceModule.lowercase()) {
+            "system_shop" -> (SystemShopModule.currentPrice(entry.metadata["category-id"].orEmpty(), entry.metadata["product-id"].orEmpty())
+                ?: entry.snapshotPrice) * entry.amount
+            "player_shop" -> PlayerShopModule.currentListingPrice(
+                UUID.fromString(entry.metadata["owner-id"].orEmpty()),
+                entry.metadata["owner-name"].orEmpty(),
+                entry.metadata["shop-id"],
+                entry.metadata["listing-id"].orEmpty()
+            ) ?: entry.snapshotPrice
+            "global_market" -> GlobalMarketModule.currentListingPrice(entry.metadata["shop-id"], entry.metadata["listing-id"].orEmpty())
+                ?: entry.snapshotPrice
+            else -> entry.snapshotPrice * entry.amount
+        }
+    }
+
+    private fun currentEntryName(entry: CartEntry): String {
+        return entry.item.itemMeta?.displayName ?: entry.name
+    }
+
+    private fun entryStateLabel(entry: CartEntry, validation: CartValidation): String {
+        return when {
+            entry.watchOnly -> "watch_only"
+            validation.valid -> "valid"
+            else -> validation.state.ifBlank { "invalid" }
+        }
+    }
+
+    private fun entryLimitation(entry: CartEntry): String {
+        return if (entry.editableAmount) "editable" else "fixed"
+    }
+
+    private fun visibleEntries(store: CartStore, shopId: String): List<CartEntry> {
+        val config = viewConfigs[normalizeKey(shopId)] ?: CartViewConfig()
+        return orderedEntries(store).filter { entry ->
+            config.allowedSources.isEmpty() || config.allowedSources.contains(entry.sourceModule.lowercase())
+        }
     }
 
     private fun goodsSlots(definition: MenuDefinition): List<Int> {
@@ -345,7 +662,7 @@ object CartModule : MatrixModule {
         definition.layout.forEachIndexed { row, line ->
             line.forEachIndexed { column, char ->
                 val icon = definition.icons[char] ?: return@forEachIndexed
-                if (icon.mode.equals("goods", true)) {
+                if (!icon.mode.isNullOrBlank()) {
                     slots += row * 9 + column
                 }
             }
@@ -368,7 +685,70 @@ object CartModule : MatrixModule {
         return store.entries.sortedBy { it.createdAt }
     }
 
+    private fun loadViewConfigs(): Map<String, CartViewConfig> {
+        val folder = File(ConfigFiles.dataFolder(), "Cart/shops")
+        if (!folder.exists()) {
+            return emptyMap()
+        }
+        return folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
+            .orEmpty()
+            .associate { file ->
+                val yaml = YamlConfiguration.loadConfiguration(file)
+                val shopId = normalizeKey(file.nameWithoutExtension.trim().ifBlank { "default" })
+                val allowedSources = readStringSet(
+                    yaml,
+                    "Options.Source-Modules",
+                    "Options.Sources",
+                    "Options.View.Source-Modules",
+                    "View.Source-Modules"
+                )
+                shopId to CartViewConfig(allowedSources)
+            }
+    }
+
+    private fun readStringSet(yaml: YamlConfiguration, vararg paths: String): Set<String> {
+        paths.forEach { path ->
+            if (yaml.isList(path)) {
+                return yaml.getStringList(path)
+                    .mapNotNull { it?.trim()?.takeIf(String::isNotBlank)?.lowercase() }
+                    .toSet()
+            }
+        }
+        return emptySet()
+    }
+
+    private fun sourceFilterLabel(shopId: String): String {
+        val config = viewConfigs[normalizeKey(shopId)] ?: return "all"
+        return if (config.allowedSources.isEmpty()) "all" else config.allowedSources.joinToString(",")
+    }
+
+    private fun resolvedViewId(shopId: String?): String {
+        return ShopMenuLoader.resolve(menus, shopId).id
+    }
+
+    private fun normalizeKey(value: String?): String {
+        return value?.trim()?.ifBlank { "default" }?.lowercase() ?: "default"
+    }
+
     private fun trimDouble(value: Double): String {
         return if (value % 1.0 == 0.0) value.toInt().toString() else "%.2f".format(value)
     }
 }
+
+private data class CartViewConfig(
+    val allowedSources: Set<String> = emptySet()
+)
+
+private data class CartConflictEntry(
+    val entry: CartEntry,
+    val validation: CartValidation
+)
+
+private data class CartSummary(
+    val visibleEntries: List<CartEntry>,
+    val watchOnly: List<CartEntry>,
+    val checkoutEntries: List<CartEntry>,
+    val valid: List<CartEntry>,
+    val invalid: List<CartConflictEntry>,
+    val finalTotal: Double
+)

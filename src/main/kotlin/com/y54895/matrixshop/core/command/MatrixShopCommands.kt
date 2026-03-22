@@ -170,13 +170,20 @@ object MatrixShopCommands {
                 if (!Permissions.require(player, PermissionNodes.CART_CHECKOUT)) {
                     return
                 }
-                ModuleRegistry.cart.checkout(player, args.getOrNull(1)?.equals("valid_only", true) == true)
+                val tail = args.drop(1)
+                val confirm = tail.any { it.equals("confirm", true) }
+                val validOnly = tail.any { it.equals("valid_only", true) }
+                if (confirm) {
+                    ModuleRegistry.cart.checkout(player, validOnly, defaultShopId)
+                } else {
+                    ModuleRegistry.cart.openCheckout(player, validOnly, shopId = defaultShopId)
+                }
             }
             "clear" -> {
                 if (!Permissions.require(player, PermissionNodes.CART_CLEAR)) {
                     return
                 }
-                ModuleRegistry.cart.clear(player)
+                ModuleRegistry.cart.clear(player, defaultShopId)
             }
             "remove" -> {
                 if (!Permissions.require(player, PermissionNodes.CART_CLEAR)) {
@@ -187,13 +194,23 @@ object MatrixShopCommands {
                     Texts.send(player, "&cUsage: /matrixshop cart remove <slot>")
                     return
                 }
-                ModuleRegistry.cart.remove(player, index)
+                ModuleRegistry.cart.remove(player, index, defaultShopId)
             }
             "remove_invalid" -> {
                 if (!Permissions.require(player, PermissionNodes.CART_CLEAR)) {
                     return
                 }
-                ModuleRegistry.cart.removeInvalid(player)
+                ModuleRegistry.cart.removeInvalid(player, defaultShopId)
+            }
+            "conflict" -> {
+                if (!Permissions.require(player, PermissionNodes.CART_CHECKOUT)) {
+                    return
+                }
+                if (args.getOrNull(1)?.equals("recheck", true) == true) {
+                    ModuleRegistry.cart.openConflict(player, shopId = defaultShopId)
+                } else {
+                    ModuleRegistry.cart.openConflict(player, shopId = defaultShopId)
+                }
             }
             "amount" -> {
                 if (!Permissions.require(player, PermissionNodes.CART_USE)) {
@@ -205,7 +222,7 @@ object MatrixShopCommands {
                     Texts.send(player, "&cUsage: /matrixshop cart amount <slot> <number>")
                     return
                 }
-                ModuleRegistry.cart.changeAmount(player, index, amount)
+                ModuleRegistry.cart.changeAmount(player, index, amount, defaultShopId)
             }
             else -> Texts.send(player, "&cUnknown cart subcommand.")
         }
@@ -295,7 +312,13 @@ object MatrixShopCommands {
         when (args[0].lowercase()) {
             "open" -> {
                 val keyword = args.drop(1).joinToString(" ").ifBlank { null }
-                ModuleRegistry.record.open(player, keyword, 1, defaultShopId)
+                ModuleRegistry.record.open(
+                    player,
+                    keyword,
+                    1,
+                    defaultShopId,
+                    ModuleRegistry.record.currentFilter(player, defaultShopId)
+                )
             }
             "detail" -> {
                 if (!Permissions.require(player, PermissionNodes.RECORD_DETAIL_SELF)) {
@@ -306,29 +329,69 @@ object MatrixShopCommands {
                     Texts.send(player, "&cUsage: /matrixshop record detail <id>")
                     return
                 }
-                ModuleRegistry.record.openDetail(player, recordId, shopId = defaultShopId)
+                ModuleRegistry.record.openDetail(
+                    player,
+                    recordId,
+                    keyword = ModuleRegistry.record.currentKeyword(player, defaultShopId),
+                    shopId = defaultShopId,
+                    moduleFilter = ModuleRegistry.record.currentFilter(player, defaultShopId)
+                )
             }
             "income" -> {
                 if (!Permissions.require(player, PermissionNodes.RECORD_STATS_SELF)) {
                     return
                 }
-                ModuleRegistry.record.openIncome(player, shopId = defaultShopId)
+                ModuleRegistry.record.openIncome(
+                    player,
+                    shopId = defaultShopId,
+                    keyword = ModuleRegistry.record.currentKeyword(player, defaultShopId),
+                    moduleFilter = ModuleRegistry.record.currentFilter(player, defaultShopId)
+                )
             }
             "expense" -> {
                 if (!Permissions.require(player, PermissionNodes.RECORD_STATS_SELF)) {
                     return
                 }
-                ModuleRegistry.record.openExpense(player, shopId = defaultShopId)
+                ModuleRegistry.record.openExpense(
+                    player,
+                    shopId = defaultShopId,
+                    keyword = ModuleRegistry.record.currentKeyword(player, defaultShopId),
+                    moduleFilter = ModuleRegistry.record.currentFilter(player, defaultShopId)
+                )
             }
             "search" -> {
                 val keyword = args.drop(1).joinToString(" ").ifBlank { null }
-                ModuleRegistry.record.open(player, keyword, 1, defaultShopId)
+                ModuleRegistry.record.open(
+                    player,
+                    keyword,
+                    1,
+                    defaultShopId,
+                    ModuleRegistry.record.currentFilter(player, defaultShopId)
+                )
+            }
+            "filter" -> {
+                val moduleFilter = args.getOrNull(1)
+                if (moduleFilter.isNullOrBlank()) {
+                    ModuleRegistry.record.cycleFilter(player, defaultShopId)
+                } else {
+                    ModuleRegistry.record.applyFilter(
+                        player,
+                        moduleFilter,
+                        defaultShopId,
+                        ModuleRegistry.record.currentKeyword(player, defaultShopId)
+                    )
+                }
             }
             "stats" -> {
                 if (!Permissions.require(player, PermissionNodes.RECORD_STATS_SELF)) {
                     return
                 }
-                ModuleRegistry.record.openIncome(player, shopId = defaultShopId)
+                ModuleRegistry.record.openIncome(
+                    player,
+                    shopId = defaultShopId,
+                    keyword = ModuleRegistry.record.currentKeyword(player, defaultShopId),
+                    moduleFilter = ModuleRegistry.record.currentFilter(player, defaultShopId)
+                )
             }
             else -> Texts.send(player, "&cUnknown record subcommand.")
         }
@@ -640,11 +703,13 @@ object MatrixShopCommands {
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "stock | history", "Open stock or history for the target chest shop")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), shopHelpEntries("chestshop"), "edit | remove | price | amount | mode", "Manage your chest shop")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "open", "Open cart")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout [valid_only]", "Checkout the cart")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout [valid_only]", "Open checkout summary")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout confirm [valid_only] | conflict", "Confirm checkout or review conflicts")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CLEAR), shopHelpEntries("cart"), "remove <slot> | remove_invalid | clear", "Manage cart entries")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "amount <slot> <number>", "Change one cart entry amount")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "open [keyword]", "Open ledger records")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), shopHelpEntries("record"), "detail <id>", "Open one record detail")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "filter [module|all]", "Switch record module filters")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), shopHelpEntries("record"), "income | expense | stats", "Open ledger statistics")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "open", "Open trade shop")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "request <player>", "Send a face-to-face trade request")

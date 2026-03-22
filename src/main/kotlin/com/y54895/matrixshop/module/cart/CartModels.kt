@@ -28,5 +28,7 @@ data class CartEntry(
 data class CartValidation(
     val valid: Boolean,
     val state: String,
-    val reason: String
+    val reason: String,
+    val conflictType: String = "",
+    val currentPrice: Double? = null
 )

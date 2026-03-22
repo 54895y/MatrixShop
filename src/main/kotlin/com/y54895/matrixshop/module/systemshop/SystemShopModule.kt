@@ -131,6 +131,10 @@ object SystemShopModule : MatrixModule {
         return ModuleOperationResult(true, "")
     }
 
+    fun currentPrice(categoryId: String, productId: String): Double? {
+        return findProduct(categoryId, productId)?.price
+    }
+
     fun purchaseDirect(
         player: Player,
         categoryId: String,

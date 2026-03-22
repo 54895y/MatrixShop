@@ -204,6 +204,10 @@ object GlobalMarketModule : MatrixModule {
         }
     }
 
+    fun currentListingPrice(shopId: String?, listingId: String): Double? {
+        return selection(shopId, listingId)?.price
+    }
+
     fun purchaseDirect(player: Player, listingId: String, reopenAfterSuccess: Boolean = true): ModuleOperationResult {
         return purchaseDirect(player, null, listingId, reopenAfterSuccess)
     }

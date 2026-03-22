@@ -1,12 +1,23 @@
 Title:
   - '&8Ledger &7{page}/{max-page}'
 
+Options:
+  Modules:
+    - system_shop
+    - player_shop
+    - global_market
+    - auction
+    - chestshop
+    - transaction
+    - cart
+    - mailbox
+
 layout:
   - '#########'
   - '#ggggggg#'
   - '#ggggggg#'
   - '#ggggggg#'
-  - '##I#E#K##'
+  - '#F#I#E#K#'
   - 'P###R###N'
 
 icons:
@@ -15,7 +26,12 @@ icons:
     name: ' '
   'g':
     material: 'AIR'
-    mode: 'goods'
+    mode: 'records'
+  'F':
+    material: 'HOPPER'
+    name: '&eCycle Filter'
+    lore:
+      - '&7Current module filter: &f{module-filter}'
   'I':
     material: 'EMERALD'
     name: '&aIncome'
@@ -34,9 +50,8 @@ icons:
     lore:
       - '&7Visible entries: &f{size}'
       - '&7Keyword: &f{keyword}'
-      - '&7Left click a record for detail'
-      - '&7Command search:'
-      - '&f/matrixshop record search <keyword>'
+      - '&7Module filter: &f{module-filter}'
+      - '&7Use /record filter <module|all>'
   'R':
     material: 'BARRIER'
     name: '&cClose'
@@ -49,3 +64,12 @@ icons:
   'N':
     material: 'ARROW'
     name: '&aNext'
+
+template:
+  name: '&f{module} &7/ &b{type}'
+  lore:
+    - '&7Time: &f{time}'
+    - '&7Money: &f{money}'
+    - '&7Note: &f{note}'
+    - '&7Reason: &f{admin_reason}'
+    - '&7Id: &f{id}'

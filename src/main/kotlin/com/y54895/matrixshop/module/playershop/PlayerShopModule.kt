@@ -193,6 +193,10 @@ object PlayerShopModule : MatrixModule {
         }
     }
 
+    fun currentListingPrice(ownerId: UUID, ownerName: String, shopId: String?, listingId: String): Double? {
+        return selection(ownerId, ownerName, shopId, listingId)?.listing?.price
+    }
+
     fun purchaseDirect(viewer: Player, ownerId: UUID, ownerName: String, listingId: String, reopenAfterSuccess: Boolean = true): ModuleOperationResult {
         return purchaseDirect(viewer, ownerId, ownerName, null, listingId, reopenAfterSuccess)
     }

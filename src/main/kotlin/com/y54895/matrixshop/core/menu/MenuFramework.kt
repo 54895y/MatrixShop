@@ -130,7 +130,7 @@ object MenuRenderer {
             line.toCharArray().forEachIndexed { column, symbol ->
                 val slot = row * 9 + column
                 val icon = definition.icons[symbol] ?: return@forEachIndexed
-                if (icon.mode.equals("goods", true) || icon.mode.equals("preview", true) || icon.mode.equals("info", true)) {
+                if (!icon.mode.isNullOrBlank()) {
                     goodsSlots += slot
                     return@forEachIndexed
                 }

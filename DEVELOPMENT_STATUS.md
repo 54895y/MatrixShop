@@ -31,6 +31,17 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added plan-aligned `Cart/ui/checkout.yml` and `Cart/ui/conflict.yml` flows and wired `/cart checkout`, `/cart checkout confirm`, and `/cart conflict`
+- Changed `Cart` command handling so bound cart views now scope `clear`, `remove`, `remove_invalid`, `amount`, and checkout actions to the selected `shop-id`
+- Added cart shop-view filtering through `Cart/shops/*.yml -> Options.Source-Modules`, so different cart bindings can expose different source-module subsets
+- Added cart entry templating through `template` in both `Cart/shops/*.yml` and fallback `Cart/ui/cart.yml`
+- Added current-price aware cart validation payloads for `system_shop`, `player_shop`, and `global_market`
+- Added `SystemShopModule.currentPrice`, `PlayerShopModule.currentListingPrice`, and `GlobalMarketModule.currentListingPrice` for cart revalidation/summary rendering
+- Added record shop-view filtering through `Record/shops/*.yml -> Options.Modules`, so different record bindings can expose different module subsets
+- Added record filter state and `/record filter [module|all]` with click-to-cycle filter support from the main record view
+- Changed `Record` browse/detail/stats flows to preserve `shop-id`, keyword, and module-filter together
+- Added record list templating through `template` in `Record/shops/*.yml` and fallback `Record/ui/record.yml`
+- Generalized menu slot collection so any non-empty `mode:` can be rendered by module code, which unblocks custom view modes like `checkout`, `conflict`, and `records`
 - Extended shop-scoped binding routing to `Cart`, `Record`, and `ChestShop`
 - Added `Cart/shops/cart.yml` and `Record/shops/record.yml` as real bindings-driven entry menus instead of UI-only defaults
 - Added `Bindings` support to `ChestShop/shops/default.yml` and removed the stale `id` field from that entry pack
@@ -95,6 +106,7 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- Plan-aligned cart checkout/conflict + record filter/view-config refactor compiled successfully with `./gradlew.bat build`
 - Local build passed with `./gradlew.bat build`
 - `Cart / Record / ChestShop` shop-binding refactor compiled successfully with `./gradlew.bat build`
 - `/ms open <shop-id>` command-routing refactor passed with `./gradlew.bat build`
@@ -110,7 +122,7 @@ This file is the handoff note for each development round.
 - `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, `Transaction`, `Cart`, `Record`, and `ChestShop`; duplicate ids now return an ambiguity message instead of guessing
 - Shop ids now come only from `shops/<file-name>.yml`; renaming a shop file changes the runtime `shopId` and therefore the storage key used by shop-scoped modules
 - `Auction`, `GlobalMarket`, and `PlayerShop` are now shop-scoped in storage and commands, but `ChestShop` still only uses `shops/*.yml` as alternate views, not separate shop pools
-- `Cart` and `Record` now support shop-bound entry menus and bindings, but their runtime data is still global per player rather than partitioned by shop id
+- `Cart` and `Record` now support shop-bound entry menus, per-view filters, and config templates, but their runtime data is still global per player rather than partitioned by shop id
 - `Transaction` now has shop entry configs and binding-based routing, but request/trade/confirm UIs are still shared module-level templates rather than per-shop UI packs
 - `SystemShop` is still config-driven and does not use JDBC runtime storage
 - Database access still uses direct JDBC helpers; there is no shared transaction helper yet
@@ -125,6 +137,9 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Run live Paper validation for cart checkout/conflict and record filter on at least two custom shop packs per module
+- Decide whether `Cart` should gain per-shop persistence pools or remain a global player cart with filtered shop views
+- Decide whether `Record` should add a true filter menu UI instead of the current command/cycle-based filter interaction
 - Run live Paper validation for `/ms <shop-binding>` on at least one custom `Auction`, `GlobalMarket`, `PlayerShop`, and `Transaction` shop pack
 - Add a second sample shop config for each of the four shop-scoped modules to verify duplicate binding registration and isolated content behavior
 - Decide whether `Transaction` should also support per-shop `request/trade/confirm` UI overrides instead of only per-shop entry menus

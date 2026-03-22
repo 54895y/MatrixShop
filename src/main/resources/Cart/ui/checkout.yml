@@ -1,0 +1,57 @@
+Title:
+  - '&8Cart Checkout &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##S#I#F##'
+  - 'P###C#R#N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'checkout'
+  'S':
+    material: 'PAPER'
+    name: '&fCheckout Summary'
+    lore:
+      - '&7Valid entries: &f{valid-size}'
+      - '&7Invalid entries: &f{invalid-size}'
+      - '&7Auction watch: &f{auction-watch-size}'
+      - '&7Final total: &e{final-total}'
+  'I':
+    material: 'BOOK'
+    name: '&fCheckout Mode'
+    lore:
+      - '&7Mode: &f{checkout-mode}'
+      - '&7Source filter: &f{source-filter}'
+  'F':
+    material: 'HOPPER'
+    name: '&eReview Conflicts'
+  'C':
+    material: 'LIME_WOOL'
+    name: '&aConfirm Checkout'
+  'R':
+    material: 'BARRIER'
+    name: '&cBack to Cart'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'
+
+template:
+  name: '&f{name}'
+  lore:
+    - '&7Source: &f{source-module}'
+    - '&7Snapshot price: &e{snapshot-price} {currency}'
+    - '&7Current price: &6{current-price} {currency}'
+    - '&7Amount: &f{amount}'
+    - '&7State: &f{state}'
+    - '&7Reason: &f{reason}'
