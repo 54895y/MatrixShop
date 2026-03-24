@@ -7,6 +7,8 @@ plugins {
     kotlin("jvm") version "2.3.0"
 }
 
+val matrixLibApiVersion = providers.gradleProperty("matrixlibApiVersion").orElse("1.0.0").get()
+
 taboolib {
     env {
         install(Basic, Bukkit, BukkitHook, CommandHelper)
@@ -30,12 +32,14 @@ repositories {
     maven("https://repo.tabooproject.org/repository/releases")
     mavenCentral()
     maven("https://hub.spigotmc.org/nexus/content/groups/public/")
+    maven(url = uri("../_publish/matrix-api"))
+    maven(url = uri("../../_publish/matrix-api"))
 }
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT")
     compileOnly(kotlin("stdlib"))
-    compileOnly(files("../../MatrixLib/Code/build/libs/MatrixLib-1.0.0.jar"))
+    compileOnly("com.y54895.matrixlib:matrixlib-api:$matrixLibApiVersion")
 }
 
 tasks.withType<JavaCompile> {
