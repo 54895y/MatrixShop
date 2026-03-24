@@ -1,22 +1,16 @@
 # MatrixShop
 
-### 项目使用 TabooLib Start Jar 创建!
-### 爱来自枫溪
+MatrixShop 是 Matrix 系列中的综合商店插件，覆盖系统商店、玩家商店、全球市场、拍卖、交易、购物车、记录查询和箱子商店等核心交易场景。
 
-## 构建发行版本
+当前 `codex/bootstrap-v1` 分支是主线功能之外的开发分支，用于持续推进命令结构、模块入口和交互细节的演进。
 
-发行版本用于正常使用, 不含 TabooLib 本体。
+## 分支说明
 
-```
-./gradlew clean build
-```
+- 面向 MatrixShop 的迭代开发与结构调整
+- 保持与主线功能一致的 Matrix 系列风格
+- 用于承接功能整合与命令路由优化
 
-## 构建开发版本
+## Wiki
 
-开发版本包含 TabooLib 本体, 用于开发者使用, 但不可运行。
-
-```
-./gradlew clean taboolibBuildApi -PDeleteCode
-```
-
-> 参数 -PDeleteCode 表示移除所有逻辑代码以减少体积。
+- 项目 Wiki: [https://github.com/54895y/MatrixShop/wiki](https://github.com/54895y/MatrixShop/wiki)
+- 说明: 当前单独的 `54895y/wiki` 代码仓库为空，文档入口以本仓库 Wiki 地址为准
