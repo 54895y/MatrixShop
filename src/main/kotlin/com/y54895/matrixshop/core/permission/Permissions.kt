@@ -56,11 +56,21 @@ object Permissions {
         return sender.hasPermission(node) || sender.hasPermission(PermissionNodes.ADMIN)
     }
 
+    fun deny(sender: CommandSender): Boolean {
+        Texts.send(
+            sender,
+            ConfigFiles.config.getString(
+                "messages.no-permission",
+                "&cYou do not have permission to use this command."
+            ).orEmpty()
+        )
+        return false
+    }
+
     fun require(sender: CommandSender, node: String): Boolean {
         if (has(sender, node)) {
             return true
         }
-        Texts.send(sender, ConfigFiles.config.getString("messages.no-permission", "&cYou do not have permission.").orEmpty())
-        return false
+        return deny(sender)
     }
 }

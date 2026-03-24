@@ -7,6 +7,14 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Condition: 'perm matrixshop.playershop.use'
+    Help: |-
+      <rainbow>==========&fPlayerShop Help<rainbow>==========
+      /{binding} help Open this help
+      /{binding} open [player] Open a player shop
+      /{binding} edit Manage your player shop
+      /{binding} upload <price> [amount] List the item in your hand
+      /ms open {typed-id} Open this shop by typed id
 
 Title:
   - '&8{owner} Shop &7{page}/{max-page}'

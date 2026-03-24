@@ -9,6 +9,11 @@ Bindings:
     Show-In-Help: true
     Priority: 100
     Condition: 'perm matrixshop.systemshop.use'
+    Help: |-
+      <rainbow>==========&fSystemShop Help<rainbow>==========
+      /ms {binding} help Open this help
+      /ms {binding} open [category] Open one system shop category
+      /ms open <shop-id|type:id|category> Open a configured shop or system category
 
 Entry:
   Open-Main-On-Command: true

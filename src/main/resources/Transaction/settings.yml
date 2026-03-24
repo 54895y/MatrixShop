@@ -8,6 +8,13 @@ Bindings:
     Show-In-Help: true
     Priority: 18
     Condition: 'perm matrixshop.transaction.use'
+    Help: |-
+      <rainbow>==========&fTransaction Help<rainbow>==========
+      /ms {binding} help Open this help
+      /ms {binding} open Open the trade hub
+      /ms {binding} request <player> Send a trade request
+      /ms {binding} accept [player] | deny [player] Control pending requests
+      /ms {binding} ready | confirm | cancel Control the active trade
 Options:
   Request:
     Timeout-Seconds: 30

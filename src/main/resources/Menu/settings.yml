@@ -9,3 +9,8 @@ Bindings:
     Show-In-Help: true
     Priority: 110
     Condition: 'perm matrixshop.menu.use'
+    Help: |-
+      <rainbow>==========&fMenu Help<rainbow>==========
+      /ms {binding} help Open this help
+      /ms {binding} open Open the menu hub
+      /ms open menu:main Open the default menu by typed id

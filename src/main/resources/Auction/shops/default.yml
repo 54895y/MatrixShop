@@ -6,6 +6,15 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Condition: 'perm matrixshop.auction.use'
+    Help: |-
+      <rainbow>==========&fAuction Help<rainbow>==========
+      /{binding} help Open this help
+      /{binding} open Open this auction hall
+      /{binding} upload <english|dutch> <start> [buyout|end] [duration] Upload the item in your hand
+      /{binding} detail <id> Open one auction detail
+      /{binding} bid <id> [price] Place a bid
+      /ms open {typed-id} Open this auction hall by typed id
 
 Title:
   - '&8Auction Hall &7{page}/{max-page}'

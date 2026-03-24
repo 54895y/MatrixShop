@@ -9,6 +9,13 @@ Bindings:
     Show-In-Help: true
     Priority: 20
     Condition: 'perm matrixshop.auction.use'
+    Help: |-
+      <rainbow>==========&fAuction Help<rainbow>==========
+      /ms {binding} help Open this help
+      /ms {binding} open Open the auction browser
+      /ms {binding} upload <english|dutch> <start> [buyout|end] [duration] Upload the item in your hand
+      /ms {binding} detail <id> Open one auction detail
+      /ms {binding} bid <id> [price] Place a bid
 
 Options:
   Listing:

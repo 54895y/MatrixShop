@@ -6,6 +6,14 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Condition: 'perm matrixshop.globalmarket.use'
+    Help: |-
+      <rainbow>==========&fGlobalMarket Help<rainbow>==========
+      /{binding} help Open this help
+      /{binding} open Open this global market
+      /{binding} upload <price> [amount] Upload the item in your hand
+      /{binding} manage Manage your listings in this market
+      /ms open {typed-id} Open this market by typed id
 
 Title:
   - '&8Global Market &7{page}/{max-page}'

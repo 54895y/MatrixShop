@@ -1,11 +1,14 @@
 package com.y54895.matrixshop.core.command
 
 import com.y54895.matrixshop.MatrixShop
+import com.y54895.matrixshop.core.config.BindingConditions
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.config.ModuleCommandBinding
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.LegacyDataMigrationService
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
@@ -72,7 +75,7 @@ object MatrixShopCommands {
             }
             return
         }
-        val shopRoute = resolveBoundShopRoute(args[0])
+        val shopRoute = resolveBoundShopRoute(player, args[0])
         val moduleRoute = ModuleBindings.resolveModule(args[0])
         when {
             args[0].equals("help", true) -> sendPlayerHelp(player)
@@ -92,11 +95,17 @@ object MatrixShopCommands {
     }
 
     private fun handleMenu(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!requireBindingAccess(player, "menu", defaultShopId)) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.MENU_USE)) {
             return
         }
-        if (args.isEmpty()) {
-            ModuleRegistry.menu.open(player, defaultShopId)
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "menu", defaultShopId)) {
+                return
+            }
+            Texts.send(player, "&cUsage: ${boundUsage("menu", defaultShopId, "open")}")
             return
         }
         when (args[0].lowercase()) {
@@ -112,7 +121,7 @@ object MatrixShopCommands {
             }
             return
         }
-        when (val explicit = resolveExplicitOpenTarget(args[0])) {
+        when (val explicit = resolveExplicitOpenTarget(player, args[0])) {
             is ExplicitOpenResolution.ShopFound -> {
                 handleBoundShop(player, explicit.route, listOf("open") + args.drop(1))
                 return
@@ -139,7 +148,7 @@ object MatrixShopCommands {
             }
             null -> Unit
         }
-        when (val resolution = resolveShopIdRoute(args[0])) {
+        when (val resolution = resolveShopIdRoute(player, args[0])) {
             is ShopIdResolution.Found -> handleBoundShop(player, resolution.route, listOf("open") + args.drop(1))
             is ShopIdResolution.Ambiguous -> {
                 val modules = resolution.routes.joinToString(", ") { typedRouteToken(it) }
@@ -155,10 +164,16 @@ object MatrixShopCommands {
     }
 
     private fun handleSystem(player: Player, args: List<String>) {
+        if (!requireBindingAccess(player, "system-shop")) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
             return
         }
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "system-shop")) {
+                return
+            }
             ModuleRegistry.systemShop.openMain(player)
             return
         }
@@ -205,10 +220,16 @@ object MatrixShopCommands {
     }
 
     private fun handleCart(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!requireBindingAccess(player, "cart", defaultShopId)) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.CART_USE)) {
             return
         }
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "cart", defaultShopId)) {
+                return
+            }
             Texts.send(player, "&cUsage: ${boundUsage("cart", defaultShopId, "open")}")
             return
         }
@@ -277,10 +298,16 @@ object MatrixShopCommands {
     }
 
     private fun handleGlobalMarket(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!requireBindingAccess(player, "global-market", defaultShopId)) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.GLOBALMARKET_USE)) {
             return
         }
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "global-market", defaultShopId)) {
+                return
+            }
             Texts.send(player, "&cUsage: ${boundUsage("global-market", defaultShopId, "open")}")
             return
         }
@@ -312,10 +339,16 @@ object MatrixShopCommands {
     }
 
     private fun handlePlayerShop(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!requireBindingAccess(player, "player-shop", defaultShopId)) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.PLAYERSHOP_USE)) {
             return
         }
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "player-shop", defaultShopId)) {
+                return
+            }
             Texts.send(player, "&cUsage: ${boundUsage("player-shop", defaultShopId, "open [player]")}")
             return
         }
@@ -350,10 +383,16 @@ object MatrixShopCommands {
     }
 
     private fun handleRecord(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!requireBindingAccess(player, "record", defaultShopId)) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.RECORD_USE)) {
             return
         }
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "record", defaultShopId)) {
+                return
+            }
             Texts.send(player, "&cUsage: ${boundUsage("record", defaultShopId, "open [keyword]")}")
             return
         }
@@ -446,10 +485,16 @@ object MatrixShopCommands {
     }
 
     private fun handleAuction(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!requireBindingAccess(player, "auction", defaultShopId)) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.AUCTION_USE)) {
             return
         }
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "auction", defaultShopId)) {
+                return
+            }
             Texts.send(player, "&cUsage: ${boundUsage("auction", defaultShopId, "open")}")
             return
         }
@@ -536,10 +581,16 @@ object MatrixShopCommands {
     }
 
     private fun handleTransaction(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!requireBindingAccess(player, "transaction", defaultShopId)) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.TRANSACTION_USE)) {
             return
         }
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "transaction", defaultShopId)) {
+                return
+            }
             Texts.send(player, "&cUsage: ${boundUsage("transaction", defaultShopId, "open")}")
             return
         }
@@ -559,10 +610,16 @@ object MatrixShopCommands {
     }
 
     private fun handleChestShop(player: Player, args: List<String>, defaultShopId: String? = null) {
+        if (!requireBindingAccess(player, "chestshop", defaultShopId)) {
+            return
+        }
         if (!Permissions.require(player, PermissionNodes.CHESTSHOP_USE)) {
             return
         }
-        if (args.isEmpty()) {
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            if (sendBindingHelp(player, "chestshop", defaultShopId)) {
+                return
+            }
             Texts.send(player, "&cUsage: ${boundUsage("chestshop", defaultShopId, "open")}")
             return
         }
@@ -736,39 +793,16 @@ object MatrixShopCommands {
 
     private fun sendPlayerHelp(player: Player) {
         val lines = mutableListOf("&8[&bMatrixShop&8] &fPlayer Commands")
-        addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/matrixshop &8- &fOpen SystemShop")
-        addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7${msUsage("system-shop", "open [category]")} &8- &fOpen a SystemShop category")
-        addHelp(lines, Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/ms open <shop-id|category> &8- &fOpen a configured shop by file name, or a SystemShop category")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("menu") && Permissions.has(player, PermissionNodes.MENU_USE), shopHelpEntries("menu"), "open", "Open menu hub")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), shopHelpEntries("auction"), "open", "Open auction shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), shopHelpEntries("auction"), "upload <english|dutch> <start> [buyout|end] [duration]", "List the main-hand item")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), shopHelpEntries("auction"), "bid <id> [price]", "Place an auction bid")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BUYOUT), shopHelpEntries("auction"), "buyout <id>", "Buy at buyout or Dutch price")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_MANAGE_OWN), shopHelpEntries("auction"), "manage | bids", "Open your auction views")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), shopHelpEntries("player-shop"), "open", "Open your player shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), shopHelpEntries("player-shop"), "open [player]", "Open another player's shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN), shopHelpEntries("player-shop"), "edit", "Manage your player shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_SELL), shopHelpEntries("player-shop"), "upload <price> [amount]", "List the main-hand item")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), shopHelpEntries("global-market"), "open", "Open global market")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), shopHelpEntries("global-market"), "upload <price> [amount]", "List to this global market")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), shopHelpEntries("global-market"), "manage", "Manage your listings in this market")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "open", "Open the target chest shop view")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), shopHelpEntries("chestshop"), "create <buy|sell|dual> <price> [sell-price] [amount]", "Create a chest shop from the target chest")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "stock | history", "Open stock or history for the target chest shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), shopHelpEntries("chestshop"), "edit | remove | price | amount | mode", "Manage your chest shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "open", "Open cart")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout [valid_only]", "Open checkout summary")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout confirm [valid_only] | conflict", "Confirm checkout or review conflicts")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CLEAR), shopHelpEntries("cart"), "remove <slot> | remove_invalid | clear", "Manage cart entries")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "amount <slot> <number>", "Change one cart entry amount")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "open [keyword]", "Open ledger records")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), shopHelpEntries("record"), "detail <id>", "Open one record detail")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "filter [module|all]", "Switch record module filters")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), shopHelpEntries("record"), "income | expense | stats", "Open ledger statistics")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "open", "Open trade shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "request <player>", "Send a face-to-face trade request")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "accept [player] | ready | confirm | cancel | logs", "Control the active trade")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "money <amount> | exp <amount>", "Set your money or exp offer")
+        addHelp(lines, Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/ms open <shop-id|type:id|category> &8- &fOpen a configured shop, typed shop, or SystemShop category")
+        appendModuleOrShopHelp(lines, player, "system-shop")
+        appendModuleOrShopHelp(lines, player, "menu")
+        appendModuleOrShopHelp(lines, player, "player-shop")
+        appendModuleOrShopHelp(lines, player, "global-market")
+        appendModuleOrShopHelp(lines, player, "auction")
+        appendModuleOrShopHelp(lines, player, "chestshop")
+        appendModuleOrShopHelp(lines, player, "transaction")
+        appendModuleOrShopHelp(lines, player, "cart")
+        appendModuleOrShopHelp(lines, player, "record")
         Texts.sendRaw(player, lines.joinToString("\n"))
     }
 
@@ -835,23 +869,7 @@ object MatrixShopCommands {
         }
     }
 
-    private fun addBoundShopHelp(
-        lines: MutableList<String>,
-        visible: Boolean,
-        entries: List<com.y54895.matrixshop.core.menu.ShopMenuSelection>,
-        suffix: String,
-        description: String
-    ) {
-        if (!visible) {
-            return
-        }
-        entries.forEach { entry ->
-            val key = entry.bindings.keys.firstOrNull() ?: entry.id
-            lines += "&7/$key $suffix &8- &f$description &7(${entry.id})"
-        }
-    }
-
-    private fun shopHelpEntries(moduleId: String): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {
+    private fun shopHelpEntries(moduleId: String): List<ShopMenuSelection> {
         if (!ModuleRegistry.isEnabled(moduleId)) {
             return emptyList()
         }
@@ -866,6 +884,45 @@ object MatrixShopCommands {
             "transaction" -> ModuleRegistry.transaction.helpEntries()
             else -> emptyList()
         }
+    }
+
+    private fun visibleShopHelpEntries(player: Player, moduleId: String): List<ShopMenuSelection> {
+        return shopHelpEntries(moduleId).filter {
+            isBindingVisible(player, moduleId, it.id, it.bindings, requireShowInHelp = true)
+        }
+    }
+
+    private fun appendModuleOrShopHelp(lines: MutableList<String>, player: Player, moduleId: String) {
+        if (!ModuleRegistry.isEnabled(moduleId)) {
+            return
+        }
+        val entries = visibleShopHelpEntries(player, moduleId)
+        if (entries.isNotEmpty()) {
+            entries.forEach { appendBindingHelpBlock(lines, player, moduleId, it.id, it.bindings) }
+            return
+        }
+        appendBindingHelpBlock(lines, player, moduleId, null, ModuleBindings.binding(moduleId))
+    }
+
+    private fun appendBindingHelpBlock(
+        lines: MutableList<String>,
+        player: Player,
+        moduleId: String,
+        shopId: String?,
+        binding: ModuleCommandBinding
+    ): Boolean {
+        if (!isBindingVisible(player, moduleId, shopId, binding, requireShowInHelp = true)) {
+            return false
+        }
+        val rendered = renderBindingHelp(moduleId, shopId, binding)
+        if (rendered.isEmpty()) {
+            return false
+        }
+        if (lines.isNotEmpty() && lines.last().isNotBlank()) {
+            lines += ""
+        }
+        lines += rendered
+        return true
     }
 
     private fun msUsage(moduleId: String, suffix: String): String {
@@ -885,8 +942,80 @@ object MatrixShopCommands {
         }
     }
 
-    private fun showModuleHelp(moduleId: String): Boolean {
-        return ModuleRegistry.isEnabled(moduleId) && ModuleBindings.showInHelp(moduleId)
+    private fun renderBindingHelp(moduleId: String, shopId: String?, binding: ModuleCommandBinding): List<String> {
+        if (binding.helpLines.isEmpty()) {
+            return emptyList()
+        }
+        return Texts.apply(binding.helpLines, bindingPlaceholders(moduleId, shopId, binding))
+    }
+
+    private fun sendBindingHelp(player: Player, moduleId: String, shopId: String? = null): Boolean {
+        if (shopId != null) {
+            shopHelpEntries(moduleId)
+                .firstOrNull { it.id.equals(shopId, true) }
+                ?.let { entry ->
+                    if (isBindingVisible(player, moduleId, entry.id, entry.bindings)) {
+                        val rendered = renderBindingHelp(moduleId, entry.id, entry.bindings)
+                        if (rendered.isNotEmpty()) {
+                            Texts.sendRaw(player, rendered.joinToString("\n"))
+                            return true
+                        }
+                    }
+                }
+        }
+        val binding = ModuleBindings.binding(moduleId)
+        if (!isBindingVisible(player, moduleId, null, binding)) {
+            return false
+        }
+        val rendered = renderBindingHelp(moduleId, null, binding)
+        if (rendered.isEmpty()) {
+            return false
+        }
+        Texts.sendRaw(player, rendered.joinToString("\n"))
+        return true
+    }
+
+    private fun requireBindingAccess(player: Player, moduleId: String, shopId: String? = null): Boolean {
+        val binding = resolveBinding(moduleId, shopId)
+        return BindingConditions.require(player, binding.condition, bindingPlaceholders(moduleId, shopId, binding))
+    }
+
+    private fun isBindingVisible(
+        player: Player,
+        moduleId: String,
+        shopId: String?,
+        binding: ModuleCommandBinding,
+        requireShowInHelp: Boolean = false
+    ): Boolean {
+        if (requireShowInHelp && !binding.showInHelp) {
+            return false
+        }
+        return BindingConditions.test(player, binding.condition, bindingPlaceholders(moduleId, shopId, binding))
+    }
+
+    private fun resolveBinding(moduleId: String, shopId: String? = null): ModuleCommandBinding {
+        if (shopId != null) {
+            shopHelpEntries(moduleId).firstOrNull { it.id.equals(shopId, true) }?.let { return it.bindings }
+        }
+        return ModuleBindings.binding(moduleId)
+    }
+
+    private fun bindingPlaceholders(moduleId: String, shopId: String?, binding: ModuleCommandBinding): Map<String, String> {
+        val primary = binding.keys.firstOrNull()
+            ?: if (shopId != null) shopId else ModuleBindings.primary(moduleId)
+        val typedId = shopId?.let { typedTargetToken(moduleId, it) }.orEmpty()
+        return linkedMapOf(
+            "binding" to primary,
+            "bindings" to binding.keys.joinToString(", "),
+            "shop-id" to (shopId ?: ""),
+            "shop_id" to (shopId ?: ""),
+            "module-id" to moduleId,
+            "module_id" to moduleId,
+            "typed-id" to typedId,
+            "typed_id" to typedId,
+            "command" to if (shopId != null) "/$primary" else "/ms ${ModuleBindings.primary(moduleId)}",
+            "open-command" to if (shopId != null) "/$primary open" else "/ms ${ModuleBindings.primary(moduleId)} open"
+        )
     }
 
     private fun requirePlayer(sender: ProxyCommandSender): Player? {
@@ -983,10 +1112,13 @@ object MatrixShopCommands {
         }
     }
 
-    private fun resolveBoundShopRoute(token: String): ShopBindingRoute? {
+    private fun resolveBoundShopRoute(player: Player, token: String): ShopBindingRoute? {
         val normalized = token.trim().lowercase()
         return boundShopEntries()
-            .firstOrNull { it.selection.bindings.keys.contains(normalized) }
+            .firstOrNull {
+                it.selection.bindings.keys.contains(normalized) &&
+                    isBindingVisible(player, it.route.moduleId, it.route.shopId, it.selection.bindings)
+            }
             ?.route
     }
 
@@ -1019,11 +1151,14 @@ object MatrixShopCommands {
         return routes
     }
 
-    private fun resolveShopIdRoute(token: String): ShopIdResolution {
+    private fun resolveShopIdRoute(player: Player, token: String): ShopIdResolution {
         val normalized = token.trim().lowercase()
         val matches = boundShopEntries()
+            .filter {
+                it.route.shopId.trim().lowercase() == normalized &&
+                    isBindingVisible(player, it.route.moduleId, it.route.shopId, it.selection.bindings)
+            }
             .map { it.route }
-            .filter { it.shopId.trim().lowercase() == normalized }
         return when {
             matches.isEmpty() -> ShopIdResolution.NotFound
             matches.size == 1 -> ShopIdResolution.Found(matches.first())
@@ -1031,7 +1166,7 @@ object MatrixShopCommands {
         }
     }
 
-    private fun resolveExplicitOpenTarget(token: String): ExplicitOpenResolution? {
+    private fun resolveExplicitOpenTarget(player: Player, token: String): ExplicitOpenResolution? {
         val separator = token.indexOfAny(charArrayOf(':', '：'))
         if (separator <= 0 || separator >= token.length - 1) {
             return null
@@ -1047,8 +1182,11 @@ object MatrixShopCommands {
             return ExplicitOpenResolution.SystemCategory(targetId)
         }
         val matches = boundShopEntries(moduleId)
+            .filter {
+                it.route.shopId.equals(targetId, true) &&
+                    isBindingVisible(player, it.route.moduleId, it.route.shopId, it.selection.bindings)
+            }
             .map { it.route }
-            .filter { it.shopId.equals(targetId, true) }
         return when {
             matches.isEmpty() -> ExplicitOpenResolution.NotFound(moduleId, targetId)
             matches.size == 1 -> ExplicitOpenResolution.ShopFound(matches.first())

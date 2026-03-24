@@ -10,6 +10,12 @@ Bindings:
     Show-In-Help: true
     Priority: 90
     Condition: 'perm matrixshop.playershop.use'
+    Help: |-
+      <rainbow>==========&fPlayerShop Help<rainbow>==========
+      /ms {binding} help Open this help
+      /ms {binding} open [player] Open a player shop
+      /ms {binding} edit Manage your shop
+      /ms {binding} upload <price> [amount] List the item in your hand
 
 Unlock:
   Base: 21

@@ -9,7 +9,7 @@ plugins {
 
 taboolib {
     env {
-        install(Basic, Bukkit, BukkitHook, CommandHelper)
+        install(Basic, Bukkit, BukkitHook, CommandHelper, Kether)
         repoTabooLib = "https://repo.tabooproject.org/repository/releases"
         disableOnSkippedVersion = false
     }

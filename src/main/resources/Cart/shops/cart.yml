@@ -5,6 +5,15 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Condition: 'perm matrixshop.cart.use'
+    Help: |-
+      <rainbow>==========&fCart Help<rainbow>==========
+      /{binding} help Open this help
+      /{binding} open Open this cart
+      /{binding} checkout [valid_only] Open the checkout preview
+      /{binding} checkout confirm [valid_only] Confirm checkout
+      /{binding} remove <slot> | remove_invalid | clear Manage cart entries
+      /ms open {typed-id} Open this cart by typed id
 
 Options:
   Source-Modules:

@@ -31,6 +31,16 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added `Kether` to the TabooLib runtime env so bindings can execute scripted conditions instead of hard-coded permission checks
+- Added `ModuleCommandBinding.condition` and `ModuleCommandBinding.helpLines`, and extended both module settings and `shops/*.yml` binding loaders to read `Bindings.Commands.Condition` and `Bindings.Commands.Help`
+- Added `BindingConditions` as the shared binding-condition evaluator using `KetherShell.eval(...)` with sender context and binding/shop placeholder variables
+- Changed player command routing so bound shop ids in `/ms`, `/ms open <id>`, and `/ms open <type:id>` only resolve against bindings whose `Condition` Kether script passes for the player
+- Changed `menu`, `system`, `player shop`, `global market`, `auction`, `chestshop`, `transaction`, `cart`, and `record` handlers so empty args or `help` now show binding-defined help first
+- Reworked `/ms help` into a config-driven help aggregator that renders `Bindings.Help` blocks from module settings or visible `shops/*.yml` packs instead of only hard-coded command summaries
+- Added placeholder-aware binding help rendering with `{binding}`, `{bindings}`, `{shop-id}`, `{typed-id}`, `{command}`, and `{open-command}`
+- Added a reusable `Permissions.deny(...)` path so failed binding conditions and failed permission checks share the same no-permission feedback
+- Added default `Bindings.Commands.Help` blocks to the shipped module settings for `Menu`, `SystemShop`, `PlayerShop`, `GlobalMarket`, `Auction`, `ChestShop`, `Transaction`, `Cart`, and `Record`
+- Added default shop-level `Bindings.Commands.Condition` and `Bindings.Commands.Help` blocks to shipped `Menu`, `PlayerShop`, `GlobalMarket`, `Auction`, `Transaction`, `ChestShop`, `Cart`, and `Record` shop packs
 - Normalized the default `Menu` hub button actions to `matrixshop open <type:id>` instead of mixing direct module commands
 - Added typed `/ms open <type:id>` resolution so duplicate short shop ids can be disambiguated without removing short ids
 - Added explicit typed open support for `systemshop:<category>` plus typed route suggestions in ambiguity messages
@@ -114,6 +124,7 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- Kether-backed binding conditions and config-driven help compiled successfully with `./gradlew.bat build`
 - Typed open-id routing compiled successfully with `./gradlew.bat build`
 - Menu module integration compiled successfully with `./gradlew.bat build`
 - Plan-aligned cart checkout/conflict + record filter/view-config refactor compiled successfully with `./gradlew.bat build`
@@ -129,6 +140,8 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- `Bindings.Condition` now executes as Kether, but this round only wires it into player-side binding visibility and command access; icon-level or goods-level conditions are still handled separately by module logic
+- `Bindings.Help` now drives `/ms help` and `/<binding> help`, but admin help is still hard-coded because it is not shop-bound and does not come from module pack config
 - Short `/ms open <id>` still works as before; typed `/ms open <type:id>` is only the explicit disambiguation path when ids collide
 - The default `Menu` hub now routes through `matrixshop open <type:id>`, so custom packs should prefer that format over direct standalone module commands
 - `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, `Transaction`, `Cart`, `Record`, and `ChestShop`; duplicate ids now return an ambiguity message instead of guessing
@@ -149,6 +162,8 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Run live Paper validation for Kether-based `Bindings.Condition` with at least one denied and one allowed custom shop binding
+- Run live Paper validation for config-driven `Bindings.Help` on `/ms help`, `/ms <module> help`, and `/<binding> help`
 - Run live Paper validation for the new `Menu` hub buttons and at least one custom `Menu/shops/*.yml` pack
 - Run live Paper validation for cart checkout/conflict and record filter on at least two custom shop packs per module
 - Decide whether `Cart` should gain per-shop persistence pools or remain a global player cart with filtered shop views

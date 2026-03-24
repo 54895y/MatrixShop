@@ -8,6 +8,13 @@ Bindings:
     Show-In-Help: true
     Priority: 40
     Condition: 'perm matrixshop.cart.use'
+    Help: |-
+      <rainbow>==========&fCart Help<rainbow>==========
+      /ms {binding} help Open this help
+      /ms {binding} open Open the cart
+      /ms {binding} checkout [valid_only] Open the checkout preview
+      /ms {binding} checkout confirm [valid_only] Confirm checkout
+      /ms {binding} amount <slot> <number> Change one entry amount
 
 Sources:
   Checkoutable:

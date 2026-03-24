@@ -6,6 +6,15 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Condition: 'perm matrixshop.transaction.use'
+    Help: |-
+      <rainbow>==========&fTransaction Help<rainbow>==========
+      /{binding} help Open this help
+      /{binding} open Open this trade hub
+      /{binding} request <player> Send a trade request
+      /{binding} accept [player] | deny [player] Control pending requests
+      /{binding} ready | confirm | cancel | logs Control the active trade
+      /ms open {typed-id} Open this trade hub by typed id
 
 Title:
   - '&8Trade Hub &7{shop-id}'

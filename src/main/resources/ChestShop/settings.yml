@@ -9,6 +9,13 @@ Bindings:
     Show-In-Help: true
     Priority: 60
     Condition: 'perm matrixshop.chestshop.use'
+    Help: |-
+      <rainbow>==========&fChestShop Help<rainbow>==========
+      /ms {binding} help Open this help
+      /ms {binding} open Open the current chest shop GUI
+      /ms {binding} create <buy|sell|dual> <price> [sell-price] [amount] Create a chest shop
+      /ms {binding} edit Manage the current chest shop
+      /ms {binding} stock | history Open stock or history
 
 Entry:
   Open-GUI-On:

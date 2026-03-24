@@ -6,6 +6,14 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Condition: 'perm matrixshop.chestshop.use'
+    Help: |-
+      <rainbow>==========&fChestShop Help<rainbow>==========
+      /{binding} help Open this help
+      /{binding} open Open this chest shop
+      /{binding} stock Open the stock view
+      /{binding} history Open the history view
+      /ms open {typed-id} Open this chest shop by typed id
 
 Title:
   - '&8ChestShop &7{shop-id}'

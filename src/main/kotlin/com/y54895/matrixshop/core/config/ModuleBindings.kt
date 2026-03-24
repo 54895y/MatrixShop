@@ -7,7 +7,9 @@ data class ModuleCommandBinding(
     val keys: List<String>,
     val registerStandalone: Boolean,
     val showInHelp: Boolean,
-    val priority: Int
+    val priority: Int,
+    val condition: String? = null,
+    val helpLines: List<String> = emptyList()
 )
 
 object ModuleBindings {
@@ -36,6 +38,10 @@ object ModuleBindings {
         "record" to ModuleCommandBinding(listOf("record", "records"), registerStandalone = false, showInHelp = true, priority = 30)
     )
 
+    fun binding(moduleId: String): ModuleCommandBinding {
+        return load(moduleId)
+    }
+
     fun primary(moduleId: String): String {
         return load(moduleId).keys.firstOrNull() ?: moduleId
     }
@@ -50,6 +56,14 @@ object ModuleBindings {
 
     fun showInHelp(moduleId: String): Boolean {
         return load(moduleId).showInHelp
+    }
+
+    fun condition(moduleId: String): String? {
+        return load(moduleId).condition
+    }
+
+    fun helpLines(moduleId: String): List<String> {
+        return load(moduleId).helpLines
     }
 
     fun matches(moduleId: String, token: String): Boolean {
@@ -82,7 +96,18 @@ object ModuleBindings {
             keys = keys,
             registerStandalone = yaml.getBoolean("Bindings.Commands.Register", fallback.registerStandalone),
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", fallback.showInHelp),
-            priority = yaml.getInt("Bindings.Commands.Priority", fallback.priority)
+            priority = yaml.getInt("Bindings.Commands.Priority", fallback.priority),
+            condition = yaml.getString("Bindings.Commands.Condition")?.trim()?.ifBlank { fallback.condition },
+            helpLines = readHelpLines(yaml, "Bindings.Commands.Help").ifEmpty { fallback.helpLines }
         )
+    }
+
+    private fun readHelpLines(yaml: YamlConfiguration, path: String): List<String> {
+        val value = yaml.get(path) ?: return emptyList()
+        return when (value) {
+            is String -> value.lines().map { it.trimEnd() }
+            is List<*> -> value.map { it?.toString().orEmpty() }
+            else -> emptyList()
+        }
     }
 }

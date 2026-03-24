@@ -6,6 +6,15 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Condition: 'perm matrixshop.record.use'
+    Help: |-
+      <rainbow>==========&fRecord Help<rainbow>==========
+      /{binding} help Open this help
+      /{binding} open [keyword] Open this ledger
+      /{binding} detail <id> Open one record detail
+      /{binding} filter [module|all] Change the module filter
+      /{binding} income | expense Open statistics
+      /ms open {typed-id} Open this ledger by typed id
 
 Options:
   Modules:

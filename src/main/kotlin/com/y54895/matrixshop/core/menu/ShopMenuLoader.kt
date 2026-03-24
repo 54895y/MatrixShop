@@ -99,8 +99,19 @@ object ShopMenuLoader {
             keys = keys,
             registerStandalone = yaml.getBoolean("Bindings.Commands.Register", false),
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", false),
-            priority = yaml.getInt("Bindings.Commands.Priority", 0)
+            priority = yaml.getInt("Bindings.Commands.Priority", 0),
+            condition = yaml.getString("Bindings.Commands.Condition")?.trim()?.ifBlank { null },
+            helpLines = readHelpLines(yaml, "Bindings.Commands.Help")
         )
+    }
+
+    private fun readHelpLines(yaml: YamlConfiguration, path: String): List<String> {
+        val value = yaml.get(path) ?: return emptyList()
+        return when (value) {
+            is String -> value.lines().map { it.trimEnd() }
+            is List<*> -> value.map { it?.toString().orEmpty() }
+            else -> emptyList()
+        }
     }
 
     private fun normalizeShopId(value: String?): String? {

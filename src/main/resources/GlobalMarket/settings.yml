@@ -11,6 +11,12 @@ Bindings:
     Show-In-Help: true
     Priority: 80
     Condition: 'perm matrixshop.globalmarket.use'
+    Help: |-
+      <rainbow>==========&fGlobalMarket Help<rainbow>==========
+      /ms {binding} help Open this help
+      /ms {binding} open Open the market browser
+      /ms {binding} upload <price> [amount] Upload the item in your hand
+      /ms {binding} manage Manage your listings
 
 Listing:
   Expire-Hours: 72

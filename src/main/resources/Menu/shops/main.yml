@@ -6,6 +6,12 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Condition: 'perm matrixshop.menu.use'
+    Help: |-
+      <rainbow>==========&fMenu Help<rainbow>==========
+      /{binding} help Open this help
+      /{binding} open Open this menu
+      /ms open {typed-id} Open this menu by typed id
 
 Title:
   - '&8MatrixShop Menu &7{shop-id}'
