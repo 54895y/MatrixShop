@@ -155,6 +155,7 @@ object DatabaseManager {
                             upsertMeta(connection, "last_migration_at", System.currentTimeMillis().toString())
                             applied += migration.version
                         }
+                    ensureLegacyCompatibilityObjects(connection)
                     connection.commit()
                     connection.autoCommit = previousAutoCommit
                     DatabaseSchemaSyncResult(
@@ -564,6 +565,234 @@ object DatabaseManager {
         }
     }
 
+    private fun ensureLegacyCompatibilityObjects(connection: Connection) {
+        runCatching {
+            ensureLegacyTransactionCompatibility(connection)
+        }.onFailure {
+            warning("Failed to create legacy transaction compatibility view: ${it.message}")
+        }
+        runCatching {
+            ensureLegacyAuctionCompatibility(connection)
+        }.onFailure {
+            warning("Failed to create legacy auction compatibility view: ${it.message}")
+        }
+    }
+
+    private fun ensureLegacyTransactionCompatibility(connection: Connection) {
+        val relationType = relationType(connection, "matrixshop_transactions")
+        if (relationType == "TABLE") {
+            return
+        }
+        connection.createStatement().use { statement ->
+            if (relationType == "VIEW") {
+                if (settings.type == DatabaseType.SQLITE) {
+                    statement.executeUpdate("DROP TRIGGER IF EXISTS trg_matrixshop_transactions_insert")
+                    statement.executeUpdate("DROP TRIGGER IF EXISTS trg_matrixshop_transactions_update")
+                    statement.executeUpdate("DROP TRIGGER IF EXISTS trg_matrixshop_transactions_delete")
+                }
+                statement.executeUpdate("DROP VIEW IF EXISTS matrixshop_transactions")
+            }
+            statement.executeUpdate(
+                """
+                CREATE VIEW matrixshop_transactions AS
+                SELECT
+                    id,
+                    created_at,
+                    created_at AS create_time,
+                    module,
+                    type,
+                    actor,
+                    actor AS player,
+                    target,
+                    money_change,
+                    money_change AS money,
+                    detail,
+                    note,
+                    admin_reason
+                FROM record_entries
+                """.trimIndent()
+            )
+            if (settings.type == DatabaseType.SQLITE) {
+                statement.executeUpdate(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS trg_matrixshop_transactions_insert
+                    INSTEAD OF INSERT ON matrixshop_transactions
+                    BEGIN
+                        INSERT INTO record_entries (
+                            id, created_at, module, type, actor, target, money_change, detail, note, admin_reason
+                        ) VALUES (
+                            COALESCE(NEW.id, 'legacy-tx-' || lower(hex(randomblob(8)))),
+                            COALESCE(NEW.created_at, NEW.create_time, CAST(strftime('%s','now') AS INTEGER) * 1000),
+                            COALESCE(NEW.module, ''),
+                            COALESCE(NEW.type, ''),
+                            COALESCE(NEW.actor, NEW.player, ''),
+                            COALESCE(NEW.target, ''),
+                            COALESCE(NEW.money_change, NEW.money, 0),
+                            COALESCE(NEW.detail, ''),
+                            COALESCE(NEW.note, ''),
+                            COALESCE(NEW.admin_reason, '')
+                        );
+                    END
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS trg_matrixshop_transactions_update
+                    INSTEAD OF UPDATE ON matrixshop_transactions
+                    BEGIN
+                        UPDATE record_entries
+                        SET
+                            created_at = COALESCE(NEW.created_at, NEW.create_time, OLD.created_at, OLD.create_time),
+                            module = COALESCE(NEW.module, OLD.module),
+                            type = COALESCE(NEW.type, OLD.type),
+                            actor = COALESCE(NEW.actor, NEW.player, OLD.actor, OLD.player),
+                            target = COALESCE(NEW.target, OLD.target),
+                            money_change = COALESCE(NEW.money_change, NEW.money, OLD.money_change, OLD.money),
+                            detail = COALESCE(NEW.detail, OLD.detail),
+                            note = COALESCE(NEW.note, OLD.note),
+                            admin_reason = COALESCE(NEW.admin_reason, OLD.admin_reason)
+                        WHERE id = OLD.id;
+                    END
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS trg_matrixshop_transactions_delete
+                    INSTEAD OF DELETE ON matrixshop_transactions
+                    BEGIN
+                        DELETE FROM record_entries WHERE id = OLD.id;
+                    END
+                    """.trimIndent()
+                )
+            }
+        }
+    }
+
+    private fun ensureLegacyAuctionCompatibility(connection: Connection) {
+        val relationType = relationType(connection, "matrixshop_auction")
+        if (relationType == "TABLE") {
+            return
+        }
+        connection.createStatement().use { statement ->
+            if (relationType == "VIEW") {
+                if (settings.type == DatabaseType.SQLITE) {
+                    statement.executeUpdate("DROP TRIGGER IF EXISTS trg_matrixshop_auction_insert")
+                    statement.executeUpdate("DROP TRIGGER IF EXISTS trg_matrixshop_auction_update")
+                    statement.executeUpdate("DROP TRIGGER IF EXISTS trg_matrixshop_auction_delete")
+                }
+                statement.executeUpdate("DROP VIEW IF EXISTS matrixshop_auction")
+            }
+            statement.executeUpdate(
+                """
+                CREATE VIEW matrixshop_auction AS
+                SELECT
+                    id,
+                    shop_id,
+                    shop_id AS shop,
+                    owner_id,
+                    owner_id AS seller_id,
+                    owner_name,
+                    owner_name AS seller_name,
+                    owner_name AS seller,
+                    mode,
+                    item_blob,
+                    item_blob AS item,
+                    item_blob AS item_data,
+                    start_price,
+                    start_price AS start_money,
+                    buyout_price,
+                    buyout_price AS buyout_money,
+                    end_price,
+                    end_price AS end_money,
+                    current_bid,
+                    current_bid AS current_money,
+                    current_bid AS top_money,
+                    highest_bidder_id,
+                    highest_bidder_id AS buyer_id,
+                    highest_bidder_name,
+                    highest_bidder_name AS buyer_name,
+                    highest_bidder_name AS buyer,
+                    created_at,
+                    created_at AS create_time,
+                    expire_at,
+                    expire_at AS expire_time,
+                    expire_at AS end_time,
+                    extend_count,
+                    deposit_paid,
+                    deposit_paid AS deposit
+                FROM auction_listings
+                """.trimIndent()
+            )
+            if (settings.type == DatabaseType.SQLITE) {
+                statement.executeUpdate(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS trg_matrixshop_auction_insert
+                    INSTEAD OF INSERT ON matrixshop_auction
+                    BEGIN
+                        INSERT INTO auction_listings (
+                            id, shop_id, owner_id, owner_name, mode, item_blob, start_price, buyout_price, end_price,
+                            current_bid, highest_bidder_id, highest_bidder_name, created_at, expire_at, extend_count, deposit_paid
+                        ) VALUES (
+                            COALESCE(NEW.id, 'legacy-auc-' || lower(hex(randomblob(8)))),
+                            COALESCE(NEW.shop_id, NEW.shop, 'default'),
+                            COALESCE(NEW.owner_id, NEW.seller_id, ''),
+                            COALESCE(NEW.owner_name, NEW.seller_name, NEW.seller, ''),
+                            COALESCE(NEW.mode, 'ENGLISH'),
+                            COALESCE(NEW.item_blob, NEW.item_data, NEW.item, ''),
+                            COALESCE(NEW.start_price, NEW.start_money, 0),
+                            COALESCE(NEW.buyout_price, NEW.buyout_money, 0),
+                            COALESCE(NEW.end_price, NEW.end_money, 0),
+                            COALESCE(NEW.current_bid, NEW.current_money, NEW.top_money, 0),
+                            COALESCE(NEW.highest_bidder_id, NEW.buyer_id, ''),
+                            COALESCE(NEW.highest_bidder_name, NEW.buyer_name, NEW.buyer, ''),
+                            COALESCE(NEW.created_at, NEW.create_time, CAST(strftime('%s','now') AS INTEGER) * 1000),
+                            COALESCE(NEW.expire_at, NEW.expire_time, NEW.end_time, CAST(strftime('%s','now') AS INTEGER) * 1000),
+                            COALESCE(NEW.extend_count, 0),
+                            COALESCE(NEW.deposit_paid, NEW.deposit, 0)
+                        );
+                    END
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS trg_matrixshop_auction_update
+                    INSTEAD OF UPDATE ON matrixshop_auction
+                    BEGIN
+                        UPDATE auction_listings
+                        SET
+                            shop_id = COALESCE(NEW.shop_id, NEW.shop, OLD.shop_id, OLD.shop),
+                            owner_id = COALESCE(NEW.owner_id, NEW.seller_id, OLD.owner_id, OLD.seller_id),
+                            owner_name = COALESCE(NEW.owner_name, NEW.seller_name, NEW.seller, OLD.owner_name, OLD.seller_name, OLD.seller),
+                            mode = COALESCE(NEW.mode, OLD.mode),
+                            item_blob = COALESCE(NEW.item_blob, NEW.item_data, NEW.item, OLD.item_blob, OLD.item_data, OLD.item),
+                            start_price = COALESCE(NEW.start_price, NEW.start_money, OLD.start_price, OLD.start_money),
+                            buyout_price = COALESCE(NEW.buyout_price, NEW.buyout_money, OLD.buyout_price, OLD.buyout_money),
+                            end_price = COALESCE(NEW.end_price, NEW.end_money, OLD.end_price, OLD.end_money),
+                            current_bid = COALESCE(NEW.current_bid, NEW.current_money, NEW.top_money, OLD.current_bid, OLD.current_money, OLD.top_money),
+                            highest_bidder_id = COALESCE(NEW.highest_bidder_id, NEW.buyer_id, OLD.highest_bidder_id, OLD.buyer_id),
+                            highest_bidder_name = COALESCE(NEW.highest_bidder_name, NEW.buyer_name, NEW.buyer, OLD.highest_bidder_name, OLD.buyer_name, OLD.buyer),
+                            created_at = COALESCE(NEW.created_at, NEW.create_time, OLD.created_at, OLD.create_time),
+                            expire_at = COALESCE(NEW.expire_at, NEW.expire_time, NEW.end_time, OLD.expire_at, OLD.expire_time, OLD.end_time),
+                            extend_count = COALESCE(NEW.extend_count, OLD.extend_count),
+                            deposit_paid = COALESCE(NEW.deposit_paid, NEW.deposit, OLD.deposit_paid, OLD.deposit)
+                        WHERE id = OLD.id;
+                    END
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS trg_matrixshop_auction_delete
+                    INSTEAD OF DELETE ON matrixshop_auction
+                    BEGIN
+                        DELETE FROM auction_bids WHERE listing_id = OLD.id;
+                        DELETE FROM auction_listings WHERE id = OLD.id;
+                    END
+                    """.trimIndent()
+                )
+            }
+        }
+    }
+
     private fun recreateAuctionListingsWithShopScope(connection: Connection) {
         connection.createStatement().use { statement ->
             statement.executeUpdate("DROP TABLE IF EXISTS auction_listings_v3")
@@ -703,6 +932,19 @@ object DatabaseManager {
                 result.next()
             }
         }.getOrDefault(false)
+    }
+
+    private fun relationType(connection: Connection, relationName: String): String? {
+        return runCatching {
+            connection.metaData.getTables(null, null, "%", arrayOf("TABLE", "VIEW")).use { result ->
+                while (result.next()) {
+                    if (result.getString("TABLE_NAME").equals(relationName, true)) {
+                        return@use result.getString("TABLE_TYPE")?.uppercase(Locale.ROOT)
+                    }
+                }
+                null
+            }
+        }.getOrNull()
     }
 
     private fun loadSettings(yaml: YamlConfiguration): DatabaseSettings {

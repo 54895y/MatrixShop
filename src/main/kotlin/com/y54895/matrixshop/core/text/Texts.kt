@@ -1,34 +1,30 @@
 package com.y54895.matrixshop.core.text
 
-import org.bukkit.ChatColor
+import com.y54895.matrixlib.api.text.MatrixText
 import org.bukkit.command.CommandSender
 
 object Texts {
 
-    private const val PREFIX = "&8[&bMatrixShop&8] &7"
+    private val branding = MatrixShopBranding.value
 
     fun color(text: String): String {
-        return ChatColor.translateAlternateColorCodes('&', text)
+        return MatrixText.color(text)
     }
 
     fun prefixed(text: String): String {
-        return color(PREFIX + text)
+        return MatrixText.prefixed(branding, text)
     }
 
     fun send(sender: CommandSender, text: String) {
-        sender.sendMessage(prefixed(text))
+        MatrixText.send(sender, branding, text)
     }
 
     fun sendRaw(sender: CommandSender, text: String) {
-        sender.sendMessage(color(text))
+        MatrixText.sendRaw(sender, text)
     }
 
     fun apply(template: String, placeholders: Map<String, String>): String {
-        var result = template
-        placeholders.forEach { (key, value) ->
-            result = result.replace("{$key}", value)
-        }
-        return color(result)
+        return MatrixText.raw(MatrixText.apply(template, placeholders))
     }
 
     fun apply(lines: List<String>, placeholders: Map<String, String>): List<String> {

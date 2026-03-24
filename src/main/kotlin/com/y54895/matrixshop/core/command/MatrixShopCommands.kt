@@ -40,7 +40,7 @@ object MatrixShopCommands {
             name = "matrixshopadmin",
             aliases = listOf("msa"),
             description = "MatrixShop admin command",
-            usage = "/matrixshopadmin"
+            usage = "/matrixshop admin"
         ) { sender, args ->
             handleAdmin(sender, args)
         }
@@ -61,6 +61,10 @@ object MatrixShopCommands {
     }
 
     private fun handleMain(sender: ProxyCommandSender, args: Array<String>) {
+        if (args.isNotEmpty() && args[0].equals("admin", true)) {
+            handleAdmin(sender, args.copyOfRange(1, args.size))
+            return
+        }
         val player = requirePlayer(sender) ?: return
         if (args.isEmpty()) {
             if (Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
@@ -770,11 +774,12 @@ object MatrixShopCommands {
 
     private fun sendAdminHelp(sender: CommandSender) {
         val lines = mutableListOf("&8[&bMatrixShop&8] &fAdmin Commands")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_RELOAD), "&7/matrixshopadmin reload &8- &fReload configuration and modules")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_SYNC), "&7/matrixshopadmin sync &8- &fRun schema sync and legacy data import")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), "&7/matrixshopadmin status &8- &fShow module, economy and data-layer status")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module list &8- &fShow module states")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshopadmin module <enable|disable|toggle> <id> &8- &fChange one module state")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_RELOAD), "&7/matrixshop admin reload &8- &fReload configuration and modules")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_SYNC), "&7/matrixshop admin sync &8- &fRun schema sync and legacy data import")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), "&7/matrixshop admin status &8- &fShow module, economy and data-layer status")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshop admin module list &8- &fShow module states")
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshop admin module <enable|disable|toggle> <id> &8- &fChange one module state")
+        lines += "&8[&bMatrixShop&8] &7Compatibility alias: &f/matrixshopadmin ..."
         Texts.sendRaw(sender, lines.joinToString("\n"))
     }
 
@@ -792,7 +797,7 @@ object MatrixShopCommands {
         val action = args[0].lowercase()
         val moduleId = resolveModuleId(args.getOrNull(1))
         if (moduleId == null) {
-            Texts.send(sender, "&cUsage: /matrixshopadmin module <enable|disable|toggle> <id>")
+            Texts.send(sender, "&cUsage: /matrixshop admin module <enable|disable|toggle> <id>")
             return
         }
         val enabled = when (action) {
@@ -800,7 +805,7 @@ object MatrixShopCommands {
             "disable", "off" -> false
             "toggle" -> !ConfigFiles.isModuleEnabled(moduleId, true)
             else -> {
-                Texts.send(sender, "&cUsage: /matrixshopadmin module <enable|disable|toggle> <id>")
+                Texts.send(sender, "&cUsage: /matrixshop admin module <enable|disable|toggle> <id>")
                 return
             }
         }
