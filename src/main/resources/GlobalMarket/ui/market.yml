@@ -1,0 +1,45 @@
+Title:
+  - '&8全球市场 &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##U#C#M##'
+  - 'P###R###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'U':
+    material: 'CHEST'
+    name: '&a上架'
+    lore:
+      - '&7打开上架说明'
+  'C':
+    material: 'CHEST_MINECART'
+    name: '&6购物车'
+    lore:
+      - '&7查看购物车'
+  'M':
+    material: 'BOOK'
+    name: '&d我的上架'
+    lore:
+      - '&7管理自己的全球市场商品'
+  'R':
+    material: 'BARRIER'
+    name: '&c关闭'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&a上一页'
+  'N':
+    material: 'ARROW'
+    name: '&a下一页'

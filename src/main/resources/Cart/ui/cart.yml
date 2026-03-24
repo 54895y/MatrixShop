@@ -1,0 +1,73 @@
+Title:
+  - '&8Cart &7{page}/{max-page}'
+
+Options:
+  Source-Modules:
+    - system_shop
+    - player_shop
+    - global_market
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##K#V#X##'
+  - 'P#A#C#R#N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'K':
+    material: 'BOOK'
+    name: '&fCart Info'
+    lore:
+      - '&7Entries: &f{size}'
+      - '&7Estimated total: &e{estimate-total}'
+      - '&7Auction watch only: &f{auction-watch-size}'
+      - '&7Source filter: &f{source-filter}'
+  'V':
+    material: 'HOPPER'
+    name: '&eRemove Invalid'
+  'X':
+    material: 'LAVA_BUCKET'
+    name: '&cClear Cart'
+  'A':
+    material: 'PAPER'
+    name: '&bChange Amount'
+    lore:
+      - '&7Use command:'
+      - '&f/matrixshop cart amount <slot> <number>'
+  'C':
+    material: 'LIME_WOOL'
+    name: '&aOpen Checkout'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'
+
+template:
+  name: '&f{name}'
+  lore:
+    - '&7Source: &f{source-module}'
+    - '&7Source id: &f{source-id}'
+    - '&7Snapshot price: &e{snapshot-price} {currency}'
+    - '&7Current price: &6{current-price} {currency}'
+    - '&7Amount: &f{amount}'
+    - '&7State: &f{state}'
+    - '&7Limit: &f{limitation}'
+    - '&7Added at: &f{created-at}'
+    - '&7Slot: &f{slot}'
+    - '&7Reason: &f{reason}'

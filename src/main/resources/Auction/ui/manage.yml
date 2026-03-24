@@ -1,0 +1,46 @@
+Title:
+  - '&8My Auctions &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##F#O#R##'
+  - 'P###I###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'F':
+    material: 'PAPER'
+    name: '&fMy Listings'
+    lore:
+      - '&7Active: &f{size}'
+      - '&7Right click a listing to remove it'
+  'O':
+    material: 'BOOK'
+    name: '&fOpen Hall'
+    lore:
+      - '&7Return to auction hall'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'
+  'I':
+    material: 'CHEST'
+    name: '&aUpload'
+    lore:
+      - '&7Open upload instructions'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'

@@ -1,0 +1,39 @@
+Title:
+  - '&8Create ChestShop'
+
+layout:
+  - '#########'
+  - '###i#####'
+  - '##B#S#D##'
+  - '#########'
+  - '####R####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'i':
+    material: 'AIR'
+    mode: 'preview'
+  'B':
+    material: 'HOPPER'
+    name: '&aBUY Shop'
+    lore:
+      - '&7/chestshop create buy <price> [amount]'
+  'S':
+    material: 'EMERALD'
+    name: '&6SELL Shop'
+    lore:
+      - '&7/chestshop create sell <price> [amount]'
+  'D':
+    material: 'DOUBLE_PLANT'
+    name: '&bDUAL Shop'
+    lore:
+      - '&7Requires a double chest'
+      - '&7/chestshop create dual <buy-price> <sell-price> [amount]'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'

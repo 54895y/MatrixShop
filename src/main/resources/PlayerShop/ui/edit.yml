@@ -1,0 +1,50 @@
+Title:
+  - '&8我的商店管理 &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##H#I#U##'
+  - 'P###B###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'H':
+    material: 'BOOK'
+    name: '&f上架帮助'
+    lore:
+      - '&7手持物品后使用命令:'
+      - '&e/matrixshop player_shop upload <price> [amount]'
+      - '&7左键重复提示'
+  'I':
+    material: 'PAPER'
+    name: '&f店铺信息'
+    lore:
+      - '&7店主: &f{owner}'
+      - '&7已解锁槽位: &f{unlocked}'
+      - '&7当前上架数: &f{listed}'
+      - '&c左键商品可下架返还'
+  'U':
+    material: 'CHEST'
+    name: '&a上架入口'
+    lore:
+      - '&7通过命令上架主手物品'
+  'B':
+    material: 'BARRIER'
+    name: '&c返回'
+    actions:
+      left:
+        - 'back'
+  'P':
+    material: 'ARROW'
+    name: '&a上一页'
+  'N':
+    material: 'ARROW'
+    name: '&a下一页'

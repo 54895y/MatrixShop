@@ -1,0 +1,17 @@
+Enabled: true
+
+Bindings:
+  Commands:
+    Bindings:
+      - 'global_market'
+      - 'globalmarket'
+      - 'market'
+      - 'gm'
+    Register: false
+    Show-In-Help: true
+    Priority: 80
+    Condition: 'perm matrixshop.globalmarket.use'
+
+Listing:
+  Expire-Hours: 72
+  Tax-Percent: 3.0

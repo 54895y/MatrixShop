@@ -1,0 +1,10 @@
+modules:
+  menu: true
+  system-shop: true
+  player-shop: true
+  global-market: true
+  auction: true
+  chestshop: true
+  transaction: true
+  cart: true
+  record: true

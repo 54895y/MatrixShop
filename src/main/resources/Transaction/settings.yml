@@ -1,0 +1,29 @@
+Enabled: true
+Bindings:
+  Commands:
+    Bindings:
+      - 'trade'
+      - 'tm'
+    Register: true
+    Show-In-Help: true
+    Priority: 18
+    Condition: 'perm matrixshop.transaction.use'
+Options:
+  Request:
+    Timeout-Seconds: 30
+    Max-Pending: 5
+    Allow-Multi-Pending: true
+  Session:
+    Max-Distance: 8
+    Same-World-Only: true
+    Cancel-On-Damage: true
+    Cancel-On-Death: true
+    Cancel-On-Quit: true
+    Cancel-On-World-Change: true
+  Trade:
+    Allow-Items: true
+    Allow-Money: true
+    Allow-Exp: true
+  Record:
+    Write-On-Complete: true
+    Write-On-Cancel: false

@@ -1,0 +1,54 @@
+Bindings:
+  Commands:
+    Bindings:
+      - 'auction'
+      - 'ah'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
+
+Title:
+  - '&8Auction Hall &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##U#B#M##'
+  - 'P###R###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'U':
+    material: 'CHEST'
+    name: '&aUpload'
+    lore:
+      - '&7Open upload instructions'
+  'B':
+    material: 'GOLD_INGOT'
+    name: '&6My Bids'
+    lore:
+      - '&7View auctions you have bid on'
+  'M':
+    material: 'BOOK'
+    name: '&fMy Auctions'
+    lore:
+      - '&7Manage your active listings'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'

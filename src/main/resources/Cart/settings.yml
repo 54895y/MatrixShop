@@ -1,0 +1,20 @@
+Enabled: true
+
+Bindings:
+  Commands:
+    Bindings:
+      - 'cart'
+    Register: false
+    Show-In-Help: true
+    Priority: 40
+    Condition: 'perm matrixshop.cart.use'
+
+Sources:
+  Checkoutable:
+    - system_shop
+    - player_shop
+    - global_market
+  Auction:
+    Enabled: true
+    Type: watch_only
+    Protected-On-Clear: true

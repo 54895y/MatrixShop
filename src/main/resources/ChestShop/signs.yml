@@ -1,0 +1,16 @@
+Formats:
+  BUY:
+    - '&8[ChestShop]'
+    - '&aBUY'
+    - '&f{item} x{amount}'
+    - '&e{buy-price}'
+  SELL:
+    - '&8[ChestShop]'
+    - '&6SELL'
+    - '&f{item} x{amount}'
+    - '&e{sell-price}'
+  DUAL:
+    - '&8[ChestShop]'
+    - '&bDUAL'
+    - '&f{item} x{amount}'
+    - '&a{buy-price} &7/ &6{sell-price}'

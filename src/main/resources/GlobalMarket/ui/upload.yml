@@ -1,0 +1,39 @@
+Title:
+  - '&8全球市场上架'
+
+layout:
+  - '#########'
+  - '###I#####'
+  - '###C#####'
+  - '###E#####'
+  - '###R#####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'I':
+    material: 'BOOK'
+    name: '&f上架说明'
+    lore:
+      - '&7手持要上架的物品'
+      - '&7使用命令:'
+      - '&e/matrixshop global_market upload <price> [amount]'
+  'C':
+    material: 'PAPER'
+    name: '&f当前规则'
+    lore:
+      - '&7默认上架时限: &f72 小时'
+      - '&7成交税率: &f3%'
+  'E':
+    material: 'EMERALD'
+    name: '&a示例'
+    lore:
+      - '&f/matrixshop global_market upload 500'
+      - '&f/matrixshop global_market upload 500 8'
+  'R':
+    material: 'BARRIER'
+    name: '&c返回'
+    actions:
+      left:
+        - 'back'

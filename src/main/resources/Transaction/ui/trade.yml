@@ -1,0 +1,58 @@
+Title:
+  - '&8Trading - {self} -> {target}'
+
+layout:
+  - 'AAA#BBB##'
+  - 'AAA#BBB##'
+  - 'AAA#BBB##'
+  - '##M#E#T##'
+  - '##R#C#Q##'
+  - '#########'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'A':
+    material: 'AIR'
+    mode: 'self-offer'
+    name: '&aMy Offer'
+  'B':
+    material: 'AIR'
+    mode: 'target-offer'
+    name: '&bTarget Offer'
+  'M':
+    material: 'GOLD_INGOT'
+    name: '&6Money Offer'
+    lore:
+      - '&7Current: &e{self-money}'
+      - '&7Use /trade money <amount>'
+      - '&7Right click to clear'
+  'E':
+    material: 'EXP_BOTTLE'
+    name: '&aExp Offer'
+    lore:
+      - '&7Current: &f{self-exp}'
+      - '&7Use /trade exp <amount>'
+      - '&7Right click to clear'
+  'T':
+    material: 'PAPER'
+    name: '&fTarget Summary'
+    lore:
+      - '&7Money: &e{target-money}'
+      - '&7Exp: &f{target-exp}'
+      - '&7Ready: &f{target-ready}'
+      - '&7Shift-click items from your inventory'
+  'R':
+    material: 'SLIME_BALL'
+    name: '&aReady'
+    lore:
+      - '&7Any change resets both players'
+  'C':
+    material: 'EMERALD_BLOCK'
+    name: '&aConfirm'
+    lore:
+      - '&7Enter final confirmation when both ready'
+  'Q':
+    material: 'BARRIER'
+    name: '&cCancel Trade'

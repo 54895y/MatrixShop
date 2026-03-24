@@ -1,0 +1,19 @@
+Enabled: true
+
+Bindings:
+  Commands:
+    Bindings:
+      - 'chestshop'
+      - 'cshop'
+    Register: true
+    Show-In-Help: true
+    Priority: 60
+    Condition: 'perm matrixshop.chestshop.use'
+
+Entry:
+  Open-GUI-On:
+    - SIGN_RIGHT_CLICK
+    - CHEST_RIGHT_CLICK
+  Direct-Trade-On: []
+Stock:
+  Double-Chest-Mode: expand_only

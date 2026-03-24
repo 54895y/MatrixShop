@@ -1,0 +1,39 @@
+Bindings:
+  Commands:
+    Bindings:
+      - 'trade'
+      - 'tm'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
+
+Title:
+  - '&8Trade Hub &7{shop-id}'
+
+layout:
+  - '#########'
+  - '###R#A###'
+  - '#########'
+  - '###L#####'
+  - '#########'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'R':
+    material: 'NAME_TAG'
+    name: '&aRequest Trade'
+    lore:
+      - '&7Use /ms trade request <player>'
+      - '&7or your custom binding equivalent'
+  'A':
+    material: 'EMERALD'
+    name: '&fActive Trade'
+    lore:
+      - '&7Open your current trade session'
+  'L':
+    material: 'BOOK'
+    name: '&6Trade Records'
+    lore:
+      - '&7Open transaction records'

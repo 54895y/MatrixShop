@@ -1,0 +1,36 @@
+Title:
+  - '&8Final Confirm'
+
+layout:
+  - '#########'
+  - '###S#####'
+  - '##C#I#X##'
+  - '#########'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'S':
+    material: 'PAPER'
+    name: '&fTrade Summary'
+    lore:
+      - '&7My items: &f{self-item-size}'
+      - '&7My money: &e{self-money}'
+      - '&7My exp: &f{self-exp}'
+      - '&7Target items: &f{target-item-size}'
+      - '&7Target money: &e{target-money}'
+      - '&7Target exp: &f{target-exp}'
+      - '&7System will recheck distance, world, balance, exp and bag space'
+  'C':
+    material: 'EMERALD'
+    name: '&aSubmit Confirm'
+  'I':
+    material: 'BOOK'
+    name: '&fSafety'
+    lore:
+      - '&7Any failed recheck rolls back the whole trade'
+      - '&7No partial completion will happen'
+  'X':
+    material: 'BARRIER'
+    name: '&cCancel'

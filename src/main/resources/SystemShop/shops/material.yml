@@ -1,0 +1,68 @@
+id: material
+
+Title:
+  - '&8材料商店'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '####I####'
+  - '####R####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'I':
+    material: 'BOOK'
+    name: '&f商店说明'
+    lore:
+      - '&7点击商品进入确认界面'
+  'R':
+    material: 'BARRIER'
+    name: '&c返回'
+    actions:
+      left:
+        - 'back'
+
+template:
+  name: '&f{name}'
+  lore:
+    - '&7价格: &e{price} {currency}'
+    - '&7单次上限: &f{limit}'
+    - '&7余额: &f{has_currency}'
+    - ''
+    - '&e左键进入购买确认'
+
+goods:
+  coal:
+    material: 'COAL'
+    amount: 16
+    price: 48
+    currency: 'vault'
+    buy-max: 64
+    name: '&8煤炭 x16'
+    lore:
+      - '&7基础燃料与材料'
+  iron_ingot:
+    material: 'IRON_INGOT'
+    amount: 8
+    price: 160
+    currency: 'vault'
+    buy-max: 64
+    name: '&f铁锭 x8'
+    lore:
+      - '&7常用进阶材料'
+  diamond:
+    material: 'DIAMOND'
+    amount: 2
+    price: 300
+    currency: 'vault'
+    buy-max: 16
+    name: '&b钻石 x2'
+    lore:
+      - '&7稀有矿物材料'

@@ -1,0 +1,53 @@
+Bindings:
+  Commands:
+    Bindings:
+      - 'player_shop'
+      - 'playershop'
+      - 'pshop'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
+
+Title:
+  - '&8{owner} Shop &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '###I#E###'
+  - 'P###B###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'I':
+    material: 'PAPER'
+    name: '&fShop Info'
+    lore:
+      - '&7Owner: &f{owner}'
+      - '&7Listed: &f{listed}'
+      - '&7Your Balance: &e{money}'
+  'E':
+    material: 'BOOK'
+    name: '&eEdit My Shop'
+    lore:
+      - '&7Only visible for the owner'
+      - '&eLeft click to open the edit view'
+  'B':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'

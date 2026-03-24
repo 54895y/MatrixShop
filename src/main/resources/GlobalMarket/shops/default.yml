@@ -1,0 +1,54 @@
+Bindings:
+  Commands:
+    Bindings:
+      - 'market'
+      - 'gm'
+    Register: true
+    Show-In-Help: true
+    Priority: 100
+
+Title:
+  - '&8Global Market &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '##U#C#M##'
+  - 'P###R###N'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'U':
+    material: 'CHEST'
+    name: '&aUpload'
+    lore:
+      - '&7Open the upload view for this market'
+  'C':
+    material: 'CHEST_MINECART'
+    name: '&6Cart'
+    lore:
+      - '&7Open your shopping cart'
+  'M':
+    material: 'BOOK'
+    name: '&dMy Listings'
+    lore:
+      - '&7Manage your listings in this market'
+  'R':
+    material: 'BARRIER'
+    name: '&cClose'
+    actions:
+      left:
+        - 'close'
+  'P':
+    material: 'ARROW'
+    name: '&aPrevious'
+  'N':
+    material: 'ARROW'
+    name: '&aNext'

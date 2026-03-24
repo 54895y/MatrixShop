@@ -1,0 +1,22 @@
+Database:
+  Type: SQLITE
+
+  SQLite:
+    File: 'Data/data.db'
+
+  MySQL:
+    Host: '127.0.0.1'
+    Port: 3306
+    Database: 'matrixshop'
+    Username: 'root'
+    Password: 'password'
+    Maximum-Pool-Size: 10
+
+  Redis:
+    Enabled: false
+    Host: '127.0.0.1'
+    Port: 6379
+    Password: ''
+    Channels:
+      Invalidate: 'matrixshop:invalidate'
+      Sync: 'matrixshop:sync'

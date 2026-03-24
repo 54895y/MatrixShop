@@ -1,0 +1,89 @@
+Title:
+  - '&8确认购买'
+
+layout:
+  - '#########'
+  - '###ggg###'
+  - '#123A456#'
+  - '###K##T#R'
+  - '####C####'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'preview'
+  '1':
+    material: 'REDSTONE'
+    name: '&c-1'
+    actions:
+      left:
+        - 'matrixshop system confirm amount add -1'
+  '2':
+    material: 'REDSTONE'
+    name: '&c-8'
+    actions:
+      left:
+        - 'matrixshop system confirm amount add -8'
+  '3':
+    material: 'REDSTONE'
+    name: '&c-16'
+    actions:
+      left:
+        - 'matrixshop system confirm amount add -16'
+  '4':
+    material: 'EMERALD'
+    name: '&a+1'
+    actions:
+      left:
+        - 'matrixshop system confirm amount add 1'
+  '5':
+    material: 'EMERALD'
+    name: '&a+8'
+    actions:
+      left:
+        - 'matrixshop system confirm amount add 8'
+  '6':
+    material: 'EMERALD'
+    name: '&a+16'
+    actions:
+      left:
+        - 'matrixshop system confirm amount add 16'
+  'A':
+    material: 'ANVIL'
+    name: '&f数量调整'
+    lore:
+      - '&7当前数量: &f{amount}'
+      - '&7单价: &e{price}'
+      - '&7总价: &e{total-price}'
+  'K':
+    material: 'PAPER'
+    name: '&f订单信息'
+    lore:
+      - '&7商品: &f{name}'
+      - '&7数量: &f{amount}'
+      - '&7总价: &e{total-price}'
+  'T':
+    material: 'CHEST'
+    name: '&b加入购物车'
+    lore:
+      - '&7把当前确认单加入购物车'
+    actions:
+      left:
+        - 'matrixshop system confirm cart'
+  'C':
+    material: 'LIME_WOOL'
+    name: '&a确认购买'
+    lore:
+      - '&7立即执行本次购买'
+    actions:
+      left:
+        - 'matrixshop system confirm action'
+  'R':
+    material: 'BARRIER'
+    name: '&c返回'
+    actions:
+      left:
+        - 'back'
