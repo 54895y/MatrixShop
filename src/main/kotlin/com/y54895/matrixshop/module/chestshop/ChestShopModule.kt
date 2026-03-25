@@ -892,7 +892,7 @@ object ChestShopModule : MatrixModule {
             holder.handlers[slot] = { onBack() }
         }
         buttonSlot(definition, 'R')?.let { slot ->
-            holder.handlers[slot] = { holder.backAction?.invoke() ?: onBack() }
+                holder.handlers[slot] = { holder.backAction?.invoke() ?: onBack() }
         }
     }
 
