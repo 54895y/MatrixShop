@@ -7,7 +7,7 @@ import com.y54895.matrixshop.core.database.LegacyDataMigrationService
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.record.RecordService
-import com.y54895.matrixshop.core.text.ConsoleVisuals
+import com.y54895.matrixshop.core.text.MatrixShopRuntime
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.info
 import taboolib.common.platform.function.severe
@@ -15,7 +15,7 @@ import taboolib.common.platform.function.severe
 object MatrixShop : Plugin() {
 
     override fun onLoad() {
-        ConsoleVisuals.renderBoot()
+        MatrixShopRuntime.renderBoot()
     }
 
     override fun onEnable() {
@@ -29,20 +29,20 @@ object MatrixShop : Plugin() {
             ModuleRegistry.reload()
             MatrixShopCommands.register()
             info("MatrixShop enabled. Modules=${ModuleRegistry.enabledSummary()}")
-            ConsoleVisuals.renderReady(
+            MatrixShopRuntime.renderReady(
                 backend = DatabaseManager.backendName(),
                 schemaMessage = schemaResult.message,
                 modules = ModuleRegistry.enabledSummary()
             )
         }.onFailure {
-            ConsoleVisuals.renderFailure(it.message ?: it.javaClass.simpleName)
+            MatrixShopRuntime.renderFailure(it.message ?: it.javaClass.simpleName)
             severe("MatrixShop failed to start: ${it.message}")
             throw it
         }
     }
 
     override fun onDisable() {
-        ConsoleVisuals.renderShutdown(DatabaseManager.backendName())
+        MatrixShopRuntime.renderShutdown(DatabaseManager.backendName())
     }
 
     fun reloadPlugin() {
