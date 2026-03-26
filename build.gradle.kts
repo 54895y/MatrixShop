@@ -9,7 +9,17 @@ plugins {
 
 taboolib {
     env {
-        install(Basic, Bukkit, BukkitHook, CommandHelper, Kether)
+        install(Basic)
+        install(Bukkit)
+        install(BukkitHook)
+        install(BukkitNMS)
+        install(BukkitNMSUtil)
+        install(BukkitUI)
+        install(BukkitUtil)
+        install(I18n)
+        install(MinecraftChat)
+        install(CommandHelper)
+        install(Kether)
         repoTabooLib = "https://repo.tabooproject.org/repository/releases"
         disableOnSkippedVersion = false
     }
@@ -35,7 +45,13 @@ repositories {
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT")
     compileOnly(kotlin("stdlib"))
-    compileOnly(files("../../MatrixLib/Code/build/libs/MatrixLib-1.0.0.jar"))
+    val matrixLibJarCandidates = listOf(
+        layout.projectDirectory.file("../../MatrixLib/Code/build/libs/MatrixLib-1.0.0.jar").asFile,
+        layout.projectDirectory.file("../../MatrixLib/build/libs/MatrixLib-1.0.0.jar").asFile,
+        layout.projectDirectory.file("../MatrixLib/Code/build/libs/MatrixLib-1.0.0.jar").asFile,
+        layout.projectDirectory.file("../MatrixLib/build/libs/MatrixLib-1.0.0.jar").asFile
+    )
+    compileOnly(files(matrixLibJarCandidates.firstOrNull { it.exists() } ?: matrixLibJarCandidates.first()))
 }
 
 tasks.withType<JavaCompile> {
