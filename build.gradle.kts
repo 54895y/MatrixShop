@@ -11,7 +11,17 @@ val matrixLibApiVersion = providers.gradleProperty("matrixlibApiVersion").orElse
 
 taboolib {
     env {
-        install(Basic, Bukkit, BukkitHook, CommandHelper)
+        install(Basic)
+        install(Bukkit)
+        install(BukkitHook)
+        install(BukkitNMS)
+        install(BukkitNMSUtil)
+        install(BukkitUI)
+        install(BukkitUtil)
+        install(I18n)
+        install(MinecraftChat)
+        install(CommandHelper)
+        install(Kether)
         repoTabooLib = "https://repo.tabooproject.org/repository/releases"
         disableOnSkippedVersion = false
     }

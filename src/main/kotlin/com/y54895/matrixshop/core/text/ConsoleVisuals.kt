@@ -1,16 +1,13 @@
 package com.y54895.matrixshop.core.text
 
 import com.y54895.matrixlib.api.console.MatrixConsoleFact
-import com.y54895.matrixlib.api.console.MatrixConsoleVisuals
+import com.y54895.matrixlib.api.runtime.MatrixConsoleChannel
 import taboolib.common.platform.function.pluginVersion
 
-object ConsoleVisuals {
-
-    private val branding = MatrixShopBranding.value
+object ConsoleVisuals : MatrixConsoleChannel(MatrixShopBranding.value) {
 
     fun renderBoot() {
-        MatrixConsoleVisuals.renderBoot(
-            branding = branding,
+        super.renderBoot(
             headline = "Bootstrapping commerce modules",
             details = listOf(
                 MatrixConsoleFact("Focus", "system shop / market / auction / trade"),
@@ -20,8 +17,7 @@ object ConsoleVisuals {
     }
 
     fun renderReady(backend: String, schemaMessage: String, modules: String) {
-        MatrixConsoleVisuals.renderReady(
-            branding = branding,
+        super.renderReady(
             version = pluginVersion,
             details = listOf(
                 MatrixConsoleFact("Backend", backend),
@@ -32,12 +28,11 @@ object ConsoleVisuals {
     }
 
     fun renderFailure(reason: String) {
-        MatrixConsoleVisuals.renderFailure(branding, reason)
+        super.renderFailure(reason)
     }
 
     fun renderShutdown(backend: String) {
-        MatrixConsoleVisuals.renderShutdown(
-            branding = branding,
+        super.renderShutdown(
             details = listOf(
                 MatrixConsoleFact("Backend snapshot", backend)
             )
