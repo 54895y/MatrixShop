@@ -1,5 +1,6 @@
 package com.y54895.matrixshop.module.systemshop
 
+import com.y54895.matrixlib.api.item.MatrixItemHooks
 import org.bukkit.Material
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
@@ -22,7 +23,8 @@ data class SystemShopProduct(
 ) {
 
     fun toItemStack(displayName: String, displayLore: List<String>): ItemStack {
-        val item = ItemStack(Material.matchMaterial(material) ?: Material.STONE, amount.coerceAtLeast(1))
+        val item = MatrixItemHooks.resolveItemStack(material, amount, quiet = true)
+            ?: ItemStack(Material.STONE, amount.coerceAtLeast(1))
         item.itemMeta = item.itemMeta?.apply {
             setDisplayName(displayName)
             lore = displayLore
@@ -34,10 +36,13 @@ data class SystemShopProduct(
     fun toPurchasedItem(purchaseTimes: Int): List<ItemStack> {
         val stacks = ArrayList<ItemStack>()
         var remaining = amount * purchaseTimes
-        val materialValue = Material.matchMaterial(material) ?: Material.STONE
+        val prototype = MatrixItemHooks.resolveItemStack(material, 1, quiet = true)
+        val materialValue = prototype?.type ?: (Material.matchMaterial(material) ?: Material.STONE)
         while (remaining > 0) {
             val take = remaining.coerceAtMost(materialValue.maxStackSize.coerceAtLeast(1))
-            stacks += ItemStack(materialValue, take)
+            stacks += (prototype?.clone() ?: ItemStack(materialValue)).apply {
+                this.amount = take
+            }
             remaining -= take
         }
         return stacks
