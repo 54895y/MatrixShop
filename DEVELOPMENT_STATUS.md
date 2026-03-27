@@ -31,6 +31,10 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Moved `MatrixAuth` startup/reload/disable service assembly into a dedicated local service container instead of keeping the wiring spread across the plugin main class
+- Added `MatrixAuthServices` to centralize config/service construction and staged shutdown for `DataManager`, `MojangApiClient`, `EasyBotCompatHttpService`, and related runtime services
+- Changed `MatrixAuth` exported service properties to resolve through the active service container, which keeps external call sites stable while shrinking main-class wiring
+- Revalidated `MatrixAuth` startup on local `paper-1.12.2` after the service-container refactor
 - Added shared Bukkit platform helpers to `MatrixLib` for plugin lookup and reflective command-map registration
 - Moved `MatrixAuth` dynamic command registration onto the shared `MatrixLib` Bukkit command helper
 - Moved `MatrixAuth` optional plugin checks (`AuthMe`, `PlaceholderAPI`, `ProtocolLib`, `EasyBot`, `Geyser`, `Floodgate`) onto the shared `MatrixLib` plugin lookup helper
@@ -133,6 +137,9 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- `MatrixAuth` service-container refactor compiled successfully with `./gradlew build`
+- Live smoke boot passed on local `paper-1.12.2` after deploying the new `MatrixAuth`
+- Smoke log confirmed `MatrixAuth` still enables successfully after moving startup/reload/disable assembly into the service container
 - `MatrixLib` shared Bukkit platform helper refactor compiled successfully with `./gradlew build`
 - `MatrixAuth` Bukkit platform helper migration compiled successfully with `./gradlew build`
 - `MatrixCook` plugin lookup migration compiled successfully with `./gradlew build`
@@ -164,6 +171,7 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- `MatrixAuth` service assembly is now localized in a dedicated service container, but listener registration and protocol hook registration are still coordinated directly in the plugin main class
 - `MatrixLib` now owns reusable Bukkit plugin lookup and reflective command registration helpers, but listener registration and optional-hook business decisions still stay inside each plugin
 - `MatrixLib` now owns the shared JDBC datasource factory, but JDBC runtime dependency provisioning is still plugin-local under the current TabooLib packaging model
 - The current host still has a fragile Kotlin daemon/cache environment; sequential rebuilds are reliable, but parallel composite builds can corrupt local Kotlin zip caches
@@ -188,6 +196,7 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Continue shrinking `MatrixAuth` main-class wiring by deciding whether listener/protocol/placeholder registration should also move behind a local runtime coordinator
 - Continue shrinking `MatrixAuth` bootstrap/reload wiring, with the next candidate being reload-stage service assembly and shutdown cleanup helpers
 - Continue consolidating plugin-local runtime wrappers into `MatrixLib`, with the next best target being `MatrixAuth` reload/bootstrap helpers instead of datasource creation
 - Continue replacing duplicated plugin-local item parsing with `MatrixLib` shared hooks where raw source ids still exist
