@@ -892,7 +892,8 @@ object MatrixShopCommands {
     private fun requirePlayer(sender: ProxyCommandSender): Player? {
         val player = sender.origin as? Player
         if (player == null) {
-            sender.sendMessage(Texts.prefixed("&cThis command can only be used by players."))
+            val message = ConfigFiles.config.getString("messages.player-only", "@messages.player-only").orEmpty()
+            sender.sendMessage(Texts.prefixed(message))
         }
         return player
     }

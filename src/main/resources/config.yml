@@ -1,8 +1,12 @@
 debug: false
 
+language:
+  default: zh_CN
+  fallback: zh_CN
+
 system-shop:
   default-category: weapon
 
 messages:
-  no-permission: '&c你没有权限执行这个操作。'
-  player-only: '&c该命令只能由玩家执行。'
+  no-permission: '@messages.no-permission'
+  player-only: '@messages.player-only'

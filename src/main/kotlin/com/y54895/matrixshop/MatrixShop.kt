@@ -8,6 +8,7 @@ import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.ConsoleVisuals
+import com.y54895.matrixshop.core.text.MatrixI18n
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.info
 import taboolib.common.platform.function.severe
@@ -22,6 +23,7 @@ object MatrixShop : Plugin() {
         runCatching {
             ConfigFiles.ensureDefaults()
             ConfigFiles.reload()
+            MatrixI18n.reload()
             RecordService.initialize()
             val schemaResult = DatabaseManager.syncSchema()
             LegacyDataMigrationService.migrateAll()
@@ -47,6 +49,7 @@ object MatrixShop : Plugin() {
 
     fun reloadPlugin() {
         ConfigFiles.reload()
+        MatrixI18n.reload()
         RecordService.initialize()
         DatabaseManager.syncSchema()
         LegacyDataMigrationService.migrateAll()

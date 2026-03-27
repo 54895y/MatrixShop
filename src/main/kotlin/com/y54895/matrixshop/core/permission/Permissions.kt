@@ -60,7 +60,7 @@ object Permissions {
         if (has(sender, node)) {
             return true
         }
-        Texts.send(sender, ConfigFiles.config.getString("messages.no-permission", "&cYou do not have permission.").orEmpty())
+        Texts.send(sender, ConfigFiles.config.getString("messages.no-permission", "@messages.no-permission").orEmpty())
         return false
     }
 }

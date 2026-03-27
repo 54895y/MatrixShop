@@ -21,6 +21,7 @@ object ConfigFiles {
         getDataFolder().mkdirs()
         resourceFiles.forEach { releaseResourceFile(it, false) }
         releaseResourceFolder("SystemShop", false)
+        releaseResourceFolder("Lang", false)
         releaseResourceFolder("Menu", false)
         releaseResourceFolder("PlayerShop", false)
         releaseResourceFolder("GlobalMarket", false)
