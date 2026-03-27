@@ -11,16 +11,36 @@ object Texts {
         return MatrixText.color(resolve(text))
     }
 
+    fun colorKey(key: String, placeholders: Map<String, String> = emptyMap()): String {
+        return MatrixText.color(tr(key, placeholders))
+    }
+
     fun prefixed(text: String): String {
         return MatrixText.prefixed(branding, resolve(text))
+    }
+
+    fun prefixedKey(key: String, placeholders: Map<String, String> = emptyMap()): String {
+        return MatrixText.prefixed(branding, tr(key, placeholders))
     }
 
     fun send(sender: CommandSender, text: String) {
         MatrixText.send(sender, branding, resolve(text))
     }
 
+    fun sendKey(sender: CommandSender, key: String, placeholders: Map<String, String> = emptyMap()) {
+        MatrixText.send(sender, branding, tr(key, placeholders))
+    }
+
     fun sendRaw(sender: CommandSender, text: String) {
         MatrixText.sendRaw(sender, resolve(text))
+    }
+
+    fun sendRawKey(sender: CommandSender, key: String, placeholders: Map<String, String> = emptyMap()) {
+        MatrixText.sendRaw(sender, tr(key, placeholders))
+    }
+
+    fun tr(key: String, placeholders: Map<String, String> = emptyMap()): String {
+        return MatrixText.raw(MatrixText.apply(resolve(key), placeholders))
     }
 
     fun apply(template: String, placeholders: Map<String, String>): String {

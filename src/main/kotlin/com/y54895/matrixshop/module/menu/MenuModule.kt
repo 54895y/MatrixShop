@@ -45,7 +45,7 @@ object MenuModule : MatrixModule {
 
     fun open(player: Player, shopId: String? = null) {
         if (!isEnabled() || !::menus.isInitialized) {
-            Texts.send(player, "&cMenu module is disabled.")
+            Texts.sendKey(player, "@menu.errors.module-disabled")
             return
         }
         val selected = ShopMenuLoader.resolve(menus, shopId)

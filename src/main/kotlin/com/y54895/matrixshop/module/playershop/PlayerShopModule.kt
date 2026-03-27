@@ -129,24 +129,24 @@ object PlayerShopModule : MatrixModule {
 
     fun uploadFromHand(player: Player, shopId: String?, price: Double, requestedAmount: Int?) {
         if (price <= 0) {
-            Texts.send(player, "&cPrice must be greater than 0.")
+            Texts.sendKey(player, "@player-shop.errors.price-positive")
             return
         }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
         if (hand.type == Material.AIR || hand.amount <= 0) {
-            Texts.send(player, "&cHold the item you want to list in your main hand.")
+            Texts.sendKey(player, "@player-shop.errors.hold-item")
             return
         }
         val resolvedShopId = resolveShopId(shopId)
         val store = loadStore(player.uniqueId, player.name, resolvedShopId)
         val slotIndex = PlayerShopRepository.nextFreeSlot(store)
         if (slotIndex == null) {
-            Texts.send(player, "&cYour store is already full in this shop.")
+            Texts.sendKey(player, "@player-shop.errors.store-full")
             return
         }
         val amount = (requestedAmount ?: hand.amount).coerceAtLeast(1)
         if (amount > hand.amount) {
-            Texts.send(player, "&cYou do not have enough items in your main hand.")
+            Texts.sendKey(player, "@player-shop.errors.main-hand-not-enough")
             return
         }
         val listed = hand.clone().apply { this.amount = amount }
@@ -163,7 +163,16 @@ object PlayerShopModule : MatrixModule {
         store.listings += listing
         PlayerShopRepository.save(store)
         player.updateInventory()
-        Texts.send(player, "&aListed in &f${store.shopId}&a: &f${itemDisplayName(listed)} &7x&f${listed.amount} &7- &e${trimDouble(price)}")
+        Texts.sendKey(
+            player,
+            "@player-shop.success.listed",
+            mapOf(
+                "shop" to store.shopId,
+                "name" to itemDisplayName(listed),
+                "amount" to listed.amount.toString(),
+                "price" to trimDouble(price)
+            )
+        )
         RecordService.append("player_shop", "list", player.name, "shop=${store.shopId};listing=${listing.id};price=${trimDouble(price)};amount=${listed.amount}")
         openEdit(player, resolvedShopId, pageForSlot(slotIndex, goodsPerPage(menus.edit)))
     }
@@ -185,9 +194,9 @@ object PlayerShopModule : MatrixModule {
 
     fun validateListing(ownerId: UUID, ownerName: String, shopId: String?, listingId: String): ModuleOperationResult {
         val selection = selection(ownerId, ownerName, shopId, listingId)
-            ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
+            ?: return ModuleOperationResult(false, Texts.tr("@player-shop.errors.listing-unavailable"))
         return if (selection.listing.item.type == Material.AIR || selection.listing.item.amount <= 0) {
-            ModuleOperationResult(false, "&cThat listing contains invalid item data.")
+            ModuleOperationResult(false, Texts.tr("@player-shop.errors.invalid-item"))
         } else {
             ModuleOperationResult(true, "")
         }
@@ -212,7 +221,7 @@ object PlayerShopModule : MatrixModule {
         val resolvedShopId = resolveShopId(shopId)
         val store = loadStore(ownerId, ownerName, resolvedShopId)
         val listing = store.listings.firstOrNull { it.id == listingId }
-            ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
+            ?: return ModuleOperationResult(false, Texts.tr("@player-shop.errors.listing-unavailable"))
         return purchase(viewer, store, listing, reopenAfterSuccess)
     }
 
@@ -223,31 +232,44 @@ object PlayerShopModule : MatrixModule {
         }
         val refreshed = loadStore(store.ownerId, store.ownerName, store.shopId)
         val target = refreshed.listings.firstOrNull { it.id == listing.id }
-            ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
+            ?: return ModuleOperationResult(false, Texts.tr("@player-shop.errors.listing-unavailable"))
         if (target.price > 0 && !VaultEconomyBridge.isAvailable()) {
-            return ModuleOperationResult(false, "&cVault economy is required for player shop purchases.")
+            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.vault-required"))
         }
         if (!canFit(viewer.inventory.contents.filterNotNull(), listOf(target.item))) {
-            return ModuleOperationResult(false, "&cYour inventory does not have enough free space.")
+            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.inventory-no-space"))
         }
         if (!VaultEconomyBridge.has(viewer, target.price)) {
-            return ModuleOperationResult(false, "&cYou need &e${trimDouble(target.price)} &cto buy this listing.")
+            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.balance-not-enough", mapOf("price" to trimDouble(target.price))))
         }
         if (!VaultEconomyBridge.withdraw(viewer, target.price)) {
-            return ModuleOperationResult(false, "&cFailed to withdraw the purchase price.")
+            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.withdraw-failed"))
         }
         val seller = Bukkit.getOfflinePlayer(store.ownerId)
         if (!VaultEconomyBridge.deposit(seller, target.price)) {
             VaultEconomyBridge.deposit(viewer, target.price)
-            return ModuleOperationResult(false, "&cFailed to deliver money to the seller. The purchase was rolled back.")
+            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.seller-delivery-failed"))
         }
         refreshed.listings.remove(target)
         PlayerShopRepository.save(refreshed)
         viewer.inventory.addItem(target.item.clone())
         viewer.updateInventory()
-        Texts.send(viewer, "&aPurchased from &f${store.shopId}&a: &f${itemDisplayName(target.item)} &7x&f${target.item.amount} &7- &e${trimDouble(target.price)}")
+        Texts.sendKey(
+            viewer,
+            "@player-shop.success.purchased",
+            mapOf(
+                "shop" to store.shopId,
+                "name" to itemDisplayName(target.item),
+                "amount" to target.item.amount.toString(),
+                "price" to trimDouble(target.price)
+            )
+        )
         Bukkit.getPlayer(store.ownerId)?.let {
-            Texts.send(it, "&aYour player shop item sold in &f${store.shopId}&a for &e${trimDouble(target.price)}&a.")
+            Texts.sendKey(
+                it,
+                "@player-shop.success.sold",
+                mapOf("shop" to store.shopId, "price" to trimDouble(target.price))
+            )
         }
         RecordService.append(
             module = "player_shop",
@@ -275,7 +297,7 @@ object PlayerShopModule : MatrixModule {
         val store = loadStore(owner.uniqueId, owner.name, shopId)
         val listing = store.listings.firstOrNull { it.id == listingId }
         if (listing == null) {
-            Texts.send(owner, "&cListing not found in this shop.")
+            Texts.sendKey(owner, "@player-shop.errors.listing-not-found-in-shop")
             return
         }
         store.listings.remove(listing)
@@ -284,7 +306,11 @@ object PlayerShopModule : MatrixModule {
             owner.world.dropItemNaturally(owner.location, it)
         }
         owner.updateInventory()
-        Texts.send(owner, "&aRemoved listing from &f${shopId}&a: &f${itemDisplayName(listing.item)}")
+        Texts.sendKey(
+            owner,
+            "@player-shop.success.removed",
+            mapOf("shop" to shopId, "name" to itemDisplayName(listing.item))
+        )
         RecordService.append("player_shop", "remove", owner.name, "shop=$shopId;listing=${listing.id}")
         openEdit(owner, shopId, pageForSlot(listing.slotIndex, goodsPerPage(menus.edit)))
     }
@@ -302,10 +328,10 @@ object PlayerShopModule : MatrixModule {
             val item = listing.item.clone()
             item.itemMeta = item.itemMeta?.apply {
                 lore = (lore ?: emptyList()) + listOf(
-                    Texts.color("&7Price: &e${trimDouble(listing.price)} ${listing.currency}"),
-                    Texts.color("&7Owner: &f${store.ownerName}"),
-                    Texts.color(if (ownerView) "&eLeft click to edit" else "&eLeft click to buy"),
-                    Texts.color(if (ownerView) "&7This is your store" else "&6Right click to add to cart")
+                    Texts.colorKey("@player-shop.lore.price", mapOf("price" to trimDouble(listing.price), "currency" to listing.currency)),
+                    Texts.colorKey("@player-shop.lore.owner", mapOf("owner" to store.ownerName)),
+                    Texts.colorKey(if (ownerView) "@player-shop.lore.left-edit" else "@player-shop.lore.left-buy"),
+                    Texts.colorKey(if (ownerView) "@player-shop.lore.owner-view" else "@player-shop.lore.right-cart")
                 )
             }
             holder.backingInventory.setItem(slot, item)
@@ -335,9 +361,9 @@ object PlayerShopModule : MatrixModule {
                 val item = listing.item.clone()
                 item.itemMeta = item.itemMeta?.apply {
                     lore = (lore ?: emptyList()) + listOf(
-                        Texts.color("&7Price: &e${trimDouble(listing.price)} ${listing.currency}"),
-                        Texts.color("&7Slot: &f${listing.slotIndex + 1}/${store.unlockedSlots}"),
-                        Texts.color("&cLeft click to remove")
+                        Texts.colorKey("@player-shop.lore.price", mapOf("price" to trimDouble(listing.price), "currency" to listing.currency)),
+                        Texts.colorKey("@player-shop.lore.slot", mapOf("slot" to (listing.slotIndex + 1).toString(), "max" to store.unlockedSlots.toString())),
+                        Texts.colorKey("@player-shop.lore.left-remove")
                     )
                 }
                 holder.backingInventory.setItem(inventorySlot, item)
@@ -379,7 +405,9 @@ object PlayerShopModule : MatrixModule {
             holder.handlers[slot] = { openEdit(owner, browseShopId, (currentPage + 1).coerceAtMost(maxPage)) }
         }
         buttonSlot(menus.edit, 'H')?.let { slot ->
-            holder.handlers[slot] = { Texts.send(owner, "&7Use /ms ${browseShopId} upload <price> [amount] to list the item in your main hand.") }
+            holder.handlers[slot] = {
+                Texts.sendKey(owner, "@player-shop.hints.upload-command", mapOf("command" to "/ms $browseShopId upload <price> [amount]"))
+            }
         }
     }
 

@@ -11,9 +11,9 @@ object ConsoleVisuals {
     fun renderBoot() {
         MatrixConsoleVisuals.renderBoot(
             branding = branding,
-            headline = "正在加载商业模块",
+            headline = Texts.tr("@console.boot.headline"),
             details = listOf(
-                MatrixConsoleFact("功能范围", "系统商店 / 玩家市场 / 拍卖行 / 交易")
+                MatrixConsoleFact(Texts.tr("@console.boot.scope-label"), Texts.tr("@console.boot.scope-value"))
             )
         )
     }
@@ -23,10 +23,10 @@ object ConsoleVisuals {
             branding = branding,
             version = pluginVersion,
             details = listOf(
-                MatrixConsoleFact("数据后端", backend),
-                MatrixConsoleFact("经济系统", economy),
-                MatrixConsoleFact("结构同步", schemaMessage),
-                MatrixConsoleFact("启用模块", modules)
+                MatrixConsoleFact(Texts.tr("@console.ready.backend-label"), backend),
+                MatrixConsoleFact(Texts.tr("@console.ready.economy-label"), economy),
+                MatrixConsoleFact(Texts.tr("@console.ready.schema-label"), schemaMessage),
+                MatrixConsoleFact(Texts.tr("@console.ready.modules-label"), modules)
             )
         )
     }
@@ -39,7 +39,7 @@ object ConsoleVisuals {
         MatrixConsoleVisuals.renderShutdown(
             branding = branding,
             details = listOf(
-                MatrixConsoleFact("数据后端快照", backend)
+                MatrixConsoleFact(Texts.tr("@console.shutdown.backend-label"), backend)
             )
         )
     }

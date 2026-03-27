@@ -119,7 +119,7 @@ object RecordModule : MatrixModule {
         val entry = visibleEntries(player, null, resolvedShopId(shopId), normalizeModuleFilter(moduleFilter))
             .firstOrNull { it.id.equals(recordId, true) }
         if (entry == null) {
-            Texts.send(player, "&cRecord not found or not visible: &f$recordId")
+            Texts.sendKey(player, "@record.errors.not-found", mapOf("record" to recordId))
             return
         }
         MenuRenderer.open(
@@ -151,7 +151,7 @@ object RecordModule : MatrixModule {
         val selectedShop = ShopMenuLoader.resolve(menus.recordViews, shopId)
         val normalized = normalizeModuleFilter(moduleFilter)
         if (normalized != null && normalized !in availableModules(player, selectedShop.id)) {
-            Texts.send(player, "&cUnknown record filter module: &f$normalized")
+            Texts.sendKey(player, "@record.errors.filter-module-unknown", mapOf("module" to normalized))
             return
         }
         open(player, keyword, 1, selectedShop.id, normalized)
@@ -161,7 +161,7 @@ object RecordModule : MatrixModule {
         val selectedShop = ShopMenuLoader.resolve(menus.recordViews, shopId)
         val modules = availableModules(player, selectedShop.id)
         if (modules.isEmpty()) {
-            Texts.send(player, "&eNo module filters are available in this record view.")
+            Texts.sendKey(player, "@record.errors.no-filter-modules")
             return
         }
         val state = currentState(player, selectedShop.id)
@@ -170,8 +170,9 @@ object RecordModule : MatrixModule {
             else -> modules.getOrNull(modules.indexOf(current) + 1)
         }
         val applied = next ?: ""
+        val display = if (applied.isBlank()) Texts.tr("@commands.words.all") else applied
         applyFilter(player, applied, selectedShop.id, state.keyword)
-        Texts.send(player, "&aRecord filter: &f${if (applied.isBlank()) "all" else applied}")
+        Texts.sendKey(player, "@record.success.filter-applied", mapOf("module" to display))
     }
 
     private fun openStats(player: Player, page: Int, positive: Boolean, shopId: String?, keyword: String?, moduleFilter: String?) {
@@ -233,7 +234,7 @@ object RecordModule : MatrixModule {
             itemMeta = itemMeta?.apply {
                 MenuRenderer.decorate(
                     this,
-                    Texts.color("&f${moduleDisplay(entry.module)} &7/ &b${entry.type}"),
+                    Texts.colorKey("@record.lore.summary-title", mapOf("module" to moduleDisplay(entry.module), "type" to entry.type)),
                     buildDetailLore(entry)
                 )
             }
@@ -246,15 +247,15 @@ object RecordModule : MatrixModule {
             val slot = slots[index]
             val item = ItemStack(if (positive) Material.EMERALD else Material.REDSTONE).apply {
                 itemMeta = itemMeta?.apply {
-                    MenuRenderer.decorate(
-                        this,
-                        Texts.color("&f${moduleDisplay(aggregate.module)}"),
-                        listOf(
-                            Texts.color("&7Entries: &f${aggregate.count}"),
-                            Texts.color("&7Total: ${if (positive) "&a" else "&c"}${trimDouble(aggregate.total)}")
-                        )
+                MenuRenderer.decorate(
+                    this,
+                    Texts.colorKey("@record.lore.stats-title", mapOf("module" to moduleDisplay(aggregate.module))),
+                    listOf(
+                        Texts.colorKey("@record.lore.entries", mapOf("count" to aggregate.count.toString())),
+                        Texts.colorKey("@record.lore.total", mapOf("color" to if (positive) "&a" else "&c", "total" to trimDouble(aggregate.total)))
                     )
-                }
+                )
+            }
             }
             holder.backingInventory.setItem(slot, item)
         }
@@ -329,46 +330,46 @@ object RecordModule : MatrixModule {
 
     private fun buildListLore(entry: RecordEntry, player: Player): List<String> {
         val lore = mutableListOf(
-            Texts.color("&7Time: &f${timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))}"),
-            Texts.color("&7Actor: &f${entry.actor}")
+            Texts.colorKey("@record.lore.time", mapOf("time" to timeFormatter.format(Instant.ofEpochMilli(entry.createdAt)))),
+            Texts.colorKey("@record.lore.actor", mapOf("actor" to entry.actor))
         )
         if (entry.target.isNotBlank()) {
-            lore += Texts.color("&7Target: &f${entry.target}")
+            lore += Texts.colorKey("@record.lore.target", mapOf("target" to entry.target))
         }
         if (entry.moneyChange != 0.0) {
             val prefix = if (entry.moneyChange > 0) "&a+" else "&c"
-            lore += Texts.color("&7Money: $prefix${trimDouble(entry.moneyChange)}")
+            lore += Texts.colorKey("@record.lore.money", mapOf("prefix" to prefix, "money" to trimDouble(entry.moneyChange)))
         }
         lore += detailLines(entry.detail, 3)
         if (entry.adminReason.isNotBlank() && (settings.showAdminReason || player.hasPermission("matrixshop.admin.record.view.others"))) {
-            lore += Texts.color("&7Reason: &f${entry.adminReason}")
+            lore += Texts.colorKey("@record.lore.reason", mapOf("reason" to entry.adminReason))
         }
-        lore += Texts.color("&7ID: &f${entry.id}")
-        lore += Texts.color("&eLeft click to view detail")
+        lore += Texts.colorKey("@record.lore.id", mapOf("id" to entry.id))
+        lore += Texts.colorKey("@record.lore.left-detail")
         return lore
     }
 
     private fun buildDetailLore(entry: RecordEntry): List<String> {
         val lore = mutableListOf(
-            Texts.color("&7ID: &f${entry.id}"),
-            Texts.color("&7Module: &f${moduleDisplay(entry.module)}"),
-            Texts.color("&7Type: &f${entry.type}"),
-            Texts.color("&7Time: &f${timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))}"),
-            Texts.color("&7Actor: &f${entry.actor}")
+            Texts.colorKey("@record.lore.id", mapOf("id" to entry.id)),
+            Texts.colorKey("@record.lore.module", mapOf("module" to moduleDisplay(entry.module))),
+            Texts.colorKey("@record.lore.type", mapOf("type" to entry.type)),
+            Texts.colorKey("@record.lore.time", mapOf("time" to timeFormatter.format(Instant.ofEpochMilli(entry.createdAt)))),
+            Texts.colorKey("@record.lore.actor", mapOf("actor" to entry.actor))
         )
         if (entry.target.isNotBlank()) {
-            lore += Texts.color("&7Target: &f${entry.target}")
+            lore += Texts.colorKey("@record.lore.target", mapOf("target" to entry.target))
         }
         if (entry.moneyChange != 0.0) {
             val prefix = if (entry.moneyChange > 0) "&a+" else "&c"
-            lore += Texts.color("&7Money: $prefix${trimDouble(entry.moneyChange)}")
+            lore += Texts.colorKey("@record.lore.money", mapOf("prefix" to prefix, "money" to trimDouble(entry.moneyChange)))
         }
         lore += detailLines(entry.detail, 6)
         if (entry.note.isNotBlank()) {
-            lore += Texts.color("&7Note: &f${entry.note}")
+            lore += Texts.colorKey("@record.lore.note", mapOf("note" to entry.note))
         }
         if (entry.adminReason.isNotBlank()) {
-            lore += Texts.color("&7Reason: &f${entry.adminReason}")
+            lore += Texts.colorKey("@record.lore.reason", mapOf("reason" to entry.adminReason))
         }
         return lore
     }
@@ -381,7 +382,7 @@ object RecordModule : MatrixModule {
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .take(maxLines)
-            .map { Texts.color("&7- &f$it") }
+            .map { Texts.colorKey("@record.lore.detail-line", mapOf("line" to it)) }
     }
 
     private fun visibleEntries(player: Player, keyword: String?, shopId: String, moduleFilter: String?): List<RecordEntry> {
@@ -422,7 +423,7 @@ object RecordModule : MatrixModule {
 
     private fun ensureReady(player: Player): Boolean {
         if (!isEnabled() || !::menus.isInitialized) {
-            Texts.send(player, "&cRecord module is disabled.")
+            Texts.sendKey(player, "@record.errors.module-disabled")
             return false
         }
         return true
@@ -507,7 +508,7 @@ object RecordModule : MatrixModule {
         val name = if (definition.template.name.isNotBlank()) {
             Texts.apply(definition.template.name, placeholders)
         } else {
-            Texts.color("&f${moduleDisplay(entry.module)} &7/ &b${entry.type}")
+            Texts.colorKey("@record.lore.summary-title", mapOf("module" to moduleDisplay(entry.module), "type" to entry.type))
         }
         val lore = if (definition.template.lore.isNotEmpty()) {
             Texts.apply(definition.template.lore, placeholders)

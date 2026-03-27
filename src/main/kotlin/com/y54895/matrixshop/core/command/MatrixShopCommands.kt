@@ -101,7 +101,7 @@ object MatrixShopCommands {
         }
         when (args[0].lowercase()) {
             "open" -> ModuleRegistry.menu.open(player, args.getOrNull(1) ?: defaultShopId)
-            else -> Texts.send(player, "&cUsage: ${boundUsage("menu", defaultShopId, "open")}")
+            else -> sendUsage(player, boundUsage("menu", defaultShopId, "open"))
         }
     }
 
@@ -119,7 +119,7 @@ object MatrixShopCommands {
             }
             is ExplicitOpenResolution.ShopAmbiguous -> {
                 val modules = explicit.routes.joinToString(", ") { typedRouteToken(it) }
-                Texts.send(player, "&cShop id &f${args[0]} &cexists in multiple routes: &f$modules")
+                Texts.sendKey(player, "@commands.errors.shop-id-ambiguous-routes", mapOf("shop" to args[0], "routes" to modules))
                 return
             }
             is ExplicitOpenResolution.SystemCategory -> {
@@ -130,11 +130,11 @@ object MatrixShopCommands {
                 return
             }
             is ExplicitOpenResolution.InvalidPrefix -> {
-                Texts.send(player, "&cUnknown shop type prefix: &f${explicit.prefix}")
+                Texts.sendKey(player, "@commands.errors.unknown-shop-prefix", mapOf("prefix" to explicit.prefix))
                 return
             }
             is ExplicitOpenResolution.NotFound -> {
-                Texts.send(player, "&cNo shop or category found for &f${typedTargetToken(explicit.moduleId, explicit.targetId)}")
+                Texts.sendKey(player, "@commands.errors.open-target-not-found", mapOf("target" to typedTargetToken(explicit.moduleId, explicit.targetId)))
                 return
             }
             null -> Unit
@@ -143,7 +143,7 @@ object MatrixShopCommands {
             is ShopIdResolution.Found -> handleBoundShop(player, resolution.route, listOf("open") + args.drop(1))
             is ShopIdResolution.Ambiguous -> {
                 val modules = resolution.routes.joinToString(", ") { typedRouteToken(it) }
-                Texts.send(player, "&cShop id &f${args[0]} &cexists in multiple modules. Use one of: &f$modules")
+                Texts.sendKey(player, "@commands.errors.shop-id-ambiguous-modules", mapOf("shop" to args[0], "routes" to modules))
             }
             ShopIdResolution.NotFound -> {
                 if (!Permissions.require(player, PermissionNodes.SYSTEMSHOP_USE)) {
@@ -177,7 +177,7 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            Texts.send(player, "&cMissing confirm subcommand.")
+            Texts.sendKey(player, "@commands.errors.confirm-subcommand-missing")
             return
         }
         when (args[0].lowercase()) {
@@ -190,17 +190,17 @@ object MatrixShopCommands {
             }
             "amount" -> {
                 if (args.getOrNull(1)?.equals("add", true) != true) {
-                    Texts.send(player, "&cUsage: /matrixshop system confirm amount add <number>")
+                    sendUsage(player, "/matrixshop system confirm amount add <number>")
                     return
                 }
                 val delta = args.getOrNull(2)?.toIntOrNull()
                 if (delta == null) {
-                    Texts.send(player, "&cAmount must be an integer.")
+                    Texts.sendKey(player, "@commands.errors.amount-integer")
                     return
                 }
                 ModuleRegistry.systemShop.adjustConfirmAmount(player, delta)
             }
-            else -> Texts.send(player, "&eOnly buy, cart and amount are implemented in this confirm flow.")
+            else -> Texts.sendKey(player, "@commands.errors.confirm-supported-actions")
         }
     }
 
@@ -209,7 +209,7 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            Texts.send(player, "&cUsage: ${boundUsage("cart", defaultShopId, "open")}")
+            sendUsage(player, boundUsage("cart", defaultShopId, "open"))
             return
         }
         when (args[0].lowercase()) {
@@ -239,7 +239,7 @@ object MatrixShopCommands {
                 }
                 val index = args.getOrNull(1)?.toIntOrNull()
                 if (index == null) {
-                    Texts.send(player, "&cUsage: /matrixshop cart remove <slot>")
+                    sendUsage(player, "/matrixshop cart remove <slot>")
                     return
                 }
                 ModuleRegistry.cart.remove(player, index, defaultShopId)
@@ -267,12 +267,12 @@ object MatrixShopCommands {
                 val index = args.getOrNull(1)?.toIntOrNull()
                 val amount = args.getOrNull(2)?.toIntOrNull()
                 if (index == null || amount == null) {
-                    Texts.send(player, "&cUsage: /matrixshop cart amount <slot> <number>")
+                    sendUsage(player, "/matrixshop cart amount <slot> <number>")
                     return
                 }
                 ModuleRegistry.cart.changeAmount(player, index, amount, defaultShopId)
             }
-            else -> Texts.send(player, "&cUnknown cart subcommand.")
+            else -> sendUnknownSubcommand(player, "cart")
         }
     }
 
@@ -281,7 +281,7 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            Texts.send(player, "&cUsage: ${boundUsage("global-market", defaultShopId, "open")}")
+            sendUsage(player, boundUsage("global-market", defaultShopId, "open"))
             return
         }
         when (args[0].lowercase()) {
@@ -307,7 +307,7 @@ object MatrixShopCommands {
                 val shopId = if (defaultShopId == null && ModuleRegistry.globalMarket.hasMarketView(args.getOrNull(1))) args.getOrNull(1) else defaultShopId
                 ModuleRegistry.globalMarket.openManage(player, shopId)
             }
-            else -> Texts.send(player, "&cUnknown global market subcommand.")
+            else -> sendUnknownSubcommand(player, "global-market")
         }
     }
 
@@ -316,7 +316,7 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            Texts.send(player, "&cUsage: ${boundUsage("player-shop", defaultShopId, "open [player]")}")
+            sendUsage(player, boundUsage("player-shop", defaultShopId, "open [player]"))
             return
         }
         when (args[0].lowercase()) {
@@ -339,13 +339,13 @@ object MatrixShopCommands {
                 val priceIndex = if (explicitShopId != null) 2 else 1
                 val price = args.getOrNull(priceIndex)?.toDoubleOrNull()
                 if (price == null) {
-                    Texts.send(player, "&cUsage: /matrixshop player_shop upload <price> [amount]")
+                    sendUsage(player, "/matrixshop player_shop upload <price> [amount]")
                     return
                 }
                 val amount = args.getOrNull(priceIndex + 1)?.toIntOrNull()
                 ModuleRegistry.playerShop.uploadFromHand(player, explicitShopId ?: defaultShopId, price, amount)
             }
-            else -> Texts.send(player, "&cUnknown player shop subcommand.")
+            else -> sendUnknownSubcommand(player, "player-shop")
         }
     }
 
@@ -354,7 +354,7 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            Texts.send(player, "&cUsage: ${boundUsage("record", defaultShopId, "open [keyword]")}")
+            sendUsage(player, boundUsage("record", defaultShopId, "open [keyword]"))
             return
         }
         when (args[0].lowercase()) {
@@ -374,7 +374,7 @@ object MatrixShopCommands {
                 }
                 val recordId = args.getOrNull(1)
                 if (recordId.isNullOrBlank()) {
-                    Texts.send(player, "&cUsage: /matrixshop record detail <id>")
+                    sendUsage(player, "/matrixshop record detail <id>")
                     return
                 }
                 ModuleRegistry.record.openDetail(
@@ -441,7 +441,7 @@ object MatrixShopCommands {
                     moduleFilter = ModuleRegistry.record.currentFilter(player, defaultShopId)
                 )
             }
-            else -> Texts.send(player, "&cUnknown record subcommand.")
+            else -> sendUnknownSubcommand(player, "record")
         }
     }
 
@@ -450,7 +450,7 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            Texts.send(player, "&cUsage: ${boundUsage("auction", defaultShopId, "open")}")
+            sendUsage(player, boundUsage("auction", defaultShopId, "open"))
             return
         }
         when (args[0].lowercase()) {
@@ -478,7 +478,7 @@ object MatrixShopCommands {
                 val explicitShopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else null
                 val id = args.getOrNull(if (explicitShopId != null) 2 else 1)
                 if (id.isNullOrBlank()) {
-                    Texts.send(player, "&cUsage: /auction detail <id>")
+                    sendUsage(player, "/auction detail <id>")
                     return
                 }
                 ModuleRegistry.auction.openDetail(player, explicitShopId ?: defaultShopId, id)
@@ -491,7 +491,7 @@ object MatrixShopCommands {
                 val baseIndex = if (explicitShopId != null) 2 else 1
                 val id = args.getOrNull(baseIndex)
                 if (id.isNullOrBlank()) {
-                    Texts.send(player, "&cUsage: /auction bid <id> [price]")
+                    sendUsage(player, "/auction bid <id> [price]")
                     return
                 }
                 ModuleRegistry.auction.bid(player, explicitShopId ?: defaultShopId, id, args.getOrNull(baseIndex + 1)?.toDoubleOrNull())
@@ -503,7 +503,7 @@ object MatrixShopCommands {
                 val explicitShopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else null
                 val id = args.getOrNull(if (explicitShopId != null) 2 else 1)
                 if (id.isNullOrBlank()) {
-                    Texts.send(player, "&cUsage: /auction buyout <id>")
+                    sendUsage(player, "/auction buyout <id>")
                     return
                 }
                 ModuleRegistry.auction.buyout(player, explicitShopId ?: defaultShopId, id)
@@ -526,12 +526,12 @@ object MatrixShopCommands {
                 val explicitShopId = if (defaultShopId == null && ModuleRegistry.auction.hasAuctionView(args.getOrNull(1))) args.getOrNull(1) else null
                 val id = args.getOrNull(if (explicitShopId != null) 2 else 1)
                 if (id.isNullOrBlank()) {
-                    Texts.send(player, "&cUsage: /auction remove <id>")
+                    sendUsage(player, "/auction remove <id>")
                     return
                 }
                 ModuleRegistry.auction.remove(player, explicitShopId ?: defaultShopId, id)
             }
-            else -> Texts.send(player, "&cUnknown auction subcommand.")
+            else -> sendUnknownSubcommand(player, "auction")
         }
     }
 
@@ -540,7 +540,7 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            Texts.send(player, "&cUsage: ${boundUsage("transaction", defaultShopId, "open")}")
+            sendUsage(player, boundUsage("transaction", defaultShopId, "open"))
             return
         }
         when (args[0].lowercase()) {
@@ -554,7 +554,7 @@ object MatrixShopCommands {
             "confirm" -> ModuleRegistry.transaction.confirm(player, args.getOrNull(1)?.equals("submit", true) == true)
             "cancel" -> ModuleRegistry.transaction.cancel(player)
             "logs" -> ModuleRegistry.transaction.openLogs(player)
-            else -> Texts.send(player, "&cUnknown trade subcommand.")
+            else -> sendUnknownSubcommand(player, "transaction")
         }
     }
 
@@ -563,7 +563,7 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            Texts.send(player, "&cUsage: ${boundUsage("chestshop", defaultShopId, "open")}")
+            sendUsage(player, boundUsage("chestshop", defaultShopId, "open"))
             return
         }
         when (args[0].lowercase()) {
@@ -612,7 +612,7 @@ object MatrixShopCommands {
                 }
                 ModuleRegistry.chestShop.setMode(player, args.getOrNull(1))
             }
-            else -> Texts.send(player, "&cUnknown chest shop subcommand.")
+            else -> sendUnknownSubcommand(player, "chestshop")
         }
     }
 
@@ -648,7 +648,7 @@ object MatrixShopCommands {
 
     private fun handleAdmin(sender: ProxyCommandSender, args: Array<String>) {
         val commandSender = sender.origin as? CommandSender ?: run {
-            sender.sendMessage(Texts.prefixed("&cUnsupported command sender."))
+            sender.sendMessage(Texts.prefixedKey("@messages.unsupported-sender"))
             return
         }
         if (args.isEmpty() || args[0].equals("help", true)) {
@@ -661,7 +661,7 @@ object MatrixShopCommands {
                     return
                 }
                 MatrixShop.reloadPlugin()
-                Texts.send(commandSender, "&aConfiguration and modules reloaded.")
+                Texts.sendKey(commandSender, "@commands.admin.reloaded")
             }
             "sync" -> {
                 if (!Permissions.require(commandSender, PermissionNodes.ADMIN_SYNC)) {
@@ -669,62 +669,69 @@ object MatrixShopCommands {
                 }
                 val schemaResult = DatabaseManager.syncSchema()
                 if (!schemaResult.success) {
-                    Texts.send(commandSender, "&c${schemaResult.message}")
+                    Texts.send(commandSender, schemaResult.message)
                     return
                 }
                 val legacyResult = LegacyDataMigrationService.migrateAll()
-                Texts.send(
+                Texts.sendKey(
                     commandSender,
-                    "&a${schemaResult.message} &7(version ${schemaResult.startedVersion ?: "file"} -> ${schemaResult.finalVersion ?: "file"})"
+                    "@commands.admin.sync-success",
+                    mapOf(
+                        "message" to schemaResult.message,
+                        "from" to (schemaResult.startedVersion?.toString() ?: "file"),
+                        "to" to (schemaResult.finalVersion?.toString() ?: "file")
+                    )
                 )
-                Texts.send(commandSender, "&fLegacy import: &7${legacyResult.message}")
+                Texts.sendKey(commandSender, "@commands.admin.legacy-import", mapOf("message" to legacyResult.message))
             }
             "status" -> {
                 if (!Permissions.require(commandSender, PermissionNodes.ADMIN_STATUS)) {
                     return
                 }
                 val diagnostics = DatabaseManager.diagnostics()
-                Texts.send(commandSender, "&fData folder: &7${ConfigFiles.dataFolder().absolutePath}")
-                Texts.send(commandSender, "&fEconomy provider: &7${VaultEconomyBridge.providerName()}")
-                Texts.send(commandSender, "&fConfigured data backend: &7${diagnostics.configuredBackend}")
-                Texts.send(commandSender, "&fActive data backend: &7${diagnostics.activeBackend}")
-                Texts.send(commandSender, "&fData target: &7${diagnostics.target}")
-                Texts.send(
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.data-folder", ConfigFiles.dataFolder().absolutePath))
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.economy-provider", VaultEconomyBridge.providerName()))
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.configured-backend", diagnostics.configuredBackend))
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.active-backend", diagnostics.activeBackend))
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.data-target", diagnostics.target))
+                Texts.sendRaw(
                     commandSender,
-                    "&fData schema: &7${
+                    statusLine(
+                        "@commands.admin.status.data-schema",
                         diagnostics.schemaVersion?.let { "$it/${diagnostics.expectedSchemaVersion}" } ?: "file-backend"
-                    }"
+                    )
                 )
-                Texts.send(commandSender, "&fData schema state: &7${if (diagnostics.schemaCurrent) "current" else "pending"}")
-                Texts.send(commandSender, "&fRedis notify: &7${if (diagnostics.redisEnabled) "enabled" else "disabled"}")
-                Texts.send(commandSender, "&fRecord backend: &7${com.y54895.matrixshop.core.record.RecordService.backendName()}")
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.schema-state", Texts.tr(if (diagnostics.schemaCurrent) "@commands.words.current" else "@commands.words.pending")) )
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.redis-notify", Texts.tr(if (diagnostics.redisEnabled) "@commands.words.enabled" else "@commands.words.disabled")) )
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.record-backend", com.y54895.matrixshop.core.record.RecordService.backendName()))
                 if (diagnostics.pendingMigrations.isNotEmpty()) {
-                    Texts.send(commandSender, "&fPending migrations: &7${diagnostics.pendingMigrations.joinToString(", ")}")
+                    Texts.sendRaw(commandSender, statusLine("@commands.admin.status.pending-migrations", diagnostics.pendingMigrations.joinToString(", ")))
                 }
                 if (diagnostics.lastMigration.isNotBlank()) {
-                    Texts.send(commandSender, "&fLast migration: &7${diagnostics.lastMigration}")
+                    Texts.sendRaw(commandSender, statusLine("@commands.admin.status.last-migration", diagnostics.lastMigration))
                 }
                 if (diagnostics.lastMigrationAt.isNotBlank()) {
-                    Texts.send(commandSender, "&fLast migration at: &7${formatEpochMillis(diagnostics.lastMigrationAt)}")
+                    Texts.sendRaw(commandSender, statusLine("@commands.admin.status.last-migration-at", formatEpochMillis(diagnostics.lastMigrationAt)))
                 }
                 if (diagnostics.lastLegacyImport.isNotBlank()) {
-                    Texts.send(commandSender, "&fLast legacy import: &7${diagnostics.lastLegacyImport}")
+                    Texts.sendRaw(commandSender, statusLine("@commands.admin.status.last-legacy-import", diagnostics.lastLegacyImport))
                 }
                 if (diagnostics.lastLegacyImportAt.isNotBlank()) {
-                    Texts.send(commandSender, "&fLast legacy import at: &7${formatEpochMillis(diagnostics.lastLegacyImportAt)}")
+                    Texts.sendRaw(commandSender, statusLine("@commands.admin.status.last-legacy-import-at", formatEpochMillis(diagnostics.lastLegacyImportAt)))
                 }
                 if (diagnostics.lastLegacyImport.isNotBlank()) {
-                    Texts.send(commandSender, "&fLast legacy import total: &7${diagnostics.lastLegacyImportTotal}")
+                    Texts.sendRaw(commandSender, statusLine("@commands.admin.status.last-legacy-import-total", diagnostics.lastLegacyImportTotal.toString()))
                 }
                 if (diagnostics.failureReason.isNotBlank()) {
-                    Texts.send(commandSender, "&fData backend reason: &7${diagnostics.failureReason}")
+                    Texts.sendRaw(commandSender, statusLine("@commands.admin.status.backend-reason", diagnostics.failureReason))
                 }
                 if (diagnostics.tableCounts.isNotEmpty()) {
-                    Texts.send(
+                    Texts.sendRaw(
                         commandSender,
-                        "&fData tables: &7${
+                        statusLine(
+                            "@commands.admin.status.data-tables",
                             diagnostics.tableCounts.entries.joinToString(", ") { (table, count) -> "$table=$count" }
-                        }"
+                        )
                     )
                 }
                 ModuleRegistry.moduleStates().forEach { Texts.sendRaw(commandSender, it) }
@@ -735,51 +742,51 @@ object MatrixShopCommands {
     }
 
     private fun sendPlayerHelp(player: Player) {
-        val lines = mutableListOf("&8[&bMatrixShop&8] &fPlayer Commands")
-        addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/matrixshop &8- &fOpen SystemShop")
-        addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7${msUsage("system-shop", "open [category]")} &8- &fOpen a SystemShop category")
-        addHelp(lines, Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), "&7/ms open <shop-id|category> &8- &fOpen a configured shop by file name, or a SystemShop category")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("menu") && Permissions.has(player, PermissionNodes.MENU_USE), shopHelpEntries("menu"), "open", "Open menu hub")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), shopHelpEntries("auction"), "open", "Open auction shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), shopHelpEntries("auction"), "upload <english|dutch> <start> [buyout|end] [duration]", "List the main-hand item")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), shopHelpEntries("auction"), "bid <id> [price]", "Place an auction bid")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BUYOUT), shopHelpEntries("auction"), "buyout <id>", "Buy at buyout or Dutch price")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_MANAGE_OWN), shopHelpEntries("auction"), "manage | bids", "Open your auction views")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), shopHelpEntries("player-shop"), "open", "Open your player shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), shopHelpEntries("player-shop"), "open [player]", "Open another player's shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN), shopHelpEntries("player-shop"), "edit", "Manage your player shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_SELL), shopHelpEntries("player-shop"), "upload <price> [amount]", "List the main-hand item")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), shopHelpEntries("global-market"), "open", "Open global market")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), shopHelpEntries("global-market"), "upload <price> [amount]", "List to this global market")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), shopHelpEntries("global-market"), "manage", "Manage your listings in this market")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "open", "Open the target chest shop view")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), shopHelpEntries("chestshop"), "create <buy|sell|dual> <price> [sell-price] [amount]", "Create a chest shop from the target chest")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "stock | history", "Open stock or history for the target chest shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), shopHelpEntries("chestshop"), "edit | remove | price | amount | mode", "Manage your chest shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "open", "Open cart")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout [valid_only]", "Open checkout summary")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout confirm [valid_only] | conflict", "Confirm checkout or review conflicts")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CLEAR), shopHelpEntries("cart"), "remove <slot> | remove_invalid | clear", "Manage cart entries")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "amount <slot> <number>", "Change one cart entry amount")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "open [keyword]", "Open ledger records")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), shopHelpEntries("record"), "detail <id>", "Open one record detail")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "filter [module|all]", "Switch record module filters")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), shopHelpEntries("record"), "income | expense | stats", "Open ledger statistics")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "open", "Open trade shop")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "request <player>", "Send a face-to-face trade request")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "accept [player] | ready | confirm | cancel | logs", "Control the active trade")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "money <amount> | exp <amount>", "Set your money or exp offer")
+        val lines = mutableListOf(Texts.tr("@commands.help.player-title"))
+        addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine("/matrixshop", "@commands.help.desc.system-main"))
+        addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine(msUsage("system-shop", "open [category]"), "@commands.help.desc.system-open"))
+        addHelp(lines, Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine("/ms open <shop-id|category>", "@commands.help.desc.ms-open"))
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("menu") && Permissions.has(player, PermissionNodes.MENU_USE), shopHelpEntries("menu"), "open", "@commands.help.desc.menu-open")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), shopHelpEntries("auction"), "open", "@commands.help.desc.auction-open")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), shopHelpEntries("auction"), "upload <english|dutch> <start> [buyout|end] [duration]", "@commands.help.desc.auction-upload")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), shopHelpEntries("auction"), "bid <id> [price]", "@commands.help.desc.auction-bid")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_BUYOUT), shopHelpEntries("auction"), "buyout <id>", "@commands.help.desc.auction-buyout")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("auction") && Permissions.has(player, PermissionNodes.AUCTION_MANAGE_OWN), shopHelpEntries("auction"), "manage | bids", "@commands.help.desc.auction-manage")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), shopHelpEntries("player-shop"), "open", "@commands.help.desc.player-shop-open-self")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), shopHelpEntries("player-shop"), "open [player]", "@commands.help.desc.player-shop-open-other")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN), shopHelpEntries("player-shop"), "edit", "@commands.help.desc.player-shop-edit")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_SELL), shopHelpEntries("player-shop"), "upload <price> [amount]", "@commands.help.desc.player-shop-upload")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), shopHelpEntries("global-market"), "open", "@commands.help.desc.global-market-open")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), shopHelpEntries("global-market"), "upload <price> [amount]", "@commands.help.desc.global-market-upload")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), shopHelpEntries("global-market"), "manage", "@commands.help.desc.global-market-manage")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "open", "@commands.help.desc.chestshop-open")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), shopHelpEntries("chestshop"), "create <buy|sell|dual> <price> [sell-price] [amount]", "@commands.help.desc.chestshop-create")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "stock | history", "@commands.help.desc.chestshop-stock-history")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), shopHelpEntries("chestshop"), "edit | remove | price | amount | mode", "@commands.help.desc.chestshop-manage")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "open", "@commands.help.desc.cart-open")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout [valid_only]", "@commands.help.desc.cart-checkout")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout confirm [valid_only] | conflict", "@commands.help.desc.cart-conflict")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CLEAR), shopHelpEntries("cart"), "remove <slot> | remove_invalid | clear", "@commands.help.desc.cart-manage")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "amount <slot> <number>", "@commands.help.desc.cart-amount")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "open [keyword]", "@commands.help.desc.record-open")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), shopHelpEntries("record"), "detail <id>", "@commands.help.desc.record-detail")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "filter [module|all]", "@commands.help.desc.record-filter")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), shopHelpEntries("record"), "income | expense | stats", "@commands.help.desc.record-stats")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "open", "@commands.help.desc.transaction-open")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "request <player>", "@commands.help.desc.transaction-request")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "accept [player] | ready | confirm | cancel | logs", "@commands.help.desc.transaction-control")
+        addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "money <amount> | exp <amount>", "@commands.help.desc.transaction-offer")
         Texts.sendRaw(player, lines.joinToString("\n"))
     }
 
     private fun sendAdminHelp(sender: CommandSender) {
-        val lines = mutableListOf("&8[&bMatrixShop&8] &fAdmin Commands")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_RELOAD), "&7/matrixshop admin reload &8- &fReload configuration and modules")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_SYNC), "&7/matrixshop admin sync &8- &fRun schema sync and legacy data import")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), "&7/matrixshop admin status &8- &fShow module, economy and data-layer status")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshop admin module list &8- &fShow module states")
-        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), "&7/matrixshop admin module <enable|disable|toggle> <id> &8- &fChange one module state")
-        lines += "&8[&bMatrixShop&8] &7Compatibility alias: &f/matrixshopadmin ..."
+        val lines = mutableListOf(Texts.tr("@commands.help.admin-title"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_RELOAD), helpLine("/matrixshop admin reload", "@commands.help.desc.admin-reload"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_SYNC), helpLine("/matrixshop admin sync", "@commands.help.desc.admin-sync"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), helpLine("/matrixshop admin status", "@commands.help.desc.admin-status"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), helpLine("/matrixshop admin module list", "@commands.help.desc.admin-module-list"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), helpLine("/matrixshop admin module <enable|disable|toggle> <id>", "@commands.help.desc.admin-module-change"))
+        lines += Texts.tr("@commands.help.admin-alias")
         Texts.sendRaw(sender, lines.joinToString("\n"))
     }
 
@@ -788,16 +795,25 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty() || args[0].equals("list", true)) {
-            Texts.send(sender, "&fModules:")
+            Texts.sendKey(sender, "@commands.admin.module-list-title")
             ModuleRegistry.all().forEach { module ->
-                Texts.sendRaw(sender, "&7- &f${module.id}: ${if (module.isEnabled()) "&aenabled" else "&cdisabled"}")
+                Texts.sendRaw(
+                    sender,
+                    Texts.tr(
+                        "@commands.admin.module-list-line",
+                        mapOf(
+                            "module" to module.id,
+                            "state" to Texts.tr(if (module.isEnabled()) "@commands.words.enabled" else "@commands.words.disabled")
+                        )
+                    )
+                )
             }
             return
         }
         val action = args[0].lowercase()
         val moduleId = resolveModuleId(args.getOrNull(1))
         if (moduleId == null) {
-            Texts.send(sender, "&cUsage: /matrixshop admin module <enable|disable|toggle> <id>")
+            sendUsage(sender, "/matrixshop admin module <enable|disable|toggle> <id>")
             return
         }
         val enabled = when (action) {
@@ -805,13 +821,20 @@ object MatrixShopCommands {
             "disable", "off" -> false
             "toggle" -> !ConfigFiles.isModuleEnabled(moduleId, true)
             else -> {
-                Texts.send(sender, "&cUsage: /matrixshop admin module <enable|disable|toggle> <id>")
+                sendUsage(sender, "/matrixshop admin module <enable|disable|toggle> <id>")
                 return
             }
         }
         ConfigFiles.setModuleEnabled(moduleId, enabled)
         MatrixShop.reloadPlugin()
-        Texts.send(sender, "&aModule &f$moduleId &ahas been set to &f${if (enabled) "enabled" else "disabled"}&a.")
+        Texts.sendKey(
+            sender,
+            "@commands.admin.module-state-changed",
+            mapOf(
+                "module" to moduleId,
+                "state" to Texts.tr(if (enabled) "@commands.words.enabled" else "@commands.words.disabled")
+            )
+        )
     }
 
     private fun resolveModuleId(raw: String?): String? {
@@ -840,15 +863,55 @@ object MatrixShopCommands {
         visible: Boolean,
         entries: List<com.y54895.matrixshop.core.menu.ShopMenuSelection>,
         suffix: String,
-        description: String
+        descriptionKey: String
     ) {
         if (!visible) {
             return
         }
         entries.forEach { entry ->
             val key = entry.bindings.keys.firstOrNull() ?: entry.id
-            lines += "&7/$key $suffix &8- &f$description &7(${entry.id})"
+            lines += Texts.tr(
+                "@commands.help.bound-line",
+                mapOf(
+                    "command" to key,
+                    "suffix" to suffix,
+                    "description" to Texts.tr(descriptionKey),
+                    "shop" to entry.id
+                )
+            )
         }
+    }
+
+    private fun helpLine(command: String, descriptionKey: String): String {
+        return Texts.tr("@commands.help.line", mapOf("command" to command, "description" to Texts.tr(descriptionKey)))
+    }
+
+    private fun sendUsage(sender: CommandSender, usage: String) {
+        Texts.sendKey(sender, "@commands.errors.usage", mapOf("usage" to usage))
+    }
+
+    private fun sendUnknownSubcommand(sender: CommandSender, moduleId: String) {
+        Texts.sendKey(sender, "@commands.errors.unknown-subcommand", mapOf("module" to moduleDisplayName(moduleId)))
+    }
+
+    private fun statusLine(labelKey: String, value: String): String {
+        return Texts.tr("@commands.admin.status.line", mapOf("label" to Texts.tr(labelKey), "value" to value))
+    }
+
+    private fun moduleDisplayName(moduleId: String): String {
+        val key = when (moduleId) {
+            "menu" -> "@commands.modules.menu"
+            "system-shop" -> "@commands.modules.system-shop"
+            "player-shop" -> "@commands.modules.player-shop"
+            "global-market" -> "@commands.modules.global-market"
+            "auction" -> "@commands.modules.auction"
+            "transaction" -> "@commands.modules.transaction"
+            "chestshop" -> "@commands.modules.chestshop"
+            "cart" -> "@commands.modules.cart"
+            "record" -> "@commands.modules.record"
+            else -> return moduleId
+        }
+        return Texts.tr(key)
     }
 
     private fun shopHelpEntries(moduleId: String): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {

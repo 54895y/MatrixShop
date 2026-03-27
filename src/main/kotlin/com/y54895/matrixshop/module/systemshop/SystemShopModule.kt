@@ -46,7 +46,7 @@ object SystemShopModule : MatrixModule {
             ?.sortedBy { it.nameWithoutExtension }
             ?.forEach { file ->
                 runCatching { loadCategory(file) }.onFailure {
-                    warning("Failed to load SystemShop category ${file.name}: ${it.message}")
+                    warning(Texts.tr("@system-shop.logs.category-load-failed", mapOf("file" to file.name, "reason" to (it.message ?: it.javaClass.simpleName))))
                 }
             }
     }
@@ -59,7 +59,7 @@ object SystemShopModule : MatrixModule {
     fun openCategory(player: Player, categoryId: String, page: Int = 1) {
         val category = categories[categoryId]
         if (category == null) {
-            Texts.send(player, "&c未找到系统商店分类: &f$categoryId")
+            Texts.sendKey(player, "@system-shop.errors.category-not-found", mapOf("category" to categoryId))
             return
         }
         val placeholders = playerPlaceholders(player) + mapOf("page" to page.toString(), "max-page" to "1")
@@ -77,12 +77,12 @@ object SystemShopModule : MatrixModule {
     fun adjustConfirmAmount(player: Player, delta: Int) {
         val session = confirmSessions[player.uniqueId]
         if (session == null) {
-            Texts.send(player, "&c当前没有待确认的购买。")
+            Texts.sendKey(player, "@system-shop.errors.no-confirm-purchase")
             return
         }
         val product = findProduct(session.categoryId, session.productId) ?: run {
             confirmSessions.remove(player.uniqueId)
-            Texts.send(player, "&c当前商品已经失效。")
+            Texts.sendKey(player, "@system-shop.errors.product-invalid")
             return
         }
         session.amount = (session.amount + delta).coerceIn(1, product.buyMax.coerceAtLeast(1))
@@ -92,7 +92,7 @@ object SystemShopModule : MatrixModule {
     fun confirmPurchase(player: Player) {
         val session = confirmSessions[player.uniqueId]
         if (session == null) {
-            Texts.send(player, "&c当前没有待确认的购买。")
+            Texts.sendKey(player, "@system-shop.errors.no-confirm-purchase")
             return
         }
         val result = purchaseDirect(player, session.categoryId, session.productId, session.amount, true)
@@ -122,11 +122,11 @@ object SystemShopModule : MatrixModule {
         val category = categories[categoryId]
         val product = findProduct(categoryId, productId)
         if (category == null || product == null) {
-            return ModuleOperationResult(false, "&c商品已经失效。")
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.product-invalid"))
         }
         val safeAmount = amount.coerceAtLeast(1)
         if (safeAmount > product.buyMax.coerceAtLeast(1)) {
-            return ModuleOperationResult(false, "&c数量超过该商品允许的单次上限。")
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.amount-over-limit"))
         }
         return ModuleOperationResult(true, "")
     }
@@ -146,28 +146,36 @@ object SystemShopModule : MatrixModule {
         val product = findProduct(categoryId, productId)
         if (category == null || product == null) {
             confirmSessions.remove(player.uniqueId)
-            return ModuleOperationResult(false, "&c商品已经失效。")
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.product-invalid"))
         }
         val safeAmount = amount.coerceIn(1, product.buyMax.coerceAtLeast(1))
         val total = product.price * safeAmount
         if (total > 0 && !VaultEconomyBridge.isAvailable()) {
-            return ModuleOperationResult(false, "&c当前未接入 Vault 经济，无法完成付费购买。")
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.vault-required"))
         }
         if (!VaultEconomyBridge.has(player, total)) {
-            return ModuleOperationResult(false, "&c余额不足，当前需要 &e${trimDouble(total)} &c金币。")
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.balance-not-enough", mapOf("price" to trimDouble(total))))
         }
         val purchaseStacks = product.toPurchasedItem(safeAmount)
         if (!canFit(player.inventory.contents.filterNotNull(), purchaseStacks)) {
-            return ModuleOperationResult(false, "&c背包空间不足，无法放入购买物品。")
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.inventory-no-space"))
         }
         if (!VaultEconomyBridge.withdraw(player, total)) {
-            return ModuleOperationResult(false, "&c扣款失败，购买已取消。")
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.withdraw-failed"))
         }
         purchaseStacks.forEach { player.inventory.addItem(it) }
         if (closeInventoryOnSuccess) {
             player.closeInventory()
         }
-        Texts.send(player, "&a购买成功: &f${product.name} &7x&f$safeAmount &7- &e${trimDouble(total)}")
+        Texts.sendKey(
+            player,
+            "@system-shop.success.purchase",
+            mapOf(
+                "name" to product.name,
+                "amount" to safeAmount.toString(),
+                "total" to trimDouble(total)
+            )
+        )
         RecordService.append(
             module = "system_shop",
             type = "purchase",

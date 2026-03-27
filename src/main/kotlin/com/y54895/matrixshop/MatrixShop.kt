@@ -9,6 +9,7 @@ import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.ConsoleVisuals
 import com.y54895.matrixshop.core.text.MatrixI18n
+import com.y54895.matrixshop.core.text.Texts
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.info
 import taboolib.common.platform.function.severe
@@ -30,7 +31,7 @@ object MatrixShop : Plugin() {
             VaultEconomyBridge.reload()
             ModuleRegistry.reload()
             MatrixShopCommands.register()
-            info("MatrixShop 已启用，模块=${ModuleRegistry.enabledSummary()}")
+            info(Texts.tr("@console.logs.enabled", mapOf("modules" to ModuleRegistry.enabledSummary())))
             ConsoleVisuals.renderReady(
                 backend = DatabaseManager.backendName(),
                 economy = VaultEconomyBridge.providerName(),
@@ -39,7 +40,7 @@ object MatrixShop : Plugin() {
             )
         }.onFailure {
             ConsoleVisuals.renderFailure(it.message ?: it.javaClass.simpleName)
-            severe("MatrixShop 启动失败: ${it.message}")
+            severe(Texts.tr("@console.logs.start-failed", mapOf("reason" to (it.message ?: it.javaClass.simpleName))))
             throw it
         }
     }

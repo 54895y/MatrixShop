@@ -142,17 +142,17 @@ object GlobalMarketModule : MatrixModule {
 
     fun uploadFromHand(player: Player, shopId: String?, price: Double, requestedAmount: Int?) {
         if (price <= 0) {
-            Texts.send(player, "&cPrice must be greater than 0.")
+            Texts.sendKey(player, "@global-market.errors.price-positive")
             return
         }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
         if (hand.type == Material.AIR || hand.amount <= 0) {
-            Texts.send(player, "&cHold the item you want to list in your main hand.")
+            Texts.sendKey(player, "@global-market.errors.hold-item")
             return
         }
         val amount = (requestedAmount ?: hand.amount).coerceAtLeast(1)
         if (amount > hand.amount) {
-            Texts.send(player, "&cYou do not have enough items in your main hand.")
+            Texts.sendKey(player, "@global-market.errors.main-hand-not-enough")
             return
         }
         val listingItem = hand.clone().apply { this.amount = amount }
@@ -174,7 +174,16 @@ object GlobalMarketModule : MatrixModule {
         listings += listing
         GlobalMarketRepository.saveAll(listings)
         player.updateInventory()
-        Texts.send(player, "&aListed in &f${listing.shopId}&a: &f${itemDisplayName(listingItem)} &7x&f${listingItem.amount} &7- &e${trimDouble(price)}")
+        Texts.sendKey(
+            player,
+            "@global-market.success.listed",
+            mapOf(
+                "shop" to listing.shopId,
+                "name" to itemDisplayName(listingItem),
+                "amount" to listingItem.amount.toString(),
+                "price" to trimDouble(price)
+            )
+        )
         RecordService.append("global_market", "list", player.name, "shop=${listing.shopId};listing=${listing.id};price=${trimDouble(price)};amount=${listingItem.amount}")
     }
 
@@ -196,9 +205,9 @@ object GlobalMarketModule : MatrixModule {
     }
 
     fun validateListing(shopId: String?, listingId: String): ModuleOperationResult {
-        val listing = selection(shopId, listingId) ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
+        val listing = selection(shopId, listingId) ?: return ModuleOperationResult(false, Texts.tr("@global-market.errors.listing-unavailable"))
         return if (listing.item.type == Material.AIR || listing.item.amount <= 0) {
-            ModuleOperationResult(false, "&cThat listing contains invalid item data.")
+            ModuleOperationResult(false, Texts.tr("@global-market.errors.invalid-item"))
         } else {
             ModuleOperationResult(true, "")
         }
@@ -216,7 +225,7 @@ object GlobalMarketModule : MatrixModule {
         val resolvedShopId = resolveShopId(shopId)
         val listings = GlobalMarketRepository.loadAll().toMutableList()
         val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
-            ?: return ModuleOperationResult(false, "&cThat listing is no longer available.")
+            ?: return ModuleOperationResult(false, Texts.tr("@global-market.errors.listing-unavailable"))
         if (listing.ownerId == player.uniqueId) {
             if (reopenAfterSuccess) {
                 openManage(player, listing.shopId)
@@ -224,31 +233,44 @@ object GlobalMarketModule : MatrixModule {
             return ModuleOperationResult(false, "")
         }
         if (listing.price > 0 && !VaultEconomyBridge.isAvailable()) {
-            return ModuleOperationResult(false, "&cVault economy is required for GlobalMarket purchases.")
+            return ModuleOperationResult(false, Texts.tr("@global-market.errors.vault-required"))
         }
         if (!canFit(player.inventory.contents.filterNotNull(), listOf(listing.item))) {
-            return ModuleOperationResult(false, "&cYour inventory does not have enough free space.")
+            return ModuleOperationResult(false, Texts.tr("@global-market.errors.inventory-no-space"))
         }
         if (!VaultEconomyBridge.has(player, listing.price)) {
-            return ModuleOperationResult(false, "&cYou need &e${trimDouble(listing.price)} &cto buy this listing.")
+            return ModuleOperationResult(false, Texts.tr("@global-market.errors.balance-not-enough", mapOf("price" to trimDouble(listing.price))))
         }
         if (!VaultEconomyBridge.withdraw(player, listing.price)) {
-            return ModuleOperationResult(false, "&cFailed to withdraw the purchase price.")
+            return ModuleOperationResult(false, Texts.tr("@global-market.errors.withdraw-failed"))
         }
         val tax = listing.price * settings.taxPercent / 100.0
         val sellerIncome = (listing.price - tax).coerceAtLeast(0.0)
         val seller = Bukkit.getOfflinePlayer(listing.ownerId)
         if (!VaultEconomyBridge.deposit(seller, sellerIncome)) {
             VaultEconomyBridge.deposit(player, listing.price)
-            return ModuleOperationResult(false, "&cFailed to deliver money to the seller. The purchase was rolled back.")
+            return ModuleOperationResult(false, Texts.tr("@global-market.errors.seller-delivery-failed"))
         }
         listings.removeIf { it.id == listing.id }
         GlobalMarketRepository.saveAll(listings)
         player.inventory.addItem(listing.item.clone())
         player.updateInventory()
-        Texts.send(player, "&aPurchased from &f${listing.shopId}&a: &f${itemDisplayName(listing.item)} &7x&f${listing.item.amount} &7- &e${trimDouble(listing.price)}")
+        Texts.sendKey(
+            player,
+            "@global-market.success.purchased",
+            mapOf(
+                "shop" to listing.shopId,
+                "name" to itemDisplayName(listing.item),
+                "amount" to listing.item.amount.toString(),
+                "price" to trimDouble(listing.price)
+            )
+        )
         Bukkit.getPlayer(listing.ownerId)?.let {
-            Texts.send(it, "&aYour GlobalMarket listing sold in &f${listing.shopId}&a for &e${trimDouble(sellerIncome)}&a.")
+            Texts.sendKey(
+                it,
+                "@global-market.success.sold",
+                mapOf("shop" to listing.shopId, "income" to trimDouble(sellerIncome))
+            )
         }
         RecordService.append(
             module = "global_market",
@@ -276,7 +298,7 @@ object GlobalMarketModule : MatrixModule {
         val listings = GlobalMarketRepository.loadAll().toMutableList()
         val listing = listings.firstOrNull { it.id == listingId && it.ownerId == player.uniqueId && it.shopId.equals(shopId, true) }
         if (listing == null) {
-            Texts.send(player, "&cListing not found in this market.")
+            Texts.sendKey(player, "@global-market.errors.listing-not-found-in-shop")
             return
         }
         listings.removeIf { it.id == listing.id }
@@ -285,7 +307,11 @@ object GlobalMarketModule : MatrixModule {
             player.world.dropItemNaturally(player.location, it)
         }
         player.updateInventory()
-        Texts.send(player, "&aRemoved listing from &f${listing.shopId}&a: &f${itemDisplayName(listing.item)}")
+        Texts.sendKey(
+            player,
+            "@global-market.success.removed",
+            mapOf("shop" to listing.shopId, "name" to itemDisplayName(listing.item))
+        )
         RecordService.append("global_market", "remove", player.name, "shop=${listing.shopId};listing=${listing.id}")
         openManage(player, shopId)
     }
@@ -295,11 +321,11 @@ object GlobalMarketModule : MatrixModule {
             val item = listing.item.clone()
             item.itemMeta = item.itemMeta?.apply {
                 lore = (lore ?: emptyList()) + listOf(
-                    Texts.color("&7Seller: &f${listing.ownerName}"),
-                    Texts.color("&7Price: &e${trimDouble(listing.price)} ${listing.currency}"),
-                    Texts.color("&7Time Left: &f${remainingText(listing)}"),
-                    Texts.color("&eLeft click to buy"),
-                    Texts.color("&6Right click to add to cart")
+                    Texts.colorKey("@global-market.lore.seller", mapOf("seller" to listing.ownerName)),
+                    Texts.colorKey("@global-market.lore.price", mapOf("price" to trimDouble(listing.price), "currency" to listing.currency)),
+                    Texts.colorKey("@global-market.lore.time-left", mapOf("time" to remainingText(listing))),
+                    Texts.colorKey("@global-market.lore.left-buy"),
+                    Texts.colorKey("@global-market.lore.right-cart")
                 )
             }
             val slot = slots[index]
@@ -322,9 +348,9 @@ object GlobalMarketModule : MatrixModule {
             val item = listing.item.clone()
             item.itemMeta = item.itemMeta?.apply {
                 lore = (lore ?: emptyList()) + listOf(
-                    Texts.color("&7Price: &e${trimDouble(listing.price)} ${listing.currency}"),
-                    Texts.color("&7Time Left: &f${remainingText(listing)}"),
-                    Texts.color("&cLeft click to remove")
+                    Texts.colorKey("@global-market.lore.price", mapOf("price" to trimDouble(listing.price), "currency" to listing.currency)),
+                    Texts.colorKey("@global-market.lore.time-left", mapOf("time" to remainingText(listing))),
+                    Texts.colorKey("@global-market.lore.left-remove")
                 )
             }
             val slot = slots[index]

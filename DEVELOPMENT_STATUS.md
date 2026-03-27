@@ -10,7 +10,7 @@ This file is the handoff note for each development round.
 
 ## Remote Branch
 
-- Branch: `codex/bootstrap-v1`
+- Branch: `main`
 - Repo: [MatrixShop](https://github.com/54895y/MatrixShop.git)
 
 ## Current Summary
@@ -18,6 +18,8 @@ This file is the handoff note for each development round.
 - Core plugin bootstrap, module registry, command entrypoints, menu framework, and permission checks are in place.
 - Implemented module v1: `SystemShop`, `PlayerShop`, `GlobalMarket`, `Cart`, `Record`, `Transaction`, `Auction`, `ChestShop`.
 - Runtime storage now prefers JDBC and falls back to legacy files when JDBC is unavailable.
+- i18n v1 is now active with `Lang/zh_CN.yml` and `Lang/en_US.yml`, and the default language is `zh_CN`.
+- Core command/help/admin status flows and the main `SystemShop / PlayerShop / GlobalMarket / Record / Menu` player paths now resolve through language keys instead of hardcoded strings.
 
 ## Data Layer Coverage
 
@@ -31,6 +33,21 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added an i18n helper layer around `Texts` with `tr / sendKey / sendRawKey / colorKey / prefixedKey` so code can use language keys with placeholders consistently
+- Added full `zh_CN` and `en_US` language bundles under `src/main/resources/Lang/`
+- Changed default language config to `zh_CN` with `zh_CN` fallback in `config.yml`
+- Moved plugin startup logs and console visuals to language keys
+- Moved core player/admin command feedback to language keys:
+  - usage prompts
+  - ambiguous shop-id routing messages
+  - unknown subcommand messages
+  - admin help
+  - admin module list and status labels
+- Moved `SystemShop` category errors, confirm errors, purchase errors, and purchase success text to language keys
+- Moved `GlobalMarket` upload/purchase/remove messages plus lore text to language keys
+- Moved `PlayerShop` upload/purchase/remove messages plus lore text to language keys
+- Moved `Record` filter messages and record/detail/stats lore text to language keys
+- Moved `Menu` disabled-state message to language keys
 - Normalized the default `Menu` hub button actions to `matrixshop open <type:id>` instead of mixing direct module commands
 - Added typed `/ms open <type:id>` resolution so duplicate short shop ids can be disambiguated without removing short ids
 - Added explicit typed open support for `systemshop:<category>` plus typed route suggestions in ambiguity messages
@@ -114,6 +131,7 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- Deep i18n refactor compiled successfully with `./gradlew.bat compileKotlin`
 - Typed open-id routing compiled successfully with `./gradlew.bat build`
 - Menu module integration compiled successfully with `./gradlew.bat build`
 - Plan-aligned cart checkout/conflict + record filter/view-config refactor compiled successfully with `./gradlew.bat build`
@@ -129,6 +147,8 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- i18n coverage is still not full-module complete: `Auction`, `Transaction`, `ChestShop`, cart conflict detail text, and several repository/debug warnings still contain hardcoded text
+- Language selection is currently global-by-config only; there is no per-player locale switching yet
 - Short `/ms open <id>` still works as before; typed `/ms open <type:id>` is only the explicit disambiguation path when ids collide
 - The default `Menu` hub now routes through `matrixshop open <type:id>`, so custom packs should prefer that format over direct standalone module commands
 - `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, `Transaction`, `Cart`, `Record`, and `ChestShop`; duplicate ids now return an ambiguity message instead of guessing
@@ -149,6 +169,9 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Continue i18n migration for `Auction`, `Transaction`, `ChestShop`, `Cart`, and remaining admin/debug/database messages
+- Decide whether to add per-player locale support or keep locale global-by-config for the first stable release
+- Run live Paper validation for translated help, admin status, and the migrated `SystemShop / PlayerShop / GlobalMarket / Record` user paths
 - Run live Paper validation for the new `Menu` hub buttons and at least one custom `Menu/shops/*.yml` pack
 - Run live Paper validation for cart checkout/conflict and record filter on at least two custom shop packs per module
 - Decide whether `Cart` should gain per-shop persistence pools or remain a global player cart with filtered shop views
