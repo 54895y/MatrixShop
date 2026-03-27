@@ -32,8 +32,6 @@ repositories {
     maven("https://repo.tabooproject.org/repository/releases")
     mavenCentral()
     maven("https://hub.spigotmc.org/nexus/content/groups/public/")
-    maven(url = uri("../_publish/matrix-api"))
-    maven(url = uri("../../_publish/matrix-api"))
 }
 
 dependencies {
