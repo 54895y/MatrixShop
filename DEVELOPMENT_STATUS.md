@@ -31,6 +31,12 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added shared JDBC runtime support to `MatrixLib`, including Hikari-backed SQLite/MySQL datasource builders
+- Moved `MatrixAuth` datasource creation onto the shared `MatrixLib` JDBC factory
+- Moved `MatrixCook` placed-cooker JDBC storage onto the shared `MatrixLib` JDBC factory
+- Verified that runtime dependency loading for JDBC libraries still has to be declared by each plugin entrypoint under the current TabooLib packaging layout
+- Restored plugin-local JDBC runtime dependency declarations for `MatrixAuth` and `MatrixCook` while keeping the datasource construction logic centralized in `MatrixLib`
+- Revalidated `MatrixCook` SQLite startup and `MatrixAuth` startup on local `paper-1.12.2` after the JDBC factory migration
 - Moved shared item-source hook ownership into `MatrixLib` through owner-aware hook registration and unregistration
 - Added `MatrixCommonItemHooks` in `MatrixLib` for common `CraftEngine`, `ItemsAdder`, and `Oraxen` item resolution
 - Changed `MatrixCook` to register common item hooks through `MatrixLib` instead of duplicating `ce / ia / ox` reflection hooks locally
@@ -121,6 +127,11 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- `MatrixLib` shared JDBC factory refactor compiled successfully with `./gradlew build`
+- `MatrixAuth` JDBC factory migration compiled successfully with `./gradlew build`
+- `MatrixCook` JDBC factory migration compiled successfully with `./gradlew build`
+- Live smoke boot passed on local `paper-1.12.2` after deploying the new `MatrixLib + MatrixAuth + MatrixCook`
+- Smoke log confirmed `MatrixCook` now starts on SQLite and `MatrixAuth` now enables successfully after restoring plugin-local JDBC runtime dependency loading
 - `MatrixLib` shared item-hook refactor compiled successfully with `./gradlew build`
 - `MatrixCook` common item-hook migration compiled successfully with `./gradlew build`
 - `MatrixShop` common item-hook migration compiled successfully with `./gradlew build`
@@ -141,6 +152,7 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- `MatrixLib` now owns the shared JDBC datasource factory, but JDBC runtime dependency provisioning is still plugin-local under the current TabooLib packaging model
 - The current host still has a fragile Kotlin daemon/cache environment; sequential rebuilds are reliable, but parallel composite builds can corrupt local Kotlin zip caches
 - `MatrixShop` currently consumes shared item hooks in menu rendering and `SystemShop`, but auction/global-market/player-shop/chestshop business data still mostly comes from real stored `ItemStack` snapshots rather than raw item-source ids
 - Short `/ms open <id>` still works as before; typed `/ms open <type:id>` is only the explicit disambiguation path when ids collide
@@ -163,6 +175,7 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Continue consolidating plugin-local runtime wrappers into `MatrixLib`, with the next best target being `MatrixAuth` reload/bootstrap helpers instead of datasource creation
 - Continue replacing duplicated plugin-local item parsing with `MatrixLib` shared hooks where raw source ids still exist
 - Decide whether to move more external item-source adapters from `MatrixCook` into `MatrixLib`, or keep only the three common hooks there
 - Run live Paper validation for the new `Menu` hub buttons and at least one custom `Menu/shops/*.yml` pack
