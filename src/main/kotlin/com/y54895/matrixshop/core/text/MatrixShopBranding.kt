@@ -8,6 +8,6 @@ object MatrixShopBranding {
         displayName = "MatrixShop",
         rootCommand = "/matrixshop",
         adminCommand = "/matrixshop admin",
-        runtimeName = "Matrix commerce runtime"
+        runtimeName = "MatrixShop 商业运行时"
     )
 }

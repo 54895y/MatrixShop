@@ -11,22 +11,22 @@ object ConsoleVisuals {
     fun renderBoot() {
         MatrixConsoleVisuals.renderBoot(
             branding = branding,
-            headline = "Bootstrapping commerce modules",
+            headline = "正在加载商业模块",
             details = listOf(
-                MatrixConsoleFact("Focus", "system shop / market / auction / trade"),
-                MatrixConsoleFact("Hint", "/matrixshop help")
+                MatrixConsoleFact("功能范围", "系统商店 / 玩家市场 / 拍卖行 / 交易")
             )
         )
     }
 
-    fun renderReady(backend: String, schemaMessage: String, modules: String) {
+    fun renderReady(backend: String, economy: String, schemaMessage: String, modules: String) {
         MatrixConsoleVisuals.renderReady(
             branding = branding,
             version = pluginVersion,
             details = listOf(
-                MatrixConsoleFact("Backend", backend),
-                MatrixConsoleFact("Schema", schemaMessage),
-                MatrixConsoleFact("Modules", modules)
+                MatrixConsoleFact("数据后端", backend),
+                MatrixConsoleFact("经济系统", economy),
+                MatrixConsoleFact("结构同步", schemaMessage),
+                MatrixConsoleFact("启用模块", modules)
             )
         )
     }
@@ -39,7 +39,7 @@ object ConsoleVisuals {
         MatrixConsoleVisuals.renderShutdown(
             branding = branding,
             details = listOf(
-                MatrixConsoleFact("Backend snapshot", backend)
+                MatrixConsoleFact("数据后端快照", backend)
             )
         )
     }

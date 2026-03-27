@@ -30,15 +30,16 @@ object MatrixShop : Plugin() {
             VaultEconomyBridge.reload()
             ModuleRegistry.reload()
             MatrixShopCommands.register()
-            info("MatrixShop enabled. Modules=${ModuleRegistry.enabledSummary()}")
+            info("MatrixShop 已启用，模块=${ModuleRegistry.enabledSummary()}")
             ConsoleVisuals.renderReady(
                 backend = DatabaseManager.backendName(),
+                economy = VaultEconomyBridge.providerName(),
                 schemaMessage = schemaResult.message,
                 modules = ModuleRegistry.enabledSummary()
             )
         }.onFailure {
             ConsoleVisuals.renderFailure(it.message ?: it.javaClass.simpleName)
-            severe("MatrixShop failed to start: ${it.message}")
+            severe("MatrixShop 启动失败: ${it.message}")
             throw it
         }
     }
