@@ -1,16 +1,14 @@
 package com.y54895.matrixshop.core.text
 
 import com.y54895.matrixlib.api.console.MatrixConsoleFact
+import com.y54895.matrixlib.api.platform.MatrixBukkitPlugins
 import com.y54895.matrixlib.api.runtime.MatrixPluginRuntime
-import org.bukkit.Bukkit
-import org.bukkit.plugin.java.JavaPlugin
 import taboolib.common.platform.function.pluginVersion
 import java.util.function.Supplier
 
 object MatrixShopRuntime : MatrixPluginRuntime(
     pluginProvider = Supplier {
-        Bukkit.getPluginManager().getPlugin("MatrixShop") as? JavaPlugin
-            ?: error("MatrixShop plugin instance is not available yet.")
+        MatrixBukkitPlugins.requireJavaPlugin("MatrixShop")
     },
     runtimeBranding = MatrixShopBranding.value
 ) {

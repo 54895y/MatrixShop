@@ -31,6 +31,12 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Added shared Bukkit platform helpers to `MatrixLib` for plugin lookup and reflective command-map registration
+- Moved `MatrixAuth` dynamic command registration onto the shared `MatrixLib` Bukkit command helper
+- Moved `MatrixAuth` optional plugin checks (`AuthMe`, `PlaceholderAPI`, `ProtocolLib`, `EasyBot`, `Geyser`, `Floodgate`) onto the shared `MatrixLib` plugin lookup helper
+- Moved `MatrixCook` primary plugin-instance resolution onto the shared `MatrixLib` plugin lookup helper
+- Moved `MatrixShop` runtime plugin-instance resolution onto the shared `MatrixLib` plugin lookup helper
+- Revalidated `MatrixLib + MatrixAuth + MatrixCook + MatrixShop` together on local `paper-1.12.2` after the shared Bukkit-platform migration
 - Added shared JDBC runtime support to `MatrixLib`, including Hikari-backed SQLite/MySQL datasource builders
 - Moved `MatrixAuth` datasource creation onto the shared `MatrixLib` JDBC factory
 - Moved `MatrixCook` placed-cooker JDBC storage onto the shared `MatrixLib` JDBC factory
@@ -127,6 +133,12 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- `MatrixLib` shared Bukkit platform helper refactor compiled successfully with `./gradlew build`
+- `MatrixAuth` Bukkit platform helper migration compiled successfully with `./gradlew build`
+- `MatrixCook` plugin lookup migration compiled successfully with `./gradlew build`
+- `MatrixShop` runtime plugin lookup migration compiled successfully with `./gradlew build`
+- Live smoke boot passed on local `paper-1.12.2` after deploying the new `MatrixLib + MatrixAuth + MatrixCook + MatrixShop`
+- Smoke log confirmed `MatrixAuth`, `MatrixCook`, and `MatrixShop` all enabled successfully after the shared Bukkit-platform migration
 - `MatrixLib` shared JDBC factory refactor compiled successfully with `./gradlew build`
 - `MatrixAuth` JDBC factory migration compiled successfully with `./gradlew build`
 - `MatrixCook` JDBC factory migration compiled successfully with `./gradlew build`
@@ -152,6 +164,7 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- `MatrixLib` now owns reusable Bukkit plugin lookup and reflective command registration helpers, but listener registration and optional-hook business decisions still stay inside each plugin
 - `MatrixLib` now owns the shared JDBC datasource factory, but JDBC runtime dependency provisioning is still plugin-local under the current TabooLib packaging model
 - The current host still has a fragile Kotlin daemon/cache environment; sequential rebuilds are reliable, but parallel composite builds can corrupt local Kotlin zip caches
 - `MatrixShop` currently consumes shared item hooks in menu rendering and `SystemShop`, but auction/global-market/player-shop/chestshop business data still mostly comes from real stored `ItemStack` snapshots rather than raw item-source ids
@@ -175,6 +188,7 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Continue shrinking `MatrixAuth` bootstrap/reload wiring, with the next candidate being reload-stage service assembly and shutdown cleanup helpers
 - Continue consolidating plugin-local runtime wrappers into `MatrixLib`, with the next best target being `MatrixAuth` reload/bootstrap helpers instead of datasource creation
 - Continue replacing duplicated plugin-local item parsing with `MatrixLib` shared hooks where raw source ids still exist
 - Decide whether to move more external item-source adapters from `MatrixCook` into `MatrixLib`, or keep only the three common hooks there
