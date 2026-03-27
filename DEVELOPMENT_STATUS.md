@@ -31,6 +31,13 @@ This file is the handoff note for each development round.
 
 ## Completed This Round
 
+- Moved shared item-source hook ownership into `MatrixLib` through owner-aware hook registration and unregistration
+- Added `MatrixCommonItemHooks` in `MatrixLib` for common `CraftEngine`, `ItemsAdder`, and `Oraxen` item resolution
+- Changed `MatrixCook` to register common item hooks through `MatrixLib` instead of duplicating `ce / ia / ox` reflection hooks locally
+- Changed `MatrixCook` `ItemData` base-item resolution to use `MatrixLib MatrixItemHooks`, which centralizes preview parsing for normal and external item sources
+- Changed `MatrixShop` to register its common external item hooks through `MatrixLib MatrixCommonItemHooks` instead of keeping a second copy of the same hook implementations
+- Stabilized the Gradle/Kotlin build path for this round by rebuilding `MatrixLib -> MatrixCook -> MatrixShop` sequentially after cleaning local build caches
+- Deployed the current `MatrixLib`, `MatrixCook`, and `MatrixShop` jars to local `paper-1.12.2` and re-ran smoke startup validation
 - Normalized the default `Menu` hub button actions to `matrixshop open <type:id>` instead of mixing direct module commands
 - Added typed `/ms open <type:id>` resolution so duplicate short shop ids can be disambiguated without removing short ids
 - Added explicit typed open support for `systemshop:<category>` plus typed route suggestions in ambiguity messages
@@ -114,6 +121,11 @@ This file is the handoff note for each development round.
 
 ## Validation
 
+- `MatrixLib` shared item-hook refactor compiled successfully with `./gradlew build`
+- `MatrixCook` common item-hook migration compiled successfully with `./gradlew build`
+- `MatrixShop` common item-hook migration compiled successfully with `./gradlew build`
+- Live smoke boot passed on local `paper-1.12.2` after deploying the new `MatrixLib + MatrixCook + MatrixShop`
+- Smoke log confirmed no new `NoClassDefFoundError`, item-hook registration failure, or startup exception after the shared hook migration
 - Typed open-id routing compiled successfully with `./gradlew.bat build`
 - Menu module integration compiled successfully with `./gradlew.bat build`
 - Plan-aligned cart checkout/conflict + record filter/view-config refactor compiled successfully with `./gradlew.bat build`
@@ -129,6 +141,8 @@ This file is the handoff note for each development round.
 
 ## Known Boundaries
 
+- The current host still has a fragile Kotlin daemon/cache environment; sequential rebuilds are reliable, but parallel composite builds can corrupt local Kotlin zip caches
+- `MatrixShop` currently consumes shared item hooks in menu rendering and `SystemShop`, but auction/global-market/player-shop/chestshop business data still mostly comes from real stored `ItemStack` snapshots rather than raw item-source ids
 - Short `/ms open <id>` still works as before; typed `/ms open <type:id>` is only the explicit disambiguation path when ids collide
 - The default `Menu` hub now routes through `matrixshop open <type:id>`, so custom packs should prefer that format over direct standalone module commands
 - `/ms open <shop-id>` requires the shop id to be unique across `Auction`, `GlobalMarket`, `PlayerShop`, `Transaction`, `Cart`, `Record`, and `ChestShop`; duplicate ids now return an ambiguity message instead of guessing
@@ -149,6 +163,8 @@ This file is the handoff note for each development round.
 
 ### Highest Priority
 
+- Continue replacing duplicated plugin-local item parsing with `MatrixLib` shared hooks where raw source ids still exist
+- Decide whether to move more external item-source adapters from `MatrixCook` into `MatrixLib`, or keep only the three common hooks there
 - Run live Paper validation for the new `Menu` hub buttons and at least one custom `Menu/shops/*.yml` pack
 - Run live Paper validation for cart checkout/conflict and record filter on at least two custom shop packs per module
 - Decide whether `Cart` should gain per-shop persistence pools or remain a global player cart with filtered shop views
