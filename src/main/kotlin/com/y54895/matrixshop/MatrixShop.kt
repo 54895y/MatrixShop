@@ -17,6 +17,9 @@ import taboolib.common.platform.function.severe
 object MatrixShop : Plugin() {
 
     override fun onLoad() {
+        ConfigFiles.ensureDefaults()
+        ConfigFiles.reload()
+        MatrixI18n.reload()
         ConsoleVisuals.renderBoot()
     }
 
