@@ -73,7 +73,7 @@ object TransactionModule : MatrixModule {
         }
         val resolvedName = targetName?.trim().orEmpty()
         if (resolvedName.isBlank()) {
-            Texts.send(requester, "&cUsage: /trade request <player>")
+            Texts.send(requester, "&cUsage: ${CommandUsageContext.modulePrefix(requester, "transaction", "/trade")} request <player>")
             return
         }
         cleanupExpiredRequests()

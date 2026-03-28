@@ -17,7 +17,7 @@ icons:
     material: 'GOLD_NUGGET'
     name: '&e修改价格'
     lore:
-      - '&7使用 /chestshop price <buy|sell> <数值>'
+      - '&7使用 {command} price <buy|sell> <数值>'
   'M':
     material: 'COMPASS'
     name: '&f切换模式'

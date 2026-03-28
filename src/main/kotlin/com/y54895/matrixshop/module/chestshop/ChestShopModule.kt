@@ -335,7 +335,7 @@ object ChestShopModule : MatrixModule {
         val side = sideRaw?.lowercase(Locale.ROOT)
         val newPrice = value?.coerceAtLeast(0.0)
         if (newPrice == null || side !in listOf("buy", "sell")) {
-            Texts.send(player, "&cUsage: /chestshop price <buy|sell> <value>")
+            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} price <buy|sell> <value>")
             return
         }
         when (side) {
