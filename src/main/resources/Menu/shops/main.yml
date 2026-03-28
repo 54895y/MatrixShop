@@ -6,7 +6,6 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
-    Help-Key: '@commands.bindings.menu'
 
 Title:
   - '&8MatrixShop Menu &7{shop-id}'

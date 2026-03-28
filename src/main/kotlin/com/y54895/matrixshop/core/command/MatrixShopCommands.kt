@@ -761,7 +761,7 @@ object MatrixShopCommands {
         addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine("/$rootLabel", "@commands.help.desc.system-main"))
         addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine(mainModuleUsage(rootLabel, "system-shop", "open [category]"), "@commands.help.desc.system-open"))
         addHelp(lines, Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine("/$rootLabel open <shop-id|category>", "@commands.help.desc.ms-open"))
-        addBoundShopHelp(lines, showModuleHelp("menu") && Permissions.has(player, PermissionNodes.MENU_USE), rootLabel, shopHelpEntries("menu"), "open", "@commands.help.desc.menu-open")
+        addHelp(lines, showModuleHelp("menu") && Permissions.has(player, PermissionNodes.MENU_USE), helpLine(mainModuleUsage(rootLabel, "menu", "open"), "@commands.help.desc.menu-open"))
         addBoundShopHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), rootLabel, shopHelpEntries("auction"), "open", "@commands.help.desc.auction-open")
         addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), helpLine(mainModuleUsage(rootLabel, "auction", "upload <english|dutch> <start> [buyout|end] [duration]"), "@commands.help.desc.auction-upload"))
         addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), helpLine(mainModuleUsage(rootLabel, "auction", "bid <id> [price]"), "@commands.help.desc.auction-bid"))
@@ -797,7 +797,7 @@ object MatrixShopCommands {
     private fun sendModuleHelp(player: Player, moduleId: String, label: String) {
         val lines = mutableListOf(Texts.tr("@commands.help.player-title"))
         when (moduleId) {
-            "menu" -> addHelp(lines, Permissions.has(player, PermissionNodes.MENU_USE), helpLine("/$label open", bindingHelpKeyOrDefault("menu", "@commands.help.desc.menu-open")))
+            "menu" -> addHelp(lines, Permissions.has(player, PermissionNodes.MENU_USE), helpLine("/$label open", "@commands.help.desc.menu-open"))
             "auction" -> {
                 addHelp(lines, Permissions.has(player, PermissionNodes.AUCTION_USE), helpLine("/$label open", bindingHelpKeyOrDefault("auction", "@commands.help.desc.auction-open")))
                 addHelp(lines, Permissions.has(player, PermissionNodes.AUCTION_SELL), helpLine("/$label upload <english|dutch> <start> [buyout|end] [duration]", "@commands.help.desc.auction-upload"))
