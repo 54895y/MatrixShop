@@ -9,6 +9,11 @@ Bindings:
     Show-In-Help: true
     Priority: 60
     Help-Key: '@commands.bindings.chestshop'
+    Hint-Keys:
+      open: '@commands.bindings.chestshop'
+      create: '@commands.hints.chestshop-create'
+      price: '@commands.hints.chestshop-price'
+      remove: '@commands.hints.chestshop-remove'
     Condition: 'perm matrixshop.chestshop.use'
 
 # 交互触发支持:

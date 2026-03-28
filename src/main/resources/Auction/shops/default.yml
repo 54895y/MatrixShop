@@ -7,6 +7,11 @@ Bindings:
     Show-In-Help: true
     Priority: 100
     Help-Key: '@commands.bindings.auction'
+    Hint-Keys:
+      open: '@commands.bindings.auction'
+      bid: '@commands.hints.auction-bid'
+      upload-english: '@commands.hints.auction-upload-english'
+      upload-dutch: '@commands.hints.auction-upload-dutch'
 
 Title:
   - '&8Auction Hall &7{page}/{max-page}'

@@ -1,6 +1,7 @@
 package com.y54895.matrixshop.module.cart
 
 import com.y54895.matrixshop.core.command.CommandUsageContext
+import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
@@ -431,7 +432,13 @@ object CartModule : MatrixModule {
                     remove(player, slotNumber)
                     open(player)
                 } else {
-                    Texts.send(player, "&7Use /cart amount $slotNumber <number> to change the amount.")
+                    Texts.send(
+                        player,
+                        Texts.tr(
+                            ModuleBindings.hintKey("cart", "amount") ?: "@commands.hints.cart-amount",
+                            mapOf("command" to "${CommandUsageContext.modulePrefix(player, "cart", "/cart")} amount", "slot" to slotNumber.toString())
+                        )
+                    )
                 }
             }
         }
@@ -464,7 +471,17 @@ object CartModule : MatrixModule {
         buttonSlot(definition, 'C')?.let { holder.handlers[it] = { openCheckout(player) } }
         buttonSlot(definition, 'X')?.let { holder.handlers[it] = { clear(player); open(player, currentPage) } }
         buttonSlot(definition, 'V')?.let { holder.handlers[it] = { removeInvalid(player); open(player, currentPage) } }
-        buttonSlot(definition, 'A')?.let { holder.handlers[it] = { Texts.send(player, "&7Use /cart amount <slot> <number> to change the amount.") } }
+        buttonSlot(definition, 'A')?.let {
+            holder.handlers[it] = {
+                Texts.send(
+                    player,
+                    Texts.tr(
+                        ModuleBindings.hintKey("cart", "amount") ?: "@commands.hints.cart-amount",
+                        mapOf("command" to "${CommandUsageContext.modulePrefix(player, "cart", "/cart")} amount", "slot" to "<slot>")
+                    )
+                )
+            }
+        }
         buttonSlot(definition, 'R')?.let { holder.handlers[it] = { player.closeInventory() } }
     }
 
@@ -568,6 +585,15 @@ object CartModule : MatrixModule {
     }
 
     private fun defaultEntryLore(entry: CartEntry, validation: CartValidation, slotNumber: Int, currentPrice: Double): List<String> {
+        val command = CommandUsageContext.modulePrefix(org.bukkit.Bukkit.getPlayer(entry.ownerName ?: "") ?: return mutableListOf(
+            Texts.color("&7Source: &f${entry.sourceModule}"),
+            Texts.color("&7Amount: &f${entry.amount}"),
+            Texts.color("&7Snapshot price: &e${trimDouble(entry.snapshotPrice)} ${entry.currency}"),
+            Texts.color("&7Current price: &6${trimDouble(currentPrice)} ${entry.currency}"),
+            Texts.color("&7State: &f${entryStateLabel(entry, validation)}"),
+            Texts.color("&7Slot: &f$slotNumber"),
+            Texts.color("&7Created at: &f${timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))}")
+        ), "cart", "/cart")
         val lore = mutableListOf(
             Texts.color("&7Source: &f${entry.sourceModule}"),
             Texts.color("&7Amount: &f${entry.amount}"),
@@ -580,7 +606,7 @@ object CartModule : MatrixModule {
         if (validation.reason.isNotBlank()) {
             lore += Texts.color("&7Reason: &f${ChatColor.stripColor(validation.reason).orEmpty()}")
         }
-        lore += Texts.color(if (entry.editableAmount) "&eRight click to remove. Use command to change amount." else "&eRight click to remove.")
+        lore += Texts.color(if (entry.editableAmount) "&eRight click to remove. Use $command amount <slot> <number> to change amount." else "&eRight click to remove.")
         return lore
     }
 

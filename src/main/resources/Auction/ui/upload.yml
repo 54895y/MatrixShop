@@ -19,8 +19,8 @@ icons:
     material: 'PAPER'
     name: '&fMode'
     lore:
-      - '&7Use: /auction upload english <start> [buyout] [duration]'
-      - '&7Use: /auction upload dutch <start> <end> [duration]'
+      - '&7Use: {hint-upload-english} <start> [buyout] [duration]'
+      - '&7Use: {hint-upload-dutch} <start> <end> [duration]'
   'T':
     material: 'WATCH'
     name: '&fDuration'

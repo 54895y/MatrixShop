@@ -8,6 +8,9 @@ Bindings:
     Show-In-Help: true
     Priority: 40
     Help-Key: '@commands.bindings.cart'
+    Hint-Keys:
+      open: '@commands.bindings.cart'
+      amount: '@commands.hints.cart-amount'
     Condition: 'perm matrixshop.cart.use'
 
 Sources:

@@ -7,6 +7,11 @@ Bindings:
     Show-In-Help: true
     Priority: 100
     Help-Key: '@commands.bindings.transaction'
+    Hint-Keys:
+      open: '@commands.bindings.transaction'
+      request: '@commands.hints.transaction-request'
+      money: '@commands.hints.transaction-money'
+      exp: '@commands.hints.transaction-exp'
 
 Title:
   - '&8Trade Hub &7{shop-id}'
@@ -26,8 +31,7 @@ icons:
     material: 'NAME_TAG'
     name: '&aRequest Trade'
     lore:
-      - '&7Use /ms trade request <player>'
-      - '&7or your custom binding equivalent'
+      - '&7{hint-request} <player>'
   'A':
     material: 'EMERALD'
     name: '&fActive Trade'

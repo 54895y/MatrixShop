@@ -7,6 +7,9 @@ Bindings:
     Show-In-Help: true
     Priority: 100
     Help-Key: '@commands.bindings.global-market'
+    Hint-Keys:
+      open: '@commands.bindings.global-market'
+      upload: '@commands.hints.global-market-upload'
 
 Title:
   - '&8Global Market &7{page}/{max-page}'

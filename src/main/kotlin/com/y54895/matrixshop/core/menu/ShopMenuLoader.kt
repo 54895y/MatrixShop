@@ -100,8 +100,16 @@ object ShopMenuLoader {
             registerStandalone = yaml.getBoolean("Bindings.Commands.Register", false),
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", false),
             priority = yaml.getInt("Bindings.Commands.Priority", 0),
-            helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null }
+            helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null },
+            hintKeys = loadHintKeys(yaml, "Bindings.Commands.Hint-Keys")
         )
+    }
+
+    private fun loadHintKeys(yaml: YamlConfiguration, path: String): Map<String, String> {
+        val section = yaml.getConfigurationSection(path) ?: return emptyMap()
+        return section.getKeys(false).associate { key ->
+            key.lowercase() to (section.getString(key)?.trim()?.ifBlank { "" } ?: "")
+        }.filterValues { it.isNotBlank() }
     }
 
     private fun normalizeShopId(value: String?): String? {

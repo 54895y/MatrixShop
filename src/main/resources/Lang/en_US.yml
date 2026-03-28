@@ -46,6 +46,18 @@ commands:
     chestshop: "Open chest shop routes"
     cart: "Open the cart"
     record: "Open the ledger"
+  hints:
+    global-market-upload: "Use {command}"
+    auction-bid: "Command: {command}"
+    auction-upload-english: "{command}"
+    auction-upload-dutch: "{command}"
+    transaction-request: "Use {command}"
+    transaction-money: "Use {command}"
+    transaction-exp: "Use {command}"
+    cart-amount: "Use {command} <slot> <number> to change the amount."
+    chestshop-create: "Please look at a chest first, then use {command} to create the shop."
+    chestshop-price: "Use {command} <buy|sell> <value> to change prices."
+    chestshop-remove: "Use {command} to delete the shop cleanly."
   errors:
     usage: "&cUsage: &f{usage}"
     shop-id-ambiguous-routes: "&cShop id &f{shop} &cexists in multiple routes: &f{routes}"

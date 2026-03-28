@@ -1,5 +1,7 @@
 package com.y54895.matrixshop.module.transaction
 
+import com.y54895.matrixshop.core.command.CommandUsageContext
+import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.menu.MenuDefinition
@@ -370,14 +372,26 @@ object TransactionModule : MatrixModule {
                     if (event.click.isRightClick) {
                         setMoney(player, 0.0)
                     } else {
-                        Texts.send(player, "&7Use /trade money <amount> to set your money offer. Right click clears it.")
+                        Texts.send(
+                            player,
+                            Texts.tr(
+                                ModuleBindings.hintKey("transaction", "money") ?: "@commands.hints.transaction-money",
+                                mapOf("command" to "${CommandUsageContext.modulePrefix(player, "transaction", "/trade")} money")
+                            )
+                        )
                     }
                 }
                 expSlot -> {
                     if (event.click.isRightClick) {
                         setExp(player, 0)
                     } else {
-                        Texts.send(player, "&7Use /trade exp <amount> to set your exp offer. Right click clears it.")
+                        Texts.send(
+                            player,
+                            Texts.tr(
+                                ModuleBindings.hintKey("transaction", "exp") ?: "@commands.hints.transaction-exp",
+                                mapOf("command" to "${CommandUsageContext.modulePrefix(player, "transaction", "/trade")} exp")
+                            )
+                        )
                     }
                 }
                 readySlot -> toggleReady(player)
@@ -447,13 +461,24 @@ object TransactionModule : MatrixModule {
             player = player,
             definition = selectedShop.definition,
             placeholders = mapOf(
+                "command" to CommandUsageContext.modulePrefix(player, "transaction", "/trade"),
+                "hint-request" to Texts.tr(
+                    selectedShop.bindings.hintKeys["request"] ?: ModuleBindings.hintKey("transaction", "request") ?: "@commands.hints.transaction-request",
+                    mapOf("command" to "${CommandUsageContext.modulePrefix(player, "transaction", "/trade")} request")
+                ),
                 "player" to player.name,
                 "shop-id" to selectedShop.id
             ),
             goodsRenderer = { holder, _ ->
                 buttonSlot(selectedShop.definition, 'R')?.let { slot ->
                     holder.handlers[slot] = {
-                        Texts.send(player, "&7Use /ms ${selectedShop.bindings.keys.firstOrNull() ?: selectedShop.id} request <player> to send a trade request.")
+                        Texts.send(
+                            player,
+                            Texts.tr(
+                                selectedShop.bindings.hintKeys["request"] ?: ModuleBindings.hintKey("transaction", "request") ?: "@commands.hints.transaction-request",
+                                mapOf("command" to "${CommandUsageContext.modulePrefix(player, "transaction", "/trade")} request")
+                            )
+                        )
                     }
                 }
                 buttonSlot(selectedShop.definition, 'L')?.let { slot ->
@@ -927,7 +952,12 @@ object TransactionModule : MatrixModule {
     private fun tradePlaceholders(session: TransactionSession, viewerId: UUID): Map<String, String> {
         val selfSide = sideOf(session, viewerId)
         val targetSide = oppositeSide(selfSide)
+        val viewer = Bukkit.getPlayer(viewerId)
+        val command = if (viewer != null) CommandUsageContext.modulePrefix(viewer, "transaction", "/trade") else "/trade"
         return mapOf(
+            "command" to command,
+            "hint-money" to Texts.tr(ModuleBindings.hintKey("transaction", "money") ?: "@commands.hints.transaction-money", mapOf("command" to "$command money")),
+            "hint-exp" to Texts.tr(ModuleBindings.hintKey("transaction", "exp") ?: "@commands.hints.transaction-exp", mapOf("command" to "$command exp")),
             "self" to nameOf(session, selfSide),
             "target" to nameOf(session, targetSide),
             "self-money" to trimDouble(moneyOf(session, selfSide)),

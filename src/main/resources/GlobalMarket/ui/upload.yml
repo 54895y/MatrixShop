@@ -18,7 +18,7 @@ icons:
     lore:
       - '&7手持要上架的物品'
       - '&7使用命令:'
-      - '&e/matrixshop global_market upload <price> [amount]'
+      - '&e{hint-upload} <price> [amount]'
   'C':
     material: 'PAPER'
     name: '&f当前规则'
@@ -29,8 +29,8 @@ icons:
     material: 'EMERALD'
     name: '&a示例'
     lore:
-      - '&f/matrixshop global_market upload 500'
-      - '&f/matrixshop global_market upload 500 8'
+      - '&f{command} upload 500'
+      - '&f{command} upload 500 8'
   'R':
     material: 'BARRIER'
     name: '&c返回'

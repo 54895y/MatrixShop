@@ -1,5 +1,7 @@
 package com.y54895.matrixshop.module.auction
 
+import com.y54895.matrixshop.core.command.CommandUsageContext
+import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.menu.MenuDefinition
@@ -118,6 +120,15 @@ object AuctionModule : MatrixModule {
             player = player,
             definition = menus.upload,
             placeholders = mapOf(
+                "command" to CommandUsageContext.modulePrefix(player, "auction", "/auction"),
+                "hint-upload-english" to Texts.tr(
+                    ModuleBindings.hintKey("auction", "upload-english") ?: "@commands.hints.auction-upload-english",
+                    mapOf("command" to "${CommandUsageContext.modulePrefix(player, "auction", "/auction")} upload english")
+                ),
+                "hint-upload-dutch" to Texts.tr(
+                    ModuleBindings.hintKey("auction", "upload-dutch") ?: "@commands.hints.auction-upload-dutch",
+                    mapOf("command" to "${CommandUsageContext.modulePrefix(player, "auction", "/auction")} upload dutch")
+                ),
                 "item" to itemDisplayName(hand),
                 "default-duration" to settings.defaultDuration.toString(),
                 "min-duration" to settings.minDuration.toString(),
@@ -254,7 +265,13 @@ object AuctionModule : MatrixModule {
         MenuRenderer.open(
             player = player,
             definition = menus.bid,
-            placeholders = placeholders,
+            placeholders = placeholders + mapOf(
+                "command" to CommandUsageContext.modulePrefix(player, "auction", "/auction"),
+                "hint-bid" to Texts.tr(
+                    ModuleBindings.hintKey("auction", "bid") ?: "@commands.hints.auction-bid",
+                    mapOf("command" to "${CommandUsageContext.modulePrefix(player, "auction", "/auction")} bid")
+                )
+            ),
             backAction = { openDetail(player, listing.shopId, listing.id) },
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.bid, 'i')?.let { slot ->
@@ -277,7 +294,7 @@ object AuctionModule : MatrixModule {
         val resolvedShopId = resolveShopId(shopId)
         val mode = parseMode(modeRaw)
         if (mode == null) {
-            Texts.send(player, "&cUsage: /auction upload <english|dutch> <start-price> [buyout|end-price] [duration-seconds]")
+            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "auction", "/auction")} upload <english|dutch> <start-price> [buyout|end-price] [duration-seconds]")
             return
         }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)

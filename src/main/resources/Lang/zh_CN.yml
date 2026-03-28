@@ -46,6 +46,18 @@ commands:
     chestshop: "打开箱子商店入口"
     cart: "打开购物车入口"
     record: "打开账本入口"
+  hints:
+    global-market-upload: "使用 {command}"
+    auction-bid: "命令: {command}"
+    auction-upload-english: "{command}"
+    auction-upload-dutch: "{command}"
+    transaction-request: "使用 {command}"
+    transaction-money: "使用 {command}"
+    transaction-exp: "使用 {command}"
+    cart-amount: "使用 {command} <slot> <number> 修改数量。"
+    chestshop-create: "请先看向一个箱子，然后使用 {command} 创建箱子商店。"
+    chestshop-price: "使用 {command} <buy|sell> <数值> 修改价格。"
+    chestshop-remove: "使用 {command} 删除商店。"
   errors:
     usage: "&c用法: &f{usage}"
     shop-id-ambiguous-routes: "&c商店标识 &f{shop} &c在多个入口中重复: &f{routes}"

@@ -1,6 +1,7 @@
 package com.y54895.matrixshop.module.chestshop
 
 import com.y54895.matrixshop.core.command.CommandUsageContext
+import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
@@ -88,7 +89,13 @@ object ChestShopModule : MatrixModule {
         }
         val shop = resolveContextShop(player) ?: run {
             openCreate(player, targetBlock(player)?.takeIf(::isChestBlock))
-            Texts.send(player, "&e请先看向一个箱子，然后使用创建动作或 /chestshop create 创建箱子商店。")
+            Texts.send(
+                player,
+                Texts.tr(
+                    ModuleBindings.hintKey("chestshop", "create") ?: "@commands.hints.chestshop-create",
+                    mapOf("command" to "${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create")
+                )
+            )
             return
         }
         openShop(player, shop)
@@ -201,7 +208,7 @@ object ChestShopModule : MatrixModule {
         }
         val mode = parseMode(modeRaw) ?: run {
             openCreate(player)
-            Texts.send(player, "&cUsage: /chestshop create <buy|sell|dual> <price> [sell-price] [amount]")
+            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create <buy|sell|dual> <price> [sell-price] [amount]")
             return
         }
         val target = (
@@ -370,7 +377,7 @@ object ChestShopModule : MatrixModule {
         }
         val amount = value?.coerceAtLeast(1)
         if (amount == null) {
-            Texts.send(player, "&cUsage: /chestshop amount <number>")
+            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} amount <number>")
             return
         }
         shop.tradeAmount = amount
@@ -396,7 +403,7 @@ object ChestShopModule : MatrixModule {
             return
         }
         val mode = parseMode(modeRaw) ?: run {
-            Texts.send(player, "&cUsage: /chestshop mode <buy|sell|dual>")
+            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} mode <buy|sell|dual>")
             return
         }
         if (mode == ChestShopMode.DUAL && shop.secondaryChest == null) {
@@ -455,7 +462,13 @@ object ChestShopModule : MatrixModule {
         }
         val shop = findShopByBlock(block) ?: findShopBySign(block) ?: return true
         if (canManage(player, shop)) {
-            Texts.send(player, "&eUse /chestshop remove to delete the shop cleanly.")
+            Texts.send(
+                player,
+                Texts.tr(
+                    ModuleBindings.hintKey("chestshop", "remove") ?: "@commands.hints.chestshop-remove",
+                    mapOf("command" to "${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} remove")
+                )
+            )
         } else {
             Texts.send(player, "&cThis chest shop is protected.")
         }
@@ -626,7 +639,13 @@ object ChestShopModule : MatrixModule {
     private fun wireEditControls(player: Player, holder: MatrixMenuHolder, shop: ChestShopShop) {
         buttonSlot(menus.edit, 'P')?.let { slot ->
             holder.handlers[slot] = {
-                Texts.send(player, "&7Use /chestshop price <buy|sell> <value> to change prices.")
+                Texts.send(
+                    player,
+                    Texts.tr(
+                        ModuleBindings.hintKey("chestshop", "price") ?: "@commands.hints.chestshop-price",
+                        mapOf("command" to "${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} price")
+                    )
+                )
             }
         }
         buttonSlot(menus.edit, 'M')?.let { slot ->
@@ -966,13 +985,13 @@ object ChestShopModule : MatrixModule {
 
     private fun wireCreateControls(player: Player, holder: MatrixMenuHolder) {
         buttonSlot(menus.create, 'B')?.let { slot ->
-            holder.handlers[slot] = { Texts.send(player, "&e创建收购店: &f/chestshop create buy <价格> [数量]") }
+            holder.handlers[slot] = { Texts.send(player, "&e创建收购店: &f${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create buy <价格> [数量]") }
         }
         buttonSlot(menus.create, 'S')?.let { slot ->
-            holder.handlers[slot] = { Texts.send(player, "&e创建出售店: &f/chestshop create sell <价格> [数量]") }
+            holder.handlers[slot] = { Texts.send(player, "&e创建出售店: &f${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create sell <价格> [数量]") }
         }
         buttonSlot(menus.create, 'D')?.let { slot ->
-            holder.handlers[slot] = { Texts.send(player, "&e创建双向店: &f/chestshop create dual <收购价> <出售价> [数量]") }
+            holder.handlers[slot] = { Texts.send(player, "&e创建双向店: &f${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create dual <收购价> <出售价> [数量]") }
         }
         buttonSlot(menus.create, 'R')?.let { slot ->
             holder.handlers[slot] = { player.closeInventory() }

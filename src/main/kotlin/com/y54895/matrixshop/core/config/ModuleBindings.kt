@@ -2,13 +2,15 @@ package com.y54895.matrixshop.core.config
 
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
+import java.util.LinkedHashMap
 
 data class ModuleCommandBinding(
     val keys: List<String>,
     val registerStandalone: Boolean,
     val showInHelp: Boolean,
     val priority: Int,
-    val helpKey: String? = null
+    val helpKey: String? = null,
+    val hintKeys: Map<String, String> = emptyMap()
 )
 
 object ModuleBindings {
@@ -57,6 +59,10 @@ object ModuleBindings {
         return load(moduleId).helpKey
     }
 
+    fun hintKey(moduleId: String, key: String): String? {
+        return load(moduleId).hintKeys[key.lowercase()]
+    }
+
     fun matches(moduleId: String, token: String): Boolean {
         return load(moduleId).keys.contains(token.trim().lowercase())
     }
@@ -88,7 +94,24 @@ object ModuleBindings {
             registerStandalone = yaml.getBoolean("Bindings.Commands.Register", fallback.registerStandalone),
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", fallback.showInHelp),
             priority = yaml.getInt("Bindings.Commands.Priority", fallback.priority),
-            helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null } ?: fallback.helpKey
+            helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null } ?: fallback.helpKey,
+            hintKeys = loadHintKeys(yaml, "Bindings.Commands.Hint-Keys") + fallback.hintKeys
         )
     }
+
+    private fun loadHintKeys(yaml: YamlConfiguration, path: String): Map<String, String> {
+        val section = yaml.getConfigurationSection(path) ?: return emptyMap()
+        return section.getKeys(false).associateNotNull { key ->
+            section.getString(key)?.trim()?.takeIf(String::isNotBlank)?.let { key.lowercase() to it }
+        }
+    }
+}
+
+private inline fun <K, V> Iterable<K>.associateNotNull(transform: (K) -> Pair<K, V>?): Map<K, V> {
+    val result = LinkedHashMap<K, V>()
+    for (element in this) {
+        val pair = transform(element) ?: continue
+        result[pair.first] = pair.second
+    }
+    return result
 }

@@ -48,7 +48,7 @@ icons:
     material: 'PAPER'
     name: '&fInfo'
     lore:
-      - '&7Command: /auction bid <id> [price]'
+      - '&7Command: {hint-bid} <id> [price]'
   'R':
     material: 'ARROW'
     name: '&aBack'

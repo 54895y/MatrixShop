@@ -1,5 +1,7 @@
 package com.y54895.matrixshop.module.globalmarket
 
+import com.y54895.matrixshop.core.command.CommandUsageContext
+import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.menu.MenuDefinition
@@ -129,6 +131,11 @@ object GlobalMarketModule : MatrixModule {
             player = player,
             definition = menus.upload,
             placeholders = mapOf(
+                "command" to CommandUsageContext.modulePrefix(player, "global-market", "/market"),
+                "hint-upload" to Texts.tr(
+                    ModuleBindings.hintKey("global-market", "upload") ?: "@commands.hints.global-market-upload",
+                    mapOf("command" to "${CommandUsageContext.modulePrefix(player, "global-market", "/market")} upload")
+                ),
                 "player" to player.name,
                 "shop-id" to resolvedShopId
             ),

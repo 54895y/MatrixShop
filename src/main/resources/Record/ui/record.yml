@@ -51,7 +51,7 @@ icons:
       - '&7Visible entries: &f{size}'
       - '&7Keyword: &f{keyword}'
       - '&7Module filter: &f{module-filter}'
-      - '&7Use /record filter <module|all>'
+      - '&7Use {command} filter <module|all>'
   'R':
     material: 'BARRIER'
     name: '&cClose'

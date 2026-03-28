@@ -8,6 +8,9 @@ Bindings:
     Show-In-Help: true
     Priority: 100
     Help-Key: '@commands.bindings.player-shop'
+    Hint-Keys:
+      open: '@commands.bindings.player-shop'
+      upload: '@player-shop.hints.upload-command'
 
 Title:
   - '&8{owner} Shop &7{page}/{max-page}'

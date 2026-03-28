@@ -26,14 +26,14 @@ icons:
     name: '&6Money Offer'
     lore:
       - '&7Current: &e{self-money}'
-      - '&7Use /trade money <amount>'
+      - '&7{hint-money} <amount>'
       - '&7Right click to clear'
   'E':
     material: 'EXP_BOTTLE'
     name: '&aExp Offer'
     lore:
       - '&7Current: &f{self-exp}'
-      - '&7Use /trade exp <amount>'
+      - '&7{hint-exp} <amount>'
       - '&7Right click to clear'
   'T':
     material: 'PAPER'
