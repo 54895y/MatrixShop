@@ -6,6 +6,7 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Help-Key: '@commands.bindings.transaction'
 
 Title:
   - '&8Trade Hub &7{shop-id}'

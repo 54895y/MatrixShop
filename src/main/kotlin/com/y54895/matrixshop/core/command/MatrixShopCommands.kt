@@ -757,17 +757,17 @@ object MatrixShopCommands {
         addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine("/$rootLabel", "@commands.help.desc.system-main"))
         addHelp(lines, showModuleHelp("system-shop") && Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine(mainModuleUsage(rootLabel, "system-shop", "open [category]"), "@commands.help.desc.system-open"))
         addHelp(lines, Permissions.has(player, PermissionNodes.SYSTEMSHOP_USE), helpLine("/$rootLabel open <shop-id|category>", "@commands.help.desc.ms-open"))
-        addHelp(lines, showModuleHelp("menu") && Permissions.has(player, PermissionNodes.MENU_USE), helpLine(mainModuleUsage(rootLabel, "menu", "open"), bindingHelpKeyOrDefault("menu", "@commands.help.desc.menu-open")))
-        addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), helpLine(mainModuleUsage(rootLabel, "auction", "open"), bindingHelpKeyOrDefault("auction", "@commands.help.desc.auction-open")))
+        addBoundShopHelp(lines, showModuleHelp("menu") && Permissions.has(player, PermissionNodes.MENU_USE), rootLabel, shopHelpEntries("menu"), "open", "@commands.help.desc.menu-open")
+        addBoundShopHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_USE), rootLabel, shopHelpEntries("auction"), "open", "@commands.help.desc.auction-open")
         addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_SELL), helpLine(mainModuleUsage(rootLabel, "auction", "upload <english|dutch> <start> [buyout|end] [duration]"), "@commands.help.desc.auction-upload"))
         addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_BID), helpLine(mainModuleUsage(rootLabel, "auction", "bid <id> [price]"), "@commands.help.desc.auction-bid"))
         addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_BUYOUT), helpLine(mainModuleUsage(rootLabel, "auction", "buyout <id>"), "@commands.help.desc.auction-buyout"))
         addHelp(lines, showModuleHelp("auction") && Permissions.has(player, PermissionNodes.AUCTION_MANAGE_OWN), helpLine(mainModuleUsage(rootLabel, "auction", "manage | bids"), "@commands.help.desc.auction-manage"))
-        addHelp(lines, showModuleHelp("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), helpLine(mainModuleUsage(rootLabel, "player-shop", "open"), bindingHelpKeyOrDefault("player-shop", "@commands.help.desc.player-shop-open-self")))
+        addBoundShopHelp(lines, showModuleHelp("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), rootLabel, shopHelpEntries("player-shop"), "open", "@commands.help.desc.player-shop-open-self")
         addHelp(lines, showModuleHelp("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), helpLine(mainModuleUsage(rootLabel, "player-shop", "open [player]"), "@commands.help.desc.player-shop-open-other"))
         addHelp(lines, showModuleHelp("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN), helpLine(mainModuleUsage(rootLabel, "player-shop", "edit"), "@commands.help.desc.player-shop-edit"))
         addHelp(lines, showModuleHelp("player-shop") && Permissions.has(player, PermissionNodes.PLAYERSHOP_SELL), helpLine(mainModuleUsage(rootLabel, "player-shop", "upload <price> [amount]"), "@commands.help.desc.player-shop-upload"))
-        addHelp(lines, showModuleHelp("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), helpLine(mainModuleUsage(rootLabel, "global-market", "open"), bindingHelpKeyOrDefault("global-market", "@commands.help.desc.global-market-open")))
+        addBoundShopHelp(lines, showModuleHelp("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), rootLabel, shopHelpEntries("global-market"), "open", "@commands.help.desc.global-market-open")
         addHelp(lines, showModuleHelp("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), helpLine(mainModuleUsage(rootLabel, "global-market", "upload <price> [amount]"), "@commands.help.desc.global-market-upload"))
         addHelp(lines, showModuleHelp("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), helpLine(mainModuleUsage(rootLabel, "global-market", "manage"), "@commands.help.desc.global-market-manage"))
         addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), helpLine(mainModuleUsage(rootLabel, "chestshop", "open"), bindingHelpKeyOrDefault("chestshop", "@commands.help.desc.chestshop-open")))
@@ -783,7 +783,7 @@ object MatrixShopCommands {
         addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), helpLine(mainModuleUsage(rootLabel, "record", "detail <id>"), "@commands.help.desc.record-detail"))
         addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_USE), helpLine(mainModuleUsage(rootLabel, "record", "filter [module|all]"), "@commands.help.desc.record-filter"))
         addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), helpLine(mainModuleUsage(rootLabel, "record", "income | expense | stats"), "@commands.help.desc.record-stats"))
-        addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine(mainModuleUsage(rootLabel, "transaction", "open"), bindingHelpKeyOrDefault("transaction", "@commands.help.desc.transaction-open")))
+        addBoundShopHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), rootLabel, shopHelpEntries("transaction"), "open", "@commands.help.desc.transaction-open")
         addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine(mainModuleUsage(rootLabel, "transaction", "request <player>"), "@commands.help.desc.transaction-request"))
         addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine(mainModuleUsage(rootLabel, "transaction", "accept [player] | ready | confirm | cancel | logs"), "@commands.help.desc.transaction-control"))
         addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine(mainModuleUsage(rootLabel, "transaction", "money <amount> | exp <amount>"), "@commands.help.desc.transaction-offer"))
@@ -867,6 +867,24 @@ object MatrixShopCommands {
     private fun addHelp(lines: MutableList<String>, visible: Boolean, line: String) {
         if (visible) {
             lines += line
+        }
+    }
+
+    private fun addBoundShopHelp(
+        lines: MutableList<String>,
+        visible: Boolean,
+        rootLabel: String,
+        entries: List<com.y54895.matrixshop.core.menu.ShopMenuSelection>,
+        suffix: String,
+        fallbackDescriptionKey: String
+    ) {
+        if (!visible) {
+            return
+        }
+        entries.forEach { entry ->
+            val key = entry.bindings.keys.firstOrNull() ?: entry.id
+            val descriptionKey = entry.bindings.helpKey ?: fallbackDescriptionKey
+            lines += helpLine("/$rootLabel $key $suffix".trim(), descriptionKey)
         }
     }
 

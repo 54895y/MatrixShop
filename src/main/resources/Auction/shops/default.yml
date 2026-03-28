@@ -6,6 +6,7 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Help-Key: '@commands.bindings.auction'
 
 Title:
   - '&8Auction Hall &7{page}/{max-page}'

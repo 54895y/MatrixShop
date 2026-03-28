@@ -7,6 +7,7 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 100
+    Help-Key: '@commands.bindings.player-shop'
 
 Title:
   - '&8{owner} Shop &7{page}/{max-page}'
