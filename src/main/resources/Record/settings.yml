@@ -5,7 +5,7 @@ Bindings:
     Bindings:
       - 'record'
       - 'records'
-    Register: false
+    Register: true
     Show-In-Help: true
     Priority: 30
     Help-Key: '@commands.bindings.record'

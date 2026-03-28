@@ -35,8 +35,8 @@ object ModuleBindings {
         "auction" to ModuleCommandBinding(listOf("auction", "ah"), registerStandalone = true, showInHelp = true, priority = 70),
         "chestshop" to ModuleCommandBinding(listOf("chestshop", "cshop"), registerStandalone = true, showInHelp = true, priority = 60),
         "transaction" to ModuleCommandBinding(listOf("trade", "tm"), registerStandalone = true, showInHelp = true, priority = 50),
-        "cart" to ModuleCommandBinding(listOf("cart"), registerStandalone = false, showInHelp = true, priority = 40),
-        "record" to ModuleCommandBinding(listOf("record", "records"), registerStandalone = false, showInHelp = true, priority = 30)
+        "cart" to ModuleCommandBinding(listOf("cart"), registerStandalone = true, showInHelp = true, priority = 40),
+        "record" to ModuleCommandBinding(listOf("record", "records"), registerStandalone = true, showInHelp = true, priority = 30)
     )
 
     fun primary(moduleId: String): String {

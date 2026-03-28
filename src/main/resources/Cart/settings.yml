@@ -4,7 +4,7 @@ Bindings:
   Commands:
     Bindings:
       - 'cart'
-    Register: false
+    Register: true
     Show-In-Help: true
     Priority: 40
     Help-Key: '@commands.bindings.cart'
