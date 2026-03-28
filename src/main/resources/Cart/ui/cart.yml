@@ -41,7 +41,7 @@ icons:
     name: '&bChange Amount'
     lore:
       - '&7Use command:'
-      - '&f/matrixshop cart amount <slot> <number>'
+      - '&f{command} amount <slot> <number>'
   'C':
     material: 'LIME_WOOL'
     name: '&aOpen Checkout'

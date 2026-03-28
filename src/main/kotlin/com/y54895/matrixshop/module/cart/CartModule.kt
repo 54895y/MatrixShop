@@ -1,5 +1,6 @@
 package com.y54895.matrixshop.module.cart
 
+import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
@@ -77,6 +78,7 @@ object CartModule : MatrixModule {
             player = player,
             definition = menu,
             placeholders = mapOf(
+                "command" to CommandUsageContext.modulePrefix(player, "cart", "/cart"),
                 "shop-id" to defaultViewId(),
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
@@ -104,6 +106,7 @@ object CartModule : MatrixModule {
             player = player,
             definition = checkoutMenu,
             placeholders = mapOf(
+                "command" to CommandUsageContext.modulePrefix(player, "cart", "/cart"),
                 "shop-id" to defaultViewId(),
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
@@ -133,6 +136,7 @@ object CartModule : MatrixModule {
             player = player,
             definition = conflictMenu,
             placeholders = mapOf(
+                "command" to CommandUsageContext.modulePrefix(player, "cart", "/cart"),
                 "shop-id" to defaultViewId(),
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
@@ -421,7 +425,7 @@ object CartModule : MatrixModule {
             val validation = validate(entry)
             val slotNumber = (ordered.indexOfFirst { it.id == entry.id } + 1).coerceAtLeast(1)
             val slot = slots[index]
-            holder.backingInventory.setItem(slot, buildEntryItem(entry, definition.template, validation, slotNumber))
+            holder.backingInventory.setItem(slot, buildEntryItem(player, entry, definition.template, validation, slotNumber))
             holder.handlers[slot] = { event ->
                 if (event.click.isRightClick) {
                     remove(player, slotNumber)
@@ -442,7 +446,7 @@ object CartModule : MatrixModule {
         entries.forEachIndexed { index, entry ->
             val validation = validate(entry)
             val slot = slots[index]
-            holder.backingInventory.setItem(slot, buildEntryItem(entry, checkoutMenu.template, validation, index + 1))
+            holder.backingInventory.setItem(slot, buildEntryItem(player, entry, checkoutMenu.template, validation, index + 1))
             holder.handlers[slot] = { openConflict(player) }
         }
     }
@@ -482,6 +486,7 @@ object CartModule : MatrixModule {
     }
 
     private fun buildEntryItem(
+        player: Player,
         entry: CartEntry,
         template: com.y54895.matrixshop.core.menu.MenuTemplate,
         validation: CartValidation,
@@ -489,6 +494,7 @@ object CartModule : MatrixModule {
     ): org.bukkit.inventory.ItemStack {
         val currentPrice = validation.currentPrice ?: entry.snapshotPrice
         val placeholders = mapOf(
+            "command" to CommandUsageContext.modulePrefix(player, "cart", "/cart"),
             "name" to currentEntryName(entry),
             "source-module" to entry.sourceModule,
             "source-id" to entry.sourceId,

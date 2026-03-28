@@ -10,6 +10,7 @@ Bindings:
     Register: false
     Show-In-Help: true
     Priority: 80
+    Help-Key: '@commands.bindings.global-market'
     Condition: 'perm matrixshop.globalmarket.use'
 
 Listing:

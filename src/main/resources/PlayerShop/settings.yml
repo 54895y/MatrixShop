@@ -9,6 +9,7 @@ Bindings:
     Register: false
     Show-In-Help: true
     Priority: 90
+    Help-Key: '@commands.bindings.player-shop'
     Condition: 'perm matrixshop.playershop.use'
 
 Unlock:

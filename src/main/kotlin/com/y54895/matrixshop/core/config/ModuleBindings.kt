@@ -7,7 +7,8 @@ data class ModuleCommandBinding(
     val keys: List<String>,
     val registerStandalone: Boolean,
     val showInHelp: Boolean,
-    val priority: Int
+    val priority: Int,
+    val helpKey: String? = null
 )
 
 object ModuleBindings {
@@ -52,6 +53,10 @@ object ModuleBindings {
         return load(moduleId).showInHelp
     }
 
+    fun helpKey(moduleId: String): String? {
+        return load(moduleId).helpKey
+    }
+
     fun matches(moduleId: String, token: String): Boolean {
         return load(moduleId).keys.contains(token.trim().lowercase())
     }
@@ -82,7 +87,8 @@ object ModuleBindings {
             keys = keys,
             registerStandalone = yaml.getBoolean("Bindings.Commands.Register", fallback.registerStandalone),
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", fallback.showInHelp),
-            priority = yaml.getInt("Bindings.Commands.Priority", fallback.priority)
+            priority = yaml.getInt("Bindings.Commands.Priority", fallback.priority),
+            helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null } ?: fallback.helpKey
         )
     }
 }

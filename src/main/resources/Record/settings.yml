@@ -8,6 +8,7 @@ Bindings:
     Register: false
     Show-In-Help: true
     Priority: 30
+    Help-Key: '@commands.bindings.record'
     Condition: 'perm matrixshop.record.use'
 
 View:

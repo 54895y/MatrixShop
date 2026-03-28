@@ -36,6 +36,16 @@ commands:
     chestshop: "箱子商店"
     cart: "购物车"
     record: "记录"
+  bindings:
+    menu: "打开菜单总览"
+    system-shop: "打开系统商店入口"
+    player-shop: "打开玩家商店入口"
+    global-market: "打开全球市场入口"
+    auction: "打开拍卖入口"
+    transaction: "打开交易入口"
+    chestshop: "打开箱子商店入口"
+    cart: "打开购物车入口"
+    record: "打开账本入口"
   errors:
     usage: "&c用法: &f{usage}"
     shop-id-ambiguous-routes: "&c商店标识 &f{shop} &c在多个入口中重复: &f{routes}"
@@ -51,7 +61,7 @@ commands:
     admin-title: "&8[&bMatrixShop&8] &f管理员命令"
     line: "&7{command} &8- &f{description}"
     bound-line: "&7/{command} {suffix} &8- &f{description} &7({shop})"
-    admin-alias: "&8[&bMatrixShop&8] &7兼容别名: &f/matrixshopadmin ..."
+    admin-alias: "&8[&bMatrixShop&8] &7当前管理入口: &f{command} ..."
     desc:
       system-main: "打开系统商店首页"
       system-open: "打开一个系统商店分类"

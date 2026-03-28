@@ -36,6 +36,16 @@ commands:
     chestshop: "chest shop"
     cart: "cart"
     record: "record"
+  bindings:
+    menu: "Open the menu hub"
+    system-shop: "Open system shop routes"
+    player-shop: "Open player shop routes"
+    global-market: "Open global market routes"
+    auction: "Open auction routes"
+    transaction: "Open trade routes"
+    chestshop: "Open chest shop routes"
+    cart: "Open the cart"
+    record: "Open the ledger"
   errors:
     usage: "&cUsage: &f{usage}"
     shop-id-ambiguous-routes: "&cShop id &f{shop} &cexists in multiple routes: &f{routes}"
@@ -51,7 +61,7 @@ commands:
     admin-title: "&8[&bMatrixShop&8] &fAdmin Commands"
     line: "&7{command} &8- &f{description}"
     bound-line: "&7/{command} {suffix} &8- &f{description} &7({shop})"
-    admin-alias: "&8[&bMatrixShop&8] &7Compatibility alias: &f/matrixshopadmin ..."
+    admin-alias: "&8[&bMatrixShop&8] &7Current admin root: &f{command} ..."
     desc:
       system-main: "Open SystemShop home"
       system-open: "Open a SystemShop category"

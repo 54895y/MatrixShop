@@ -21,21 +21,21 @@ icons:
     lore:
       - '&7目标箱子: &f{target}'
       - '&7触发动作: &f{create-actions}'
-      - '&7指令: &f/chestshop create buy <价格> [数量]'
+      - '&7指令: &f{command} create buy <价格> [数量]'
   'S':
     material: 'EMERALD'
     name: '&6创建出售店'
     lore:
       - '&7目标箱子: &f{target}'
       - '&7触发动作: &f{create-actions}'
-      - '&7指令: &f/chestshop create sell <价格> [数量]'
+      - '&7指令: &f{command} create sell <价格> [数量]'
   'D':
     material: 'DOUBLE_PLANT'
     name: '&b创建双向店'
     lore:
       - '&7需要双箱支持'
       - '&7目标箱子: &f{target}'
-      - '&7指令: &f/chestshop create dual <收购价> <出售价> [数量]'
+      - '&7指令: &f{command} create dual <收购价> <出售价> [数量]'
   'R':
     material: 'BARRIER'
     name: '&c关闭'

@@ -8,4 +8,5 @@ Bindings:
     Register: false
     Show-In-Help: true
     Priority: 110
+    Help-Key: '@commands.bindings.menu'
     Condition: 'perm matrixshop.menu.use'

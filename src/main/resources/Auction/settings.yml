@@ -8,6 +8,7 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 20
+    Help-Key: '@commands.bindings.auction'
     Condition: 'perm matrixshop.auction.use'
 
 Options:

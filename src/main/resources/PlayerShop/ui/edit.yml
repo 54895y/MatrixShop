@@ -21,7 +21,7 @@ icons:
     name: '&f上架帮助'
     lore:
       - '&7手持物品后使用命令:'
-      - '&e/matrixshop player_shop upload <price> [amount]'
+      - '&e{command} upload <price> [amount]'
       - '&7左键重复提示'
   'I':
     material: 'PAPER'

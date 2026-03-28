@@ -7,6 +7,7 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 18
+    Help-Key: '@commands.bindings.transaction'
     Condition: 'perm matrixshop.transaction.use'
 Options:
   Request:

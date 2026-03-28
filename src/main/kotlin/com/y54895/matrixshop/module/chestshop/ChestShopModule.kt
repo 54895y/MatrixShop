@@ -1,5 +1,6 @@
 package com.y54895.matrixshop.module.chestshop
 
+import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
@@ -130,6 +131,7 @@ object ChestShopModule : MatrixModule {
             player = player,
             definition = menus.create,
             placeholders = mapOf(
+                "command" to CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop"),
                 "item" to itemDisplayName(hand),
                 "amount" to hand.amount.coerceAtLeast(1).toString(),
                 "target" to describeCreateTarget(targetChest),
@@ -202,7 +204,11 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&cUsage: /chestshop create <buy|sell|dual> <price> [sell-price] [amount]")
             return
         }
-        val target = (pendingCreateTargets[player.uniqueId]?.let(::locationToBlock) ?: targetBlock(player)) ?: run {
+        val target = (
+            pendingCreateTargets[player.uniqueId]?.let(::locationToBlock)
+                ?: targetBlock(player)
+                ?: nearestChestBlock(player)
+            ) ?: run {
             Texts.send(player, "&cLook at a chest block first.")
             return
         }
@@ -419,6 +425,9 @@ object ChestShopModule : MatrixModule {
             ChestShopInteractionTarget.ANY -> null
         }
         if (shop == null) {
+            if (target == ChestShopInteractionTarget.CHEST && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE)) {
+                pendingCreateTargets[player.uniqueId] = block.toShopLocation()
+            }
             if (target == ChestShopInteractionTarget.CHEST &&
                 Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE) &&
                 matchesTrigger(settings.createTriggers, target, kind)
@@ -459,7 +468,7 @@ object ChestShopModule : MatrixModule {
         MenuRenderer.open(
             player = player,
             definition = menus.shop,
-            placeholders = shopPlaceholders(actual, multiplier),
+            placeholders = shopPlaceholders(actual, multiplier, player),
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.shop, 'i')?.let { slot ->
                     holder.backingInventory.setItem(slot, buildPreviewItem(actual, multiplier))
@@ -474,7 +483,7 @@ object ChestShopModule : MatrixModule {
         MenuRenderer.open(
             player = player,
             definition = menus.edit,
-            placeholders = shopPlaceholders(actual, 1),
+            placeholders = shopPlaceholders(actual, 1, player),
             backAction = { openShop(player, actual) },
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.edit, 'i')?.let { slot ->
@@ -1016,9 +1025,11 @@ object ChestShopModule : MatrixModule {
         }
     }
 
-    private fun shopPlaceholders(shop: ChestShopShop, multiplier: Int): Map<String, String> {
+    private fun shopPlaceholders(shop: ChestShopShop, multiplier: Int, viewer: Player? = null): Map<String, String> {
         val totalAmount = (shop.tradeAmount * multiplier).coerceAtLeast(1)
+        val command = viewer?.let { CommandUsageContext.modulePrefix(it, "chestshop", "/chestshop") } ?: "/chestshop"
         return mapOf(
+            "command" to command,
             "shop-id" to shop.id,
             "owner" to shop.ownerName,
             "mode" to shop.mode.name,
@@ -1277,6 +1288,29 @@ object ChestShopModule : MatrixModule {
     @Suppress("DEPRECATION")
     private fun targetBlock(player: Player): Block? {
         return player.getTargetBlock(null as Set<Material>?, 5)
+    }
+
+    private fun nearestChestBlock(player: Player, radius: Int = 4): Block? {
+        val world = player.world
+        val origin = player.location
+        var best: Block? = null
+        var bestDistance = Double.MAX_VALUE
+        for (x in -radius..radius) {
+            for (y in -radius..radius) {
+                for (z in -radius..radius) {
+                    val block = world.getBlockAt(origin.blockX + x, origin.blockY + y, origin.blockZ + z)
+                    if (!isChestBlock(block)) {
+                        continue
+                    }
+                    val distance = block.location.add(0.5, 0.5, 0.5).distanceSquared(origin)
+                    if (distance < bestDistance) {
+                        bestDistance = distance
+                        best = block
+                    }
+                }
+            }
+        }
+        return best
     }
 
     private fun isChestBlock(block: Block): Boolean {

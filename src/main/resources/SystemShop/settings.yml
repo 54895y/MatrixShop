@@ -8,6 +8,7 @@ Bindings:
     Register: false
     Show-In-Help: true
     Priority: 100
+    Help-Key: '@commands.bindings.system-shop'
     Condition: 'perm matrixshop.systemshop.use'
 
 Entry:

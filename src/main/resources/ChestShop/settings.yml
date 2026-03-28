@@ -8,6 +8,7 @@ Bindings:
     Register: true
     Show-In-Help: true
     Priority: 60
+    Help-Key: '@commands.bindings.chestshop'
     Condition: 'perm matrixshop.chestshop.use'
 
 # 交互触发支持:

@@ -1,5 +1,6 @@
 package com.y54895.matrixshop.module.playershop
 
+import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.economy.VaultEconomyBridge
 import com.y54895.matrixshop.core.menu.MenuDefinition
@@ -406,13 +407,18 @@ object PlayerShopModule : MatrixModule {
         }
         buttonSlot(menus.edit, 'H')?.let { slot ->
             holder.handlers[slot] = {
-                Texts.sendKey(owner, "@player-shop.hints.upload-command", mapOf("command" to "/ms $browseShopId upload <price> [amount]"))
+                Texts.sendKey(
+                    owner,
+                    "@player-shop.hints.upload-command",
+                    mapOf("command" to "${CommandUsageContext.modulePrefix(owner, "player-shop", "/playershop")} upload <price> [amount]")
+                )
             }
         }
     }
 
     private fun basePlaceholders(viewer: Player, store: PlayerShopStore, page: Int, maxPage: Int): Map<String, String> {
         return mapOf(
+            "command" to CommandUsageContext.modulePrefix(viewer, "player-shop", "/playershop"),
             "player" to viewer.name,
             "owner" to store.ownerName,
             "page" to page.toString(),

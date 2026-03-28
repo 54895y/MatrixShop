@@ -99,7 +99,8 @@ object ShopMenuLoader {
             keys = keys,
             registerStandalone = yaml.getBoolean("Bindings.Commands.Register", false),
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", false),
-            priority = yaml.getInt("Bindings.Commands.Priority", 0)
+            priority = yaml.getInt("Bindings.Commands.Priority", 0),
+            helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null }
         )
     }
 
