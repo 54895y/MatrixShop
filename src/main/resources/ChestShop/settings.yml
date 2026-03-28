@@ -10,10 +10,31 @@ Bindings:
     Priority: 60
     Condition: 'perm matrixshop.chestshop.use'
 
-Entry:
-  Open-GUI-On:
-    - SIGN_RIGHT_CLICK
-    - CHEST_RIGHT_CLICK
-  Direct-Trade-On: []
+# 交互触发支持:
+# LEFT / RIGHT / SHIFT_LEFT / SHIFT_RIGHT
+# 也支持带目标前缀:
+# CHEST_LEFT / CHEST_RIGHT / CHEST_SHIFT_LEFT / CHEST_SHIFT_RIGHT
+# SIGN_LEFT / SIGN_RIGHT / SIGN_SHIFT_LEFT / SIGN_SHIFT_RIGHT
+Interaction:
+  # 未绑定箱店时，满足这些动作会打开创建界面。
+  Create-Shop:
+    - 'CHEST_SHIFT_RIGHT'
+  # 其他玩家查看或购买箱店时使用的动作。
+  Customer-Open:
+    - 'CHEST_RIGHT'
+    - 'SIGN_RIGHT'
+  # 店主或有管理权限的玩家打开管理界面时使用的动作。
+  Owner-Manage:
+    - 'CHEST_SHIFT_RIGHT'
+    - 'SIGN_SHIFT_RIGHT'
+
 Stock:
   Double-Chest-Mode: expand_only
+
+Sign:
+  Auto-Create: true
+
+Display:
+  Floating-Item:
+    Enabled: true
+    Height: 1.15

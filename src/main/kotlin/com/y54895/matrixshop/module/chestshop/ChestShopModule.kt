@@ -6,20 +6,21 @@ import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
-import com.y54895.matrixshop.core.menu.ShopMenuLoader
-import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
 import org.bukkit.Bukkit
+import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.block.Block
 import org.bukkit.block.BlockFace
 import org.bukkit.block.Chest
 import org.bukkit.block.Sign
 import org.bukkit.configuration.file.YamlConfiguration
+import org.bukkit.entity.ArmorStand
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
@@ -38,8 +39,10 @@ object ChestShopModule : MatrixModule {
     private lateinit var menus: ChestShopMenus
     private lateinit var signConfig: YamlConfiguration
     private val lastContext = HashMap<UUID, String>()
+    private val pendingCreateTargets = HashMap<UUID, ChestShopLocation>()
     private val viewMultipliers = HashMap<UUID, Int>()
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    private const val displayPrefix = "MatrixShopChestDisplay:"
 
     override fun isEnabled(): Boolean {
         return ConfigFiles.isModuleEnabled(id, true)
@@ -47,7 +50,9 @@ object ChestShopModule : MatrixModule {
 
     override fun reload() {
         lastContext.clear()
+        pendingCreateTargets.clear()
         viewMultipliers.clear()
+        cleanupAllDisplays()
         if (!isEnabled()) {
             return
         }
@@ -56,13 +61,17 @@ object ChestShopModule : MatrixModule {
         settings = loadSettings()
         signConfig = YamlConfiguration.loadConfiguration(File(dataFolder, "ChestShop/signs.yml"))
         menus = ChestShopMenus(
-            shopViews = ShopMenuLoader.load("ChestShop", "shop.yml"),
+            shop = MenuLoader.load(File(dataFolder, "ChestShop/ui/shop.yml")),
             create = MenuLoader.load(File(dataFolder, "ChestShop/ui/create.yml")),
             edit = MenuLoader.load(File(dataFolder, "ChestShop/ui/edit.yml")),
             stock = MenuLoader.load(File(dataFolder, "ChestShop/ui/stock.yml")),
             history = MenuLoader.load(File(dataFolder, "ChestShop/ui/history.yml"))
         )
-        allShops().forEach { updateSigns(it) }
+        allShops().forEach { shop ->
+            detectSigns(shop, null)
+            updateSigns(shop)
+            refreshFloatingDisplay(shop)
+        }
     }
 
     fun open(player: Player) {
@@ -77,52 +86,60 @@ object ChestShopModule : MatrixModule {
             return
         }
         val shop = resolveContextShop(player) ?: run {
-            openCreate(player)
-            Texts.send(player, "&eLook at a chest shop chest or sign, then use /chestshop open.")
+            openCreate(player, targetBlock(player)?.takeIf(::isChestBlock))
+            Texts.send(player, "&e请先看向一个箱子，然后使用创建动作或 /chestshop create 创建箱子商店。")
             return
         }
-        openShop(player, shop, shopViewId)
+        openShop(player, shop)
     }
 
     fun hasShopView(shopId: String?): Boolean {
-        return ShopMenuLoader.contains(menus.shopViews, shopId)
+        return false
     }
 
     fun resolveBoundShop(token: String?): String? {
-        return ShopMenuLoader.resolveByBinding(menus.shopViews, token)?.id
+        return null
     }
 
-    fun helpEntries(): List<ShopMenuSelection> {
-        return ShopMenuLoader.helpEntries(menus.shopViews)
+    fun helpEntries(): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {
+        return emptyList()
     }
 
-    fun allShopEntries(): List<ShopMenuSelection> {
-        return ShopMenuLoader.allEntries(menus.shopViews)
+    fun allShopEntries(): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {
+        return emptyList()
     }
 
-    fun standaloneEntries(): List<ShopMenuSelection> {
-        return ShopMenuLoader.standaloneEntries(menus.shopViews)
+    fun standaloneEntries(): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {
+        return emptyList()
     }
 
     fun openCreate(player: Player) {
+        openCreate(player, targetBlock(player)?.takeIf(::isChestBlock))
+    }
+
+    fun openCreate(player: Player, targetChest: Block?) {
         if (!ensureReady(player)) {
             return
         }
         if (!Permissions.require(player, PermissionNodes.CHESTSHOP_CREATE)) {
             return
         }
+        targetChest?.let { pendingCreateTargets[player.uniqueId] = it.toShopLocation() }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
         MenuRenderer.open(
             player = player,
             definition = menus.create,
             placeholders = mapOf(
                 "item" to itemDisplayName(hand),
-                "amount" to hand.amount.coerceAtLeast(1).toString()
+                "amount" to hand.amount.coerceAtLeast(1).toString(),
+                "target" to describeCreateTarget(targetChest),
+                "create-actions" to settings.createTriggers.joinToString("、") { triggerLabel(it) }
             ),
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.create, 'i')?.let { slot ->
                     holder.backingInventory.setItem(slot, if (hand.type == Material.AIR) ItemStack(Material.BARRIER) else hand.clone())
                 }
+                wireCreateControls(player, holder)
             }
         )
     }
@@ -142,7 +159,7 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&cOnly the shop owner can edit this chest shop.")
             return
         }
-        openEditMenu(player, shop, shopViewId)
+        openEditMenu(player, shop)
     }
 
     fun openStock(player: Player, page: Int = 1, shopViewId: String? = null) {
@@ -156,7 +173,7 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
         }
-        openStockMenu(player, shop, page, shopViewId)
+        openStockMenu(player, shop, page)
     }
 
     fun openHistory(player: Player, page: Int = 1, shopViewId: String? = null) {
@@ -170,7 +187,7 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&cLook at a chest shop chest or sign first.")
             return
         }
-        openHistoryMenu(player, shop, page, shopViewId)
+        openHistoryMenu(player, shop, page)
     }
 
     fun create(player: Player, modeRaw: String?, firstPrice: Double?, secondPrice: Double?, amountRaw: Int?) {
@@ -185,7 +202,7 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, "&cUsage: /chestshop create <buy|sell|dual> <price> [sell-price] [amount]")
             return
         }
-        val target = targetBlock(player) ?: run {
+        val target = (pendingCreateTargets[player.uniqueId]?.let(::locationToBlock) ?: targetBlock(player)) ?: run {
             Texts.send(player, "&cLook at a chest block first.")
             return
         }
@@ -240,11 +257,13 @@ object ChestShopModule : MatrixModule {
             item = hand.clone().apply { amount = tradeAmount.coerceAtMost(maxStackSize) },
             createdAt = System.currentTimeMillis()
         )
-        detectSigns(shop)
+        detectSigns(shop, preferredGeneratedSignFace(player))
         val shops = allShops().toMutableList()
         shops += shop
         ChestShopRepository.saveAll(shops)
         updateSigns(shop)
+        refreshFloatingDisplay(shop)
+        pendingCreateTargets.remove(player.uniqueId)
         lastContext[player.uniqueId] = shop.id
         Texts.send(player, "&aChest shop created: &f${shop.id}")
         RecordService.append(
@@ -271,6 +290,7 @@ object ChestShopModule : MatrixModule {
             return
         }
         clearSigns(shop)
+        clearFloatingDisplay(shop.id)
         val shops = allShops().toMutableList()
         shops.removeIf { it.id == shop.id }
         ChestShopRepository.saveAll(shops)
@@ -384,32 +404,40 @@ object ChestShopModule : MatrixModule {
         openEditMenu(player, shop)
     }
 
-    fun handleChestInteract(player: Player, block: Block): Boolean {
-        if (!ensureReady(player) || !settings.openGuiOnChestRightClick || !Permissions.has(player, PermissionNodes.CHESTSHOP_USE)) {
+    fun handleInteraction(player: Player, block: Block, kind: ChestShopInteractionKind): Boolean {
+        if (!ensureReady(player)) {
             return false
         }
-        val shop = findShopByBlock(block) ?: return false
-        lastContext[player.uniqueId] = shop.id
-        if (canManage(player, shop)) {
-            openEditMenu(player, shop)
-        } else {
-            openShop(player, shop)
+        val target = when {
+            isChestBlock(block) -> ChestShopInteractionTarget.CHEST
+            isSignBlock(block) -> ChestShopInteractionTarget.SIGN
+            else -> return false
         }
-        return true
-    }
-
-    fun handleSignInteract(player: Player, block: Block): Boolean {
-        if (!ensureReady(player) || !settings.openGuiOnSignRightClick || !Permissions.has(player, PermissionNodes.CHESTSHOP_USE)) {
+        val shop = when (target) {
+            ChestShopInteractionTarget.CHEST -> findShopByBlock(block)
+            ChestShopInteractionTarget.SIGN -> findShopBySign(block)
+            ChestShopInteractionTarget.ANY -> null
+        }
+        if (shop == null) {
+            if (target == ChestShopInteractionTarget.CHEST &&
+                Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE) &&
+                matchesTrigger(settings.createTriggers, target, kind)
+            ) {
+                openCreate(player, block)
+                return true
+            }
             return false
         }
-        val shop = findShopBySign(block) ?: return false
         lastContext[player.uniqueId] = shop.id
-        if (canManage(player, shop)) {
+        if (canManage(player, shop) && matchesTrigger(settings.ownerTriggers, target, kind)) {
             openEditMenu(player, shop)
-        } else {
-            openShop(player, shop)
+            return true
         }
-        return true
+        if (Permissions.has(player, PermissionNodes.CHESTSHOP_USE) && matchesTrigger(settings.customerTriggers, target, kind)) {
+            openShop(player, shop)
+            return true
+        }
+        return false
     }
 
     fun canBreakProtectedBlock(player: Player, block: Block): Boolean {
@@ -426,44 +454,38 @@ object ChestShopModule : MatrixModule {
     }
 
     private fun openShop(player: Player, shop: ChestShopShop) {
-        openShop(player, shop, null)
-    }
-
-    private fun openShop(player: Player, shop: ChestShopShop, shopViewId: String?) {
         val multiplier = viewMultipliers[player.uniqueId] ?: 1
         val actual = reloadShop(shop.id) ?: shop
-        val selectedMenu = ShopMenuLoader.resolve(menus.shopViews, shopViewId)
-        val view = selectedMenu.definition
         MenuRenderer.open(
             player = player,
-            definition = view,
+            definition = menus.shop,
             placeholders = shopPlaceholders(actual, multiplier),
             goodsRenderer = { holder, _ ->
-                buttonSlot(view, 'i')?.let { slot ->
+                buttonSlot(menus.shop, 'i')?.let { slot ->
                     holder.backingInventory.setItem(slot, buildPreviewItem(actual, multiplier))
                 }
-                wireShopControls(player, holder, view, selectedMenu.id, actual, multiplier)
+                wireShopControls(player, holder, menus.shop, actual, multiplier)
             }
         )
     }
 
-    private fun openEditMenu(player: Player, shop: ChestShopShop, shopViewId: String? = null) {
+    private fun openEditMenu(player: Player, shop: ChestShopShop) {
         val actual = reloadShop(shop.id) ?: shop
         MenuRenderer.open(
             player = player,
             definition = menus.edit,
             placeholders = shopPlaceholders(actual, 1),
-            backAction = { openShop(player, actual, shopViewId) },
+            backAction = { openShop(player, actual) },
             goodsRenderer = { holder, _ ->
                 buttonSlot(menus.edit, 'i')?.let { slot ->
                     holder.backingInventory.setItem(slot, buildPreviewItem(actual, 1))
                 }
-                wireEditControls(player, holder, actual, shopViewId)
+                wireEditControls(player, holder, actual)
             }
         )
     }
 
-    private fun openStockMenu(player: Player, shop: ChestShopShop, page: Int, shopViewId: String? = null) {
+    private fun openStockMenu(player: Player, shop: ChestShopShop, page: Int) {
         val actual = reloadShop(shop.id) ?: shop
         val items = stockInventories(actual).flatMap { inventory ->
             inventory.contents.filterNotNull().map { it.clone() }
@@ -483,7 +505,7 @@ object ChestShopModule : MatrixModule {
                 "stock" to countStock(actual).toString(),
                 "item" to itemDisplayName(actual.item)
             ),
-            backAction = { if (canManage(player, actual)) openEditMenu(player, actual, shopViewId) else openShop(player, actual, shopViewId) },
+            backAction = { if (canManage(player, actual)) openEditMenu(player, actual) else openShop(player, actual) },
             goodsRenderer = { holder, goods ->
                 entries.forEachIndexed { index, item ->
                     holder.backingInventory.setItem(goods[index], item)
@@ -493,14 +515,14 @@ object ChestShopModule : MatrixModule {
                     definition = menus.stock,
                     currentPage = currentPage,
                     maxPage = maxPage,
-                    onPage = { next -> openStockMenu(player, actual, next, shopViewId) },
-                    onBack = { if (canManage(player, actual)) openEditMenu(player, actual, shopViewId) else openShop(player, actual, shopViewId) }
+                    onPage = { next -> openStockMenu(player, actual, next) },
+                    onBack = { if (canManage(player, actual)) openEditMenu(player, actual) else openShop(player, actual) }
                 )
             }
         )
     }
 
-    private fun openHistoryMenu(player: Player, shop: ChestShopShop, page: Int, shopViewId: String? = null) {
+    private fun openHistoryMenu(player: Player, shop: ChestShopShop, page: Int) {
         val actual = reloadShop(shop.id) ?: shop
         val history = actual.history.sortedByDescending { it.createdAt }
         val slots = goodsSlots(menus.history)
@@ -516,7 +538,7 @@ object ChestShopModule : MatrixModule {
                 "max-page" to maxPage.toString(),
                 "shop-id" to actual.id
             ),
-            backAction = { if (canManage(player, actual)) openEditMenu(player, actual, shopViewId) else openShop(player, actual, shopViewId) },
+            backAction = { if (canManage(player, actual)) openEditMenu(player, actual) else openShop(player, actual) },
             goodsRenderer = { holder, goods ->
                 entries.forEachIndexed { index, entry ->
                     val icon = ItemStack(historyMaterial(entry.type))
@@ -525,10 +547,10 @@ object ChestShopModule : MatrixModule {
                             this,
                             Texts.color("&f${entry.type.uppercase(Locale.ROOT)} &7/ &b${entry.actor}"),
                             listOf(
-                                Texts.color("&7Amount: &f${entry.amount}"),
-                                Texts.color("&7Money: &e${trimDouble(entry.money)}"),
-                                Texts.color("&7Time: &f${dateFormat.format(Date(entry.createdAt))}"),
-                                Texts.color("&7Note: &f${entry.note.ifBlank { "-" }}")
+                                Texts.color("&7数量: &f${entry.amount}"),
+                                Texts.color("&7金额: &e${trimDouble(entry.money)}"),
+                                Texts.color("&7时间: &f${dateFormat.format(Date(entry.createdAt))}"),
+                                Texts.color("&7备注: &f${entry.note.ifBlank { "-" }}")
                             )
                         )
                     }
@@ -539,19 +561,19 @@ object ChestShopModule : MatrixModule {
                     definition = menus.history,
                     currentPage = currentPage,
                     maxPage = maxPage,
-                    onPage = { next -> openHistoryMenu(player, actual, next, shopViewId) },
-                    onBack = { if (canManage(player, actual)) openEditMenu(player, actual, shopViewId) else openShop(player, actual, shopViewId) }
+                    onPage = { next -> openHistoryMenu(player, actual, next) },
+                    onBack = { if (canManage(player, actual)) openEditMenu(player, actual) else openShop(player, actual) }
                 )
             }
         )
     }
 
-    private fun wireShopControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, shopViewId: String, shop: ChestShopShop, multiplier: Int) {
+    private fun wireShopControls(player: Player, holder: MatrixMenuHolder, definition: MenuDefinition, shop: ChestShopShop, multiplier: Int) {
         buttonSlot(definition, 'B')?.let { slot ->
             holder.handlers[slot] = {
                 if (shop.mode == ChestShopMode.SELL || shop.mode == ChestShopMode.DUAL) {
                     buyFromShop(player, shop, multiplier)
-                    openShop(player, reloadShop(shop.id) ?: shop, shopViewId)
+                    openShop(player, reloadShop(shop.id) ?: shop)
                 } else {
                     Texts.send(player, "&cThis shop does not sell items.")
                 }
@@ -561,7 +583,7 @@ object ChestShopModule : MatrixModule {
             holder.handlers[slot] = {
                 if (shop.mode == ChestShopMode.BUY || shop.mode == ChestShopMode.DUAL) {
                     sellToShop(player, shop, multiplier)
-                    openShop(player, reloadShop(shop.id) ?: shop, shopViewId)
+                    openShop(player, reloadShop(shop.id) ?: shop)
                 } else {
                     Texts.send(player, "&cThis shop does not buy items.")
                 }
@@ -569,7 +591,7 @@ object ChestShopModule : MatrixModule {
         }
         buttonSlot(definition, 'M')?.let { slot ->
             if (canManage(player, shop)) {
-                holder.handlers[slot] = { openEditMenu(player, shop, shopViewId) }
+                holder.handlers[slot] = { openEditMenu(player, shop) }
             }
         }
         listOf(1, 8, 64).forEachIndexed { index, value ->
@@ -577,22 +599,22 @@ object ChestShopModule : MatrixModule {
             buttonSlot(definition, symbol)?.let { slot ->
                 holder.handlers[slot] = {
                     viewMultipliers[player.uniqueId] = value
-                    openShop(player, shop, shopViewId)
+                    openShop(player, shop)
                 }
             }
         }
         buttonSlot(definition, 'I')?.let { slot ->
-            holder.handlers[slot] = { openStockMenu(player, shop, 1, shopViewId) }
+            holder.handlers[slot] = { openStockMenu(player, shop, 1) }
         }
         buttonSlot(definition, 'H')?.let { slot ->
-            holder.handlers[slot] = { openHistoryMenu(player, shop, 1, shopViewId) }
+            holder.handlers[slot] = { openHistoryMenu(player, shop, 1) }
         }
         buttonSlot(definition, 'R')?.let { slot ->
             holder.handlers[slot] = { player.closeInventory() }
         }
     }
 
-    private fun wireEditControls(player: Player, holder: MatrixMenuHolder, shop: ChestShopShop, shopViewId: String?) {
+    private fun wireEditControls(player: Player, holder: MatrixMenuHolder, shop: ChestShopShop) {
         buttonSlot(menus.edit, 'P')?.let { slot ->
             holder.handlers[slot] = {
                 Texts.send(player, "&7Use /chestshop price <buy|sell> <value> to change prices.")
@@ -607,7 +629,7 @@ object ChestShopModule : MatrixModule {
                     shop.mode = nextMode
                     saveShop(shop)
                     updateSigns(shop)
-                    openEditMenu(player, shop, shopViewId)
+                    openEditMenu(player, shop)
                 }
             }
         }
@@ -616,20 +638,20 @@ object ChestShopModule : MatrixModule {
                 shop.tradeAmount = nextAmount(shop.tradeAmount)
                 saveShop(shop)
                 updateSigns(shop)
-                openEditMenu(player, shop, shopViewId)
+                openEditMenu(player, shop)
             }
         }
         buttonSlot(menus.edit, 'S')?.let { slot ->
             holder.handlers[slot] = {
-                detectSigns(shop)
+                detectSigns(shop, preferredGeneratedSignFace(player))
                 saveShop(shop)
                 updateSigns(shop)
                 Texts.send(player, "&aSigns rescanned and updated.")
-                openEditMenu(player, shop, shopViewId)
+                openEditMenu(player, shop)
             }
         }
         buttonSlot(menus.edit, 'L')?.let { slot ->
-            holder.handlers[slot] = { openStockMenu(player, shop, 1, shopViewId) }
+            holder.handlers[slot] = { openStockMenu(player, shop, 1) }
         }
         buttonSlot(menus.edit, 'D')?.let { slot ->
             holder.handlers[slot] = {
@@ -638,10 +660,10 @@ object ChestShopModule : MatrixModule {
             }
         }
         buttonSlot(menus.edit, 'H')?.let { slot ->
-            holder.handlers[slot] = { openHistoryMenu(player, shop, 1, shopViewId) }
+            holder.handlers[slot] = { openHistoryMenu(player, shop, 1) }
         }
         buttonSlot(menus.edit, 'O')?.let { slot ->
-            holder.handlers[slot] = { openShop(player, shop, shopViewId) }
+            holder.handlers[slot] = { openShop(player, shop) }
         }
         buttonSlot(menus.edit, 'R')?.let { slot ->
             holder.handlers[slot] = { player.closeInventory() }
@@ -842,12 +864,110 @@ object ChestShopModule : MatrixModule {
 
     private fun loadSettings(): ChestShopSettings {
         val yaml = YamlConfiguration.loadConfiguration(File(ConfigFiles.dataFolder(), "ChestShop/settings.yml"))
-        val triggers = yaml.getStringList("Entry.Open-GUI-On").map { it.uppercase(Locale.ROOT) }
-        return ChestShopSettings(
-            openGuiOnChestRightClick = triggers.contains("CHEST_RIGHT_CLICK"),
-            openGuiOnSignRightClick = triggers.contains("SIGN_RIGHT_CLICK"),
-            doubleChestMode = yaml.getString("Stock.Double-Chest-Mode", "expand_only").orEmpty()
+        val defaultCreate = listOf(
+            ChestShopInteractionTrigger(ChestShopInteractionTarget.CHEST, ChestShopInteractionKind.SHIFT_RIGHT)
         )
+        val defaultCustomer = listOf(
+            ChestShopInteractionTrigger(ChestShopInteractionTarget.CHEST, ChestShopInteractionKind.RIGHT),
+            ChestShopInteractionTrigger(ChestShopInteractionTarget.SIGN, ChestShopInteractionKind.RIGHT)
+        )
+        val defaultOwner = listOf(
+            ChestShopInteractionTrigger(ChestShopInteractionTarget.CHEST, ChestShopInteractionKind.SHIFT_RIGHT),
+            ChestShopInteractionTrigger(ChestShopInteractionTarget.SIGN, ChestShopInteractionKind.SHIFT_RIGHT)
+        )
+        return ChestShopSettings(
+            createTriggers = parseTriggers(yaml.getStringList("Interaction.Create-Shop"), defaultCreate),
+            customerTriggers = parseTriggers(
+                yaml.getStringList("Interaction.Customer-Open").ifEmpty {
+                    yaml.getStringList("Entry.Open-GUI-On").mapNotNull {
+                        when (it.uppercase(Locale.ROOT)) {
+                            "CHEST_RIGHT_CLICK" -> "CHEST_RIGHT"
+                            "SIGN_RIGHT_CLICK" -> "SIGN_RIGHT"
+                            else -> null
+                        }
+                    }
+                },
+                defaultCustomer
+            ),
+            ownerTriggers = parseTriggers(yaml.getStringList("Interaction.Owner-Manage"), defaultOwner),
+            doubleChestMode = yaml.getString("Stock.Double-Chest-Mode", "expand_only").orEmpty(),
+            autoCreateSign = yaml.getBoolean("Sign.Auto-Create", true),
+            floatingItemEnabled = yaml.getBoolean("Display.Floating-Item.Enabled", true),
+            floatingItemHeight = yaml.getDouble("Display.Floating-Item.Height", 1.15)
+        )
+    }
+
+    private fun parseTriggers(rawValues: List<String>, fallback: List<ChestShopInteractionTrigger>): List<ChestShopInteractionTrigger> {
+        val parsed = rawValues.mapNotNull(::parseTrigger).distinct()
+        return if (parsed.isEmpty()) fallback else parsed
+    }
+
+    private fun parseTrigger(raw: String?): ChestShopInteractionTrigger? {
+        val token = raw?.trim()?.uppercase(Locale.ROOT)?.replace('-', '_') ?: return null
+        if (token.isBlank()) {
+            return null
+        }
+        val (target, kindToken) = when {
+            token.startsWith("CHEST_") -> ChestShopInteractionTarget.CHEST to token.removePrefix("CHEST_")
+            token.startsWith("SIGN_") -> ChestShopInteractionTarget.SIGN to token.removePrefix("SIGN_")
+            else -> ChestShopInteractionTarget.ANY to token
+        }
+        val kind = when (kindToken) {
+            "LEFT" -> ChestShopInteractionKind.LEFT
+            "RIGHT" -> ChestShopInteractionKind.RIGHT
+            "SHIFT_LEFT" -> ChestShopInteractionKind.SHIFT_LEFT
+            "SHIFT_RIGHT" -> ChestShopInteractionKind.SHIFT_RIGHT
+            else -> return null
+        }
+        return ChestShopInteractionTrigger(target, kind)
+    }
+
+    private fun matchesTrigger(
+        triggers: List<ChestShopInteractionTrigger>,
+        target: ChestShopInteractionTarget,
+        kind: ChestShopInteractionKind
+    ): Boolean {
+        return triggers.any { trigger ->
+            (trigger.target == ChestShopInteractionTarget.ANY || trigger.target == target) && trigger.kind == kind
+        }
+    }
+
+    private fun triggerLabel(trigger: ChestShopInteractionTrigger): String {
+        val target = when (trigger.target) {
+            ChestShopInteractionTarget.ANY -> "任意"
+            ChestShopInteractionTarget.CHEST -> "箱子"
+            ChestShopInteractionTarget.SIGN -> "告示牌"
+        }
+        val kind = when (trigger.kind) {
+            ChestShopInteractionKind.LEFT -> "左键"
+            ChestShopInteractionKind.RIGHT -> "右键"
+            ChestShopInteractionKind.SHIFT_LEFT -> "Shift+左键"
+            ChestShopInteractionKind.SHIFT_RIGHT -> "Shift+右键"
+        }
+        return "$target $kind"
+    }
+
+    private fun describeCreateTarget(targetChest: Block?): String {
+        return if (targetChest == null) {
+            "未锁定"
+        } else {
+            "${targetChest.world.name} ${targetChest.x}, ${targetChest.y}, ${targetChest.z}"
+        }
+    }
+
+    private fun wireCreateControls(player: Player, holder: MatrixMenuHolder) {
+        buttonSlot(menus.create, 'B')?.let { slot ->
+            holder.handlers[slot] = { Texts.send(player, "&e创建收购店: &f/chestshop create buy <价格> [数量]") }
+        }
+        buttonSlot(menus.create, 'S')?.let { slot ->
+            holder.handlers[slot] = { Texts.send(player, "&e创建出售店: &f/chestshop create sell <价格> [数量]") }
+        }
+        buttonSlot(menus.create, 'D')?.let { slot ->
+            holder.handlers[slot] = { Texts.send(player, "&e创建双向店: &f/chestshop create dual <收购价> <出售价> [数量]") }
+        }
+        buttonSlot(menus.create, 'R')?.let { slot ->
+            holder.handlers[slot] = { player.closeInventory() }
+        }
     }
 
     private fun buttonSlot(definition: MenuDefinition, symbol: Char): Int? {
@@ -922,17 +1042,17 @@ object ChestShopModule : MatrixModule {
         }
         val lore = ArrayList<String>()
         lore += preview.itemMeta?.lore ?: emptyList()
-        lore += Texts.color("&7Shop: &f${shop.id}")
-        lore += Texts.color("&7Owner: &f${shop.ownerName}")
-        lore += Texts.color("&7Mode: &f${shop.mode.name}")
-        lore += Texts.color("&7Trade amount: &f${shop.tradeAmount}")
-        lore += Texts.color("&7Preview amount: &f$totalAmount")
-        lore += Texts.color("&7Stock: &f${countStock(shop)}")
+        lore += Texts.color("&7商店ID: &f${shop.id}")
+        lore += Texts.color("&7店主: &f${shop.ownerName}")
+        lore += Texts.color("&7模式: &f${shop.mode.name}")
+        lore += Texts.color("&7单次数量: &f${shop.tradeAmount}")
+        lore += Texts.color("&7预览数量: &f$totalAmount")
+        lore += Texts.color("&7库存: &f${countStock(shop)}")
         if (shop.mode != ChestShopMode.SELL) {
-            lore += Texts.color("&7Buy from player: &e${trimDouble(shop.buyPrice)}")
+            lore += Texts.color("&7向玩家收购: &e${trimDouble(shop.buyPrice)}")
         }
         if (shop.mode != ChestShopMode.BUY) {
-            lore += Texts.color("&7Sell to player: &e${trimDouble(shop.sellPrice)}")
+            lore += Texts.color("&7出售给玩家: &e${trimDouble(shop.sellPrice)}")
         }
         preview.itemMeta = preview.itemMeta?.apply {
             MenuRenderer.decorate(this, itemDisplayName(shop.item), lore)
@@ -969,7 +1089,7 @@ object ChestShopModule : MatrixModule {
         return steps.firstOrNull { it > current } ?: steps.first()
     }
 
-    private fun detectSigns(shop: ChestShopShop) {
+    private fun detectSigns(shop: ChestShopShop, preferredFace: BlockFace? = null) {
         val locations = LinkedHashSet<String>()
         val result = ArrayList<ChestShopLocation>()
         listOfNotNull(locationToBlock(shop.primaryChest), shop.secondaryChest?.let { locationToBlock(it) }).forEach { chest ->
@@ -980,6 +1100,13 @@ object ChestShopModule : MatrixModule {
                     if (locations.add(location.key())) {
                         result += location
                     }
+                }
+            }
+        }
+        if (result.isEmpty() && settings.autoCreateSign) {
+            createGeneratedSign(shop, preferredFace)?.let { generated ->
+                if (locations.add(generated.key())) {
+                    result += generated
                 }
             }
         }
@@ -1013,11 +1140,124 @@ object ChestShopModule : MatrixModule {
         }
     }
 
+    private fun refreshFloatingDisplay(shop: ChestShopShop) {
+        clearFloatingDisplay(shop.id)
+        if (!settings.floatingItemEnabled) {
+            return
+        }
+        val location = displayLocation(shop) ?: return
+        val world = location.world ?: return
+        world.spawn(location, ArmorStand::class.java).apply {
+            customName = displayPrefix + shop.id
+            isCustomNameVisible = false
+            isVisible = false
+            setGravity(false)
+            setBasePlate(false)
+            setArms(false)
+            setCanPickupItems(false)
+            setMarker(true)
+            isInvulnerable = true
+            helmet = shop.item.clone().apply { amount = 1 }
+        }
+    }
+
+    private fun clearFloatingDisplay(shopId: String) {
+        val name = displayPrefix + shopId
+        Bukkit.getWorlds().forEach { world ->
+            world.entities
+                .filterIsInstance<ArmorStand>()
+                .filter { it.customName == name }
+                .forEach(Entity::remove)
+        }
+    }
+
+    private fun cleanupAllDisplays() {
+        Bukkit.getWorlds().forEach { world ->
+            world.entities
+                .filterIsInstance<ArmorStand>()
+                .filter { it.customName?.startsWith(displayPrefix) == true }
+                .forEach(Entity::remove)
+        }
+    }
+
+    private fun displayLocation(shop: ChestShopShop): Location? {
+        val first = locationToBlock(shop.primaryChest)?.location ?: return null
+        val second = shop.secondaryChest?.let(::locationToBlock)?.location
+        val firstX = first.x + 0.5
+        val firstZ = first.z + 0.5
+        val secondX = (second?.x ?: first.x) + 0.5
+        val secondZ = (second?.z ?: first.z) + 0.5
+        return Location(
+            first.world,
+            (firstX + secondX) / 2.0,
+            first.y + settings.floatingItemHeight,
+            (firstZ + secondZ) / 2.0
+        )
+    }
+
+    private fun preferredGeneratedSignFace(player: Player): BlockFace {
+        return when (horizontalFacing(player)) {
+            BlockFace.NORTH -> BlockFace.SOUTH
+            BlockFace.SOUTH -> BlockFace.NORTH
+            BlockFace.EAST -> BlockFace.WEST
+            BlockFace.WEST -> BlockFace.EAST
+            else -> BlockFace.SOUTH
+        }
+    }
+
+    private fun horizontalFacing(player: Player): BlockFace {
+        val yaw = ((player.location.yaw % 360) + 360) % 360
+        return when {
+            yaw < 45 || yaw >= 315 -> BlockFace.SOUTH
+            yaw < 135 -> BlockFace.WEST
+            yaw < 225 -> BlockFace.NORTH
+            else -> BlockFace.EAST
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun createGeneratedSign(shop: ChestShopShop, preferredFace: BlockFace?): ChestShopLocation? {
+        val chestBlock = locationToBlock(shop.primaryChest) ?: return null
+        val horizontalFaces = listOf(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST)
+        val signFaces = buildList {
+            preferredFace?.takeIf { it in horizontalFaces }?.let(::add)
+            horizontalFaces.filterNot { it == preferredFace }.forEach(::add)
+        }
+        signFaces.forEach { face ->
+            val signBlock = chestBlock.getRelative(face)
+            if (signBlock.type != Material.AIR) {
+                return@forEach
+            }
+            signBlock.type = Material.WALL_SIGN
+            val sign = signBlock.state as? Sign ?: return@forEach
+            val data = sign.data
+            if (data is org.bukkit.material.Sign) {
+                data.setFacingDirection(face)
+                sign.data = data
+            }
+            sign.update(true, false)
+            return signBlock.toShopLocation()
+        }
+        val topBlock = chestBlock.getRelative(BlockFace.UP)
+        if (topBlock.type != Material.AIR) {
+            return null
+        }
+        topBlock.type = Material.SIGN_POST
+        val sign = topBlock.state as? Sign ?: return null
+        val data = sign.data
+        if (data is org.bukkit.material.Sign) {
+            data.setFacingDirection(preferredFace ?: BlockFace.NORTH)
+            sign.data = data
+        }
+        sign.update(true, false)
+        return topBlock.toShopLocation()
+    }
+
     private fun defaultSignLines(mode: ChestShopMode): List<String> {
         return when (mode) {
-            ChestShopMode.BUY -> listOf("&8[ChestShop]", "&aBUY", "&f{item} x{amount}", "&e{buy-price}")
-            ChestShopMode.SELL -> listOf("&8[ChestShop]", "&6SELL", "&f{item} x{amount}", "&e{sell-price}")
-            ChestShopMode.DUAL -> listOf("&8[ChestShop]", "&bDUAL", "&f{item} x{amount}", "&a{buy-price} &7/ &6{sell-price}")
+            ChestShopMode.BUY -> listOf("&8[箱子商店]", "&a收购", "&f{item} x{amount}", "&e{buy-price}")
+            ChestShopMode.SELL -> listOf("&8[箱子商店]", "&6出售", "&f{item} x{amount}", "&e{sell-price}")
+            ChestShopMode.DUAL -> listOf("&8[箱子商店]", "&b双向", "&f{item} x{amount}", "&a{buy-price} &7/ &6{sell-price}")
         }
     }
 

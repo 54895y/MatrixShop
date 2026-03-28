@@ -1,5 +1,5 @@
 Title:
-  - '&8Edit ChestShop &7{shop-id}'
+  - '&8管理箱子商店 &7{shop-id}'
 
 layout:
   - '#########'
@@ -15,42 +15,42 @@ icons:
     name: ' '
   'P':
     material: 'GOLD_NUGGET'
-    name: '&ePrice'
+    name: '&e修改价格'
     lore:
-      - '&7Use /chestshop price <buy|sell> <value>'
+      - '&7使用 /chestshop price <buy|sell> <数值>'
   'M':
     material: 'COMPASS'
-    name: '&fCycle Mode'
+    name: '&f切换模式'
     lore:
-      - '&7Current: &f{mode}'
+      - '&7当前: &f{mode}'
   'A':
     material: 'REDSTONE'
-    name: '&fCycle Amount'
+    name: '&f切换数量'
     lore:
-      - '&7Current: &f{amount}'
+      - '&7当前: &f{amount}'
   'S':
     material: 'SIGN'
-    name: '&fRescan Signs'
+    name: '&f重建告示牌'
     lore:
-      - '&7Refresh nearby signs'
+      - '&7按你当前朝向重新放置/扫描告示牌'
   'i':
     material: 'AIR'
     mode: 'preview'
   'L':
     material: 'CHEST'
-    name: '&fStock'
+    name: '&f查看库存'
   'H':
     material: 'PAPER'
-    name: '&fHistory'
+    name: '&f交易记录'
   'O':
     material: 'EMERALD'
-    name: '&fOpen Buyer View'
+    name: '&f返回买卖界面'
   'D':
     material: 'BARRIER'
-    name: '&cRemove Shop'
+    name: '&c删除商店'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'

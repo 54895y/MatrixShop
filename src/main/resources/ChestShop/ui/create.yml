@@ -1,5 +1,5 @@
 Title:
-  - '&8Create ChestShop'
+  - '&8创建箱子商店'
 
 layout:
   - '#########'
@@ -17,23 +17,28 @@ icons:
     mode: 'preview'
   'B':
     material: 'HOPPER'
-    name: '&aBUY Shop'
+    name: '&a创建收购店'
     lore:
-      - '&7/chestshop create buy <price> [amount]'
+      - '&7目标箱子: &f{target}'
+      - '&7触发动作: &f{create-actions}'
+      - '&7指令: &f/chestshop create buy <价格> [数量]'
   'S':
     material: 'EMERALD'
-    name: '&6SELL Shop'
+    name: '&6创建出售店'
     lore:
-      - '&7/chestshop create sell <price> [amount]'
+      - '&7目标箱子: &f{target}'
+      - '&7触发动作: &f{create-actions}'
+      - '&7指令: &f/chestshop create sell <价格> [数量]'
   'D':
     material: 'DOUBLE_PLANT'
-    name: '&bDUAL Shop'
+    name: '&b创建双向店'
     lore:
-      - '&7Requires a double chest'
-      - '&7/chestshop create dual <buy-price> <sell-price> [amount]'
+      - '&7需要双箱支持'
+      - '&7目标箱子: &f{target}'
+      - '&7指令: &f/chestshop create dual <收购价> <出售价> [数量]'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'

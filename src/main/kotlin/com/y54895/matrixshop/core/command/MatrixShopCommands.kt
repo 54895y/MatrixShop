@@ -53,7 +53,6 @@ object MatrixShopCommands {
         registerStandaloneShopCommands("menu", "MatrixShop menu command", "/menu", "matrixshop.menu.use", reserved)
         registerStandaloneShopCommands("cart", "MatrixShop cart command", "/cart", "matrixshop.cart.use", reserved)
         registerStandaloneShopCommands("record", "MatrixShop record command", "/record", "matrixshop.record.use", reserved)
-        registerStandaloneShopCommands("chestshop", "MatrixShop chest shop command", "/chestshop", "matrixshop.chestshop.use", reserved)
         registerStandaloneShopCommands("global-market", "MatrixShop global market command", "/market", "matrixshop.globalmarket.use", reserved)
         registerStandaloneShopCommands("player-shop", "MatrixShop player shop command", "/playershop", "matrixshop.playershop.use", reserved)
         registerStandaloneShopCommands("auction", "MatrixShop auction command", "/auction", "matrixshop.auction.use", reserved)
@@ -563,11 +562,11 @@ object MatrixShopCommands {
             return
         }
         if (args.isEmpty()) {
-            sendUsage(player, boundUsage("chestshop", defaultShopId, "open"))
+            sendUsage(player, moduleUsage("chestshop", "open"))
             return
         }
         when (args[0].lowercase()) {
-            "open" -> ModuleRegistry.chestShop.open(player, args.getOrNull(1) ?: defaultShopId)
+            "open" -> ModuleRegistry.chestShop.open(player, null)
             "create" -> {
                 if (!Permissions.require(player, PermissionNodes.CHESTSHOP_CREATE)) {
                     return
@@ -759,10 +758,10 @@ object MatrixShopCommands {
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), shopHelpEntries("global-market"), "open", "@commands.help.desc.global-market-open")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), shopHelpEntries("global-market"), "upload <price> [amount]", "@commands.help.desc.global-market-upload")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("global-market") && Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), shopHelpEntries("global-market"), "manage", "@commands.help.desc.global-market-manage")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "open", "@commands.help.desc.chestshop-open")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), shopHelpEntries("chestshop"), "create <buy|sell|dual> <price> [sell-price] [amount]", "@commands.help.desc.chestshop-create")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), shopHelpEntries("chestshop"), "stock | history", "@commands.help.desc.chestshop-stock-history")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), shopHelpEntries("chestshop"), "edit | remove | price | amount | mode", "@commands.help.desc.chestshop-manage")
+        addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), helpLine(moduleUsage("chestshop", "open"), "@commands.help.desc.chestshop-open"))
+        addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), helpLine(moduleUsage("chestshop", "create <buy|sell|dual> <price> [sell-price] [amount]"), "@commands.help.desc.chestshop-create"))
+        addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), helpLine(moduleUsage("chestshop", "stock | history"), "@commands.help.desc.chestshop-stock-history"))
+        addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), helpLine(moduleUsage("chestshop", "edit | remove | price | amount | mode"), "@commands.help.desc.chestshop-manage"))
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "open", "@commands.help.desc.cart-open")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout [valid_only]", "@commands.help.desc.cart-checkout")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout confirm [valid_only] | conflict", "@commands.help.desc.cart-conflict")
@@ -925,7 +924,6 @@ object MatrixShopCommands {
             "global-market" -> ModuleRegistry.globalMarket.helpEntries()
             "cart" -> ModuleRegistry.cart.helpEntries()
             "record" -> ModuleRegistry.record.helpEntries()
-            "chestshop" -> ModuleRegistry.chestShop.helpEntries()
             "transaction" -> ModuleRegistry.transaction.helpEntries()
             else -> emptyList()
         }
@@ -933,6 +931,14 @@ object MatrixShopCommands {
 
     private fun msUsage(moduleId: String, suffix: String): String {
         return "/ms ${ModuleBindings.primary(moduleId)} $suffix".trim()
+    }
+
+    private fun moduleUsage(moduleId: String, suffix: String): String {
+        return if (ModuleBindings.registerStandalone(moduleId)) {
+            "/${ModuleBindings.primary(moduleId)} $suffix".trim()
+        } else {
+            msUsage(moduleId, suffix)
+        }
     }
 
     private fun boundUsage(moduleId: String, shopId: String?, suffix: String): String {
@@ -1074,9 +1080,6 @@ object MatrixShopCommands {
         if ((moduleId == null || moduleId == "auction") && ModuleRegistry.isEnabled("auction")) {
             ModuleRegistry.auction.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("auction", it.id), it) }
         }
-        if ((moduleId == null || moduleId == "chestshop") && ModuleRegistry.isEnabled("chestshop")) {
-            ModuleRegistry.chestShop.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("chestshop", it.id), it) }
-        }
         if ((moduleId == null || moduleId == "transaction") && ModuleRegistry.isEnabled("transaction")) {
             ModuleRegistry.transaction.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("transaction", it.id), it) }
         }
@@ -1146,7 +1149,6 @@ object MatrixShopCommands {
             "global-market" -> if (ModuleRegistry.isEnabled("global-market")) ModuleRegistry.globalMarket.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("global-market", it.id), it) }
             "player-shop" -> if (ModuleRegistry.isEnabled("player-shop")) ModuleRegistry.playerShop.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("player-shop", it.id), it) }
             "auction" -> if (ModuleRegistry.isEnabled("auction")) ModuleRegistry.auction.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("auction", it.id), it) }
-            "chestshop" -> if (ModuleRegistry.isEnabled("chestshop")) ModuleRegistry.chestShop.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("chestshop", it.id), it) }
             "transaction" -> if (ModuleRegistry.isEnabled("transaction")) ModuleRegistry.transaction.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("transaction", it.id), it) }
         }
         return entries

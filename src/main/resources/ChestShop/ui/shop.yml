@@ -1,5 +1,5 @@
 Title:
-  - '&8ChestShop &7{shop-id}'
+  - '&8箱子商店 &7{shop-id}'
 
 layout:
   - '#########'
@@ -17,52 +17,52 @@ icons:
     material: 'WOOD_BUTTON'
     name: '&f1x'
     lore:
-      - '&7Preview one trade bundle'
+      - '&7预览 1 组交易'
   '2':
     material: 'STONE_BUTTON'
     name: '&f8x'
     lore:
-      - '&7Preview eight trade bundles'
+      - '&7预览 8 组交易'
   '3':
     material: 'STONE_BUTTON'
     name: '&f64x'
     lore:
-      - '&7Preview sixty-four trade bundles'
+      - '&7预览 64 组交易'
   'i':
     material: 'AIR'
     mode: 'preview'
   'S':
     material: 'HOPPER'
-    name: '&aSell To Shop'
+    name: '&a卖给商店'
     lore:
-      - '&7Mode: &f{mode}'
-      - '&7Amount: &f{total-amount}'
-      - '&7Value: &e{total-buy-price}'
+      - '&7模式: &f{mode}'
+      - '&7数量: &f{total-amount}'
+      - '&7获得: &e{total-buy-price}'
   'B':
     material: 'EMERALD'
-    name: '&6Buy From Shop'
+    name: '&6从商店购买'
     lore:
-      - '&7Mode: &f{mode}'
-      - '&7Amount: &f{total-amount}'
-      - '&7Cost: &e{total-sell-price}'
+      - '&7模式: &f{mode}'
+      - '&7数量: &f{total-amount}'
+      - '&7花费: &e{total-sell-price}'
   'I':
     material: 'CHEST'
-    name: '&fStock'
+    name: '&f库存'
     lore:
-      - '&7Current stock: &f{stock}'
+      - '&7当前库存: &f{stock}'
   'H':
     material: 'PAPER'
-    name: '&fHistory'
+    name: '&f历史'
     lore:
-      - '&7View recent trades'
+      - '&7查看最近交易'
   'M':
     material: 'BOOK'
-    name: '&eManage'
+    name: '&e管理'
     lore:
-      - '&7Owner only'
+      - '&7仅店主可用'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'

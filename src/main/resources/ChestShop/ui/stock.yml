@@ -1,5 +1,5 @@
 Title:
-  - '&8Chest Stock &7{page}/{max-page}'
+  - '&8箱店库存 &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -18,10 +18,10 @@ icons:
     mode: 'goods'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'
   'B':
     material: 'BOOK'
-    name: '&fBack'
+    name: '&f返回'

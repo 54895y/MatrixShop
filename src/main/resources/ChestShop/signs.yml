@@ -1,16 +1,16 @@
 Formats:
   BUY:
-    - '&8[ChestShop]'
-    - '&aBUY'
+    - '&8[箱子商店]'
+    - '&a收购'
     - '&f{item} x{amount}'
     - '&e{buy-price}'
   SELL:
-    - '&8[ChestShop]'
-    - '&6SELL'
+    - '&8[箱子商店]'
+    - '&6出售'
     - '&f{item} x{amount}'
     - '&e{sell-price}'
   DUAL:
-    - '&8[ChestShop]'
-    - '&bDUAL'
+    - '&8[箱子商店]'
+    - '&b双向'
     - '&f{item} x{amount}'
     - '&a{buy-price} &7/ &6{sell-price}'

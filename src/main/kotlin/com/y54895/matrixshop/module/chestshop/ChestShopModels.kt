@@ -1,6 +1,5 @@
 package com.y54895.matrixshop.module.chestshop
 
-import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
@@ -43,7 +42,7 @@ data class ChestShopShop(
 )
 
 data class ChestShopMenus(
-    val shopViews: Map<String, ConfiguredShopMenu>,
+    val shop: MenuDefinition,
     val create: MenuDefinition,
     val edit: MenuDefinition,
     val stock: MenuDefinition,
@@ -51,9 +50,13 @@ data class ChestShopMenus(
 )
 
 data class ChestShopSettings(
-    val openGuiOnChestRightClick: Boolean,
-    val openGuiOnSignRightClick: Boolean,
-    val doubleChestMode: String
+    val createTriggers: List<ChestShopInteractionTrigger>,
+    val customerTriggers: List<ChestShopInteractionTrigger>,
+    val ownerTriggers: List<ChestShopInteractionTrigger>,
+    val doubleChestMode: String,
+    val autoCreateSign: Boolean,
+    val floatingItemEnabled: Boolean,
+    val floatingItemHeight: Double
 )
 
 enum class ChestShopMode {
@@ -61,3 +64,21 @@ enum class ChestShopMode {
     SELL,
     DUAL
 }
+
+enum class ChestShopInteractionTarget {
+    ANY,
+    CHEST,
+    SIGN
+}
+
+enum class ChestShopInteractionKind {
+    LEFT,
+    RIGHT,
+    SHIFT_LEFT,
+    SHIFT_RIGHT
+}
+
+data class ChestShopInteractionTrigger(
+    val target: ChestShopInteractionTarget,
+    val kind: ChestShopInteractionKind
+)
