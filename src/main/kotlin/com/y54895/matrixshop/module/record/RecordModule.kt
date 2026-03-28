@@ -1,13 +1,10 @@
 package com.y54895.matrixshop.module.record
 
 import com.y54895.matrixshop.core.config.ConfigFiles
-import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
-import com.y54895.matrixshop.core.menu.ShopMenuLoader
-import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordAggregate
 import com.y54895.matrixshop.core.record.RecordEntry
@@ -31,7 +28,7 @@ object RecordModule : MatrixModule {
 
     private lateinit var settings: RecordSettings
     private lateinit var menus: RecordMenus
-    private var viewConfigs: Map<String, RecordViewConfig> = emptyMap()
+    private var viewConfig: RecordViewConfig = RecordViewConfig()
     private val viewStates = HashMap<UUID, RecordViewState>()
     private val timeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
         .withZone(ZoneId.systemDefault())
@@ -47,56 +44,55 @@ object RecordModule : MatrixModule {
         val dataFolder = ConfigFiles.dataFolder()
         settings = loadSettings()
         menus = RecordMenus(
-            recordViews = ShopMenuLoader.load("Record", "record.yml"),
+            record = MenuLoader.load(File(dataFolder, "Record/ui/record.yml")),
             detail = MenuLoader.load(File(dataFolder, "Record/ui/detail.yml")),
             income = MenuLoader.load(File(dataFolder, "Record/ui/income.yml")),
             expense = MenuLoader.load(File(dataFolder, "Record/ui/expense.yml"))
         )
-        viewConfigs = loadViewConfigs()
+        viewConfig = loadViewConfig()
     }
 
     fun hasShopView(shopId: String?): Boolean {
-        return ShopMenuLoader.contains(menus.recordViews, shopId)
+        return false
     }
 
-    fun helpEntries(): List<ShopMenuSelection> {
-        return ShopMenuLoader.helpEntries(menus.recordViews)
+    fun helpEntries(): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {
+        return emptyList()
     }
 
-    fun allShopEntries(): List<ShopMenuSelection> {
-        return ShopMenuLoader.allEntries(menus.recordViews)
+    fun allShopEntries(): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {
+        return emptyList()
     }
 
-    fun standaloneEntries(): List<ShopMenuSelection> {
-        return ShopMenuLoader.standaloneEntries(menus.recordViews)
+    fun standaloneEntries(): List<com.y54895.matrixshop.core.menu.ShopMenuSelection> {
+        return emptyList()
     }
 
     fun currentKeyword(player: Player, shopId: String? = null): String? {
-        return currentState(player, resolvedShopId(shopId)).keyword
+        return currentState(player, defaultViewId()).keyword
     }
 
     fun currentFilter(player: Player, shopId: String? = null): String? {
-        return currentState(player, resolvedShopId(shopId)).moduleFilter
+        return currentState(player, defaultViewId()).moduleFilter
     }
 
     fun open(player: Player, keyword: String? = null, page: Int = 1, shopId: String? = null, moduleFilter: String? = null) {
         if (!ensureReady(player)) {
             return
         }
-        val selectedShop = ShopMenuLoader.resolve(menus.recordViews, shopId)
         val normalizedFilter = normalizeModuleFilter(moduleFilter)
-        rememberState(player, selectedShop.id, keyword, normalizedFilter)
-        val allEntries = visibleEntries(player, keyword, selectedShop.id, normalizedFilter)
-        val goodsSlots = goodsSlots(selectedShop.definition)
+        rememberState(player, defaultViewId(), keyword, normalizedFilter)
+        val allEntries = visibleEntries(player, keyword, normalizedFilter)
+        val goodsSlots = goodsSlots(menus.record)
         val maxPage = ((allEntries.size + goodsSlots.size - 1) / goodsSlots.size).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val pageEntries = allEntries.drop((currentPage - 1) * goodsSlots.size).take(goodsSlots.size)
-        val actorEntries = actorEntries(player, selectedShop.id, normalizedFilter)
+        val actorEntries = actorEntries(player, normalizedFilter)
         MenuRenderer.open(
             player = player,
-            definition = selectedShop.definition,
+            definition = menus.record,
             placeholders = mapOf(
-                "shop-id" to selectedShop.id,
+                "shop-id" to defaultViewId(),
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
                 "size" to allEntries.size.toString(),
@@ -106,8 +102,8 @@ object RecordModule : MatrixModule {
                 "expense-total" to trimDouble(actorEntries.filter { it.moneyChange < 0 }.sumOf { -it.moneyChange })
             ),
             goodsRenderer = { holder, slots ->
-                renderEntries(player, holder, selectedShop.definition, pageEntries, slots, currentPage, keyword, normalizedFilter, selectedShop.id)
-                wireRecordControls(player, holder, selectedShop.definition, currentPage, maxPage, keyword, normalizedFilter, selectedShop.id)
+                renderEntries(player, holder, menus.record, pageEntries, slots, currentPage, keyword, normalizedFilter)
+                wireRecordControls(player, holder, menus.record, currentPage, maxPage, keyword, normalizedFilter)
             }
         )
     }
@@ -116,7 +112,7 @@ object RecordModule : MatrixModule {
         if (!ensureReady(player)) {
             return
         }
-        val entry = visibleEntries(player, null, resolvedShopId(shopId), normalizeModuleFilter(moduleFilter))
+        val entry = visibleEntries(player, null, normalizeModuleFilter(moduleFilter))
             .firstOrNull { it.id.equals(recordId, true) }
         if (entry == null) {
             Texts.sendKey(player, "@record.errors.not-found", mapOf("record" to recordId))
@@ -131,10 +127,10 @@ object RecordModule : MatrixModule {
                 "type" to entry.type,
                 "time" to timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))
             ),
-            backAction = { open(player, keyword, page, shopId, moduleFilter) },
+            backAction = { open(player, keyword, page, null, moduleFilter) },
             goodsRenderer = { holder, _ ->
                 renderDetail(holder, entry)
-                wireDetailControls(player, holder, keyword, page, shopId, moduleFilter)
+                wireDetailControls(player, holder, keyword, page, moduleFilter)
             }
         )
     }
@@ -148,30 +144,28 @@ object RecordModule : MatrixModule {
     }
 
     fun applyFilter(player: Player, moduleFilter: String?, shopId: String? = null, keyword: String? = null) {
-        val selectedShop = ShopMenuLoader.resolve(menus.recordViews, shopId)
         val normalized = normalizeModuleFilter(moduleFilter)
-        if (normalized != null && normalized !in availableModules(player, selectedShop.id)) {
+        if (normalized != null && normalized !in availableModules(player)) {
             Texts.sendKey(player, "@record.errors.filter-module-unknown", mapOf("module" to normalized))
             return
         }
-        open(player, keyword, 1, selectedShop.id, normalized)
+        open(player, keyword, 1, null, normalized)
     }
 
     fun cycleFilter(player: Player, shopId: String? = null) {
-        val selectedShop = ShopMenuLoader.resolve(menus.recordViews, shopId)
-        val modules = availableModules(player, selectedShop.id)
+        val modules = availableModules(player)
         if (modules.isEmpty()) {
             Texts.sendKey(player, "@record.errors.no-filter-modules")
             return
         }
-        val state = currentState(player, selectedShop.id)
+        val state = currentState(player, defaultViewId())
         val next = when (val current = normalizeModuleFilter(state.moduleFilter)) {
             null -> modules.first()
             else -> modules.getOrNull(modules.indexOf(current) + 1)
         }
         val applied = next ?: ""
         val display = if (applied.isBlank()) Texts.tr("@commands.words.all") else applied
-        applyFilter(player, applied, selectedShop.id, state.keyword)
+        applyFilter(player, applied, null, state.keyword)
         Texts.sendKey(player, "@record.success.filter-applied", mapOf("module" to display))
     }
 
@@ -180,9 +174,8 @@ object RecordModule : MatrixModule {
             return
         }
         val definition = if (positive) menus.income else menus.expense
-        val selectedShop = ShopMenuLoader.resolve(menus.recordViews, shopId)
         val normalizedFilter = normalizeModuleFilter(moduleFilter)
-        val allStats = aggregates(player, positive, selectedShop.id, normalizedFilter)
+        val allStats = aggregates(player, positive, normalizedFilter)
         val goodsSlots = goodsSlots(definition)
         val maxPage = ((allStats.size + goodsSlots.size - 1) / goodsSlots.size).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
@@ -192,17 +185,17 @@ object RecordModule : MatrixModule {
             player = player,
             definition = definition,
             placeholders = mapOf(
-                "shop-id" to selectedShop.id,
+                "shop-id" to defaultViewId(),
                 "page" to currentPage.toString(),
                 "max-page" to maxPage.toString(),
                 "total" to trimDouble(total),
                 "count" to allStats.sumOf { it.count }.toString(),
                 "module-filter" to (normalizedFilter ?: "all")
             ),
-            backAction = { open(player, keyword, shopId = selectedShop.id, moduleFilter = normalizedFilter) },
+            backAction = { open(player, keyword, moduleFilter = normalizedFilter) },
             goodsRenderer = { holder, slots ->
                 renderStats(holder, slots, pageEntries, positive)
-                wireStatsControls(player, holder, definition, currentPage, maxPage, positive, selectedShop.id, keyword, normalizedFilter)
+                wireStatsControls(player, holder, definition, currentPage, maxPage, positive, keyword, normalizedFilter)
             }
         )
     }
@@ -215,15 +208,14 @@ object RecordModule : MatrixModule {
         slots: List<Int>,
         currentPage: Int,
         keyword: String?,
-        moduleFilter: String?,
-        shopId: String
+        moduleFilter: String?
     ) {
         entries.forEachIndexed { index, entry ->
             val slot = slots[index]
             val item = buildRecordListItem(entry, player, definition)
             holder.backingInventory.setItem(slot, item)
             holder.handlers[slot] = {
-                openDetail(player, entry.id, keyword, currentPage, shopId, moduleFilter)
+                openDetail(player, entry.id, keyword, currentPage, null, moduleFilter)
             }
         }
     }
@@ -268,38 +260,37 @@ object RecordModule : MatrixModule {
         currentPage: Int,
         maxPage: Int,
         keyword: String?,
-        moduleFilter: String?,
-        shopId: String
+        moduleFilter: String?
     ) {
         buttonSlot(definition, 'P')?.let { slot ->
-            holder.handlers[slot] = { open(player, keyword, (currentPage - 1).coerceAtLeast(1), shopId, moduleFilter) }
+            holder.handlers[slot] = { open(player, keyword, (currentPage - 1).coerceAtLeast(1), null, moduleFilter) }
         }
         buttonSlot(definition, 'N')?.let { slot ->
-            holder.handlers[slot] = { open(player, keyword, (currentPage + 1).coerceAtMost(maxPage), shopId, moduleFilter) }
+            holder.handlers[slot] = { open(player, keyword, (currentPage + 1).coerceAtMost(maxPage), null, moduleFilter) }
         }
         buttonSlot(definition, 'F')?.let { slot ->
-            holder.handlers[slot] = { cycleFilter(player, shopId) }
+            holder.handlers[slot] = { cycleFilter(player) }
         }
         buttonSlot(definition, 'I')?.let { slot ->
-            holder.handlers[slot] = { openIncome(player, shopId = shopId, keyword = keyword, moduleFilter = moduleFilter) }
+            holder.handlers[slot] = { openIncome(player, keyword = keyword, moduleFilter = moduleFilter) }
         }
         buttonSlot(definition, 'E')?.let { slot ->
-            holder.handlers[slot] = { openExpense(player, shopId = shopId, keyword = keyword, moduleFilter = moduleFilter) }
+            holder.handlers[slot] = { openExpense(player, keyword = keyword, moduleFilter = moduleFilter) }
         }
     }
 
-    private fun wireDetailControls(player: Player, holder: MatrixMenuHolder, keyword: String?, page: Int, shopId: String?, moduleFilter: String?) {
+    private fun wireDetailControls(player: Player, holder: MatrixMenuHolder, keyword: String?, page: Int, moduleFilter: String?) {
         buttonSlot(menus.detail, 'L')?.let { slot ->
-            holder.handlers[slot] = { open(player, keyword, page, shopId, moduleFilter) }
+            holder.handlers[slot] = { open(player, keyword, page, null, moduleFilter) }
         }
         buttonSlot(menus.detail, 'I')?.let { slot ->
             holder.handlers.remove(slot)
         }
         buttonSlot(menus.detail, 'S')?.let { slot ->
-            holder.handlers[slot] = { openIncome(player, shopId = shopId, keyword = keyword, moduleFilter = moduleFilter) }
+            holder.handlers[slot] = { openIncome(player, keyword = keyword, moduleFilter = moduleFilter) }
         }
         buttonSlot(menus.detail, 'E')?.let { slot ->
-            holder.handlers[slot] = { openExpense(player, shopId = shopId, keyword = keyword, moduleFilter = moduleFilter) }
+            holder.handlers[slot] = { openExpense(player, keyword = keyword, moduleFilter = moduleFilter) }
         }
     }
 
@@ -310,21 +301,20 @@ object RecordModule : MatrixModule {
         currentPage: Int,
         maxPage: Int,
         positive: Boolean,
-        shopId: String?,
         keyword: String?,
         moduleFilter: String?
     ) {
         buttonSlot(definition, 'P')?.let { slot ->
-            holder.handlers[slot] = { openStats(player, (currentPage - 1).coerceAtLeast(1), positive, shopId, keyword, moduleFilter) }
+            holder.handlers[slot] = { openStats(player, (currentPage - 1).coerceAtLeast(1), positive, null, keyword, moduleFilter) }
         }
         buttonSlot(definition, 'N')?.let { slot ->
-            holder.handlers[slot] = { openStats(player, (currentPage + 1).coerceAtMost(maxPage), positive, shopId, keyword, moduleFilter) }
+            holder.handlers[slot] = { openStats(player, (currentPage + 1).coerceAtMost(maxPage), positive, null, keyword, moduleFilter) }
         }
         buttonSlot(definition, 'L')?.let { slot ->
-            holder.handlers[slot] = { open(player, keyword, shopId = shopId, moduleFilter = moduleFilter) }
+            holder.handlers[slot] = { open(player, keyword, moduleFilter = moduleFilter) }
         }
         buttonSlot(definition, 'X')?.let { slot ->
-            holder.handlers[slot] = { openStats(player, 1, !positive, shopId, keyword, moduleFilter) }
+            holder.handlers[slot] = { openStats(player, 1, !positive, null, keyword, moduleFilter) }
         }
     }
 
@@ -385,13 +375,13 @@ object RecordModule : MatrixModule {
             .map { Texts.colorKey("@record.lore.detail-line", mapOf("line" to it)) }
     }
 
-    private fun visibleEntries(player: Player, keyword: String?, shopId: String, moduleFilter: String?): List<RecordEntry> {
+    private fun visibleEntries(player: Player, keyword: String?, moduleFilter: String?): List<RecordEntry> {
         val visible = if (player.hasPermission("matrixshop.admin.record.view.others")) {
             RecordService.readAll()
         } else {
             RecordService.readAll().filter { it.involves(player.name) }
         }
-        val config = viewConfigs[normalizeKey(shopId)] ?: RecordViewConfig()
+        val config = viewConfig
         return visible
             .filter { config.allowedModules.isEmpty() || config.allowedModules.contains(it.module.lowercase()) }
             .filter { moduleFilter.isNullOrBlank() || it.module.equals(moduleFilter, true) }
@@ -399,16 +389,16 @@ object RecordModule : MatrixModule {
             .sortedByDescending { it.createdAt }
     }
 
-    private fun actorEntries(player: Player, shopId: String, moduleFilter: String?): List<RecordEntry> {
-        val config = viewConfigs[normalizeKey(shopId)] ?: RecordViewConfig()
+    private fun actorEntries(player: Player, moduleFilter: String?): List<RecordEntry> {
+        val config = viewConfig
         return RecordService.readAll()
             .filter { it.actor.equals(player.name, true) }
             .filter { config.allowedModules.isEmpty() || config.allowedModules.contains(it.module.lowercase()) }
             .filter { moduleFilter.isNullOrBlank() || it.module.equals(moduleFilter, true) }
     }
 
-    private fun aggregates(player: Player, positive: Boolean, shopId: String, moduleFilter: String?): List<RecordAggregate> {
-        return actorEntries(player, shopId, moduleFilter)
+    private fun aggregates(player: Player, positive: Boolean, moduleFilter: String?): List<RecordAggregate> {
+        return actorEntries(player, moduleFilter)
             .filter { if (positive) it.moneyChange > 0 else it.moneyChange < 0 }
             .groupBy { it.module }
             .map { (module, entries) ->
@@ -520,8 +510,8 @@ object RecordModule : MatrixModule {
         return item
     }
 
-    private fun availableModules(player: Player, shopId: String): List<String> {
-        val config = viewConfigs[normalizeKey(shopId)] ?: RecordViewConfig()
+    private fun availableModules(player: Player): List<String> {
+        val config = viewConfig
         val visible = if (player.hasPermission("matrixshop.admin.record.view.others")) {
             RecordService.readAll()
         } else {
@@ -534,25 +524,17 @@ object RecordModule : MatrixModule {
             .sorted()
     }
 
-    private fun loadViewConfigs(): Map<String, RecordViewConfig> {
-        val folder = File(ConfigFiles.dataFolder(), "Record/shops")
-        if (!folder.exists()) {
-            return emptyMap()
-        }
-        return folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
-            .orEmpty()
-            .associate { file ->
-                val yaml = YamlConfiguration.loadConfiguration(file)
-                normalizeKey(file.nameWithoutExtension) to RecordViewConfig(
-                    allowedModules = readModuleSet(
-                        yaml,
-                        "Options.Modules",
-                        "Options.View.Modules",
-                        "View.Modules",
-                        "Filters.Modules"
-                    )
-                )
-            }
+    private fun loadViewConfig(): RecordViewConfig {
+        val yaml = YamlConfiguration.loadConfiguration(File(ConfigFiles.dataFolder(), "Record/ui/record.yml"))
+        return RecordViewConfig(
+            allowedModules = readModuleSet(
+                yaml,
+                "Options.Modules",
+                "Options.View.Modules",
+                "View.Modules",
+                "Filters.Modules"
+            )
+        )
     }
 
     private fun readModuleSet(yaml: YamlConfiguration, vararg paths: String): Set<String> {
@@ -573,12 +555,8 @@ object RecordModule : MatrixModule {
             ?.takeUnless { it == "all" }
     }
 
-    private fun normalizeKey(value: String?): String {
-        return value?.trim()?.ifBlank { "default" }?.lowercase() ?: "default"
-    }
-
-    private fun resolvedShopId(shopId: String?): String {
-        return ShopMenuLoader.resolve(menus.recordViews, shopId).id
+    private fun defaultViewId(): String {
+        return "record"
     }
 
     private fun rememberState(player: Player, shopId: String, keyword: String?, moduleFilter: String?) {
@@ -605,7 +583,7 @@ private data class RecordSettings(
 )
 
 private data class RecordMenus(
-    val recordViews: LinkedHashMap<String, ConfiguredShopMenu>,
+    val record: MenuDefinition,
     val detail: MenuDefinition,
     val income: MenuDefinition,
     val expense: MenuDefinition

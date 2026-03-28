@@ -51,8 +51,6 @@ object MatrixShopCommands {
         registerStandaloneCommand("auction", "auction", "MatrixShop auction command", "/auction", "matrixshop.auction.use", ::handleAuctionAlias, reserved)
         registerStandaloneCommand("chestshop", "chestshop", "MatrixShop chest shop command", "/chestshop", "matrixshop.chestshop.use", ::handleChestShopAlias, reserved)
         registerStandaloneShopCommands("menu", "MatrixShop menu command", "/menu", "matrixshop.menu.use", reserved)
-        registerStandaloneShopCommands("cart", "MatrixShop cart command", "/cart", "matrixshop.cart.use", reserved)
-        registerStandaloneShopCommands("record", "MatrixShop record command", "/record", "matrixshop.record.use", reserved)
         registerStandaloneShopCommands("global-market", "MatrixShop global market command", "/market", "matrixshop.globalmarket.use", reserved)
         registerStandaloneShopCommands("player-shop", "MatrixShop player shop command", "/playershop", "matrixshop.playershop.use", reserved)
         registerStandaloneShopCommands("auction", "MatrixShop auction command", "/auction", "matrixshop.auction.use", reserved)
@@ -762,15 +760,15 @@ object MatrixShopCommands {
         addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), helpLine(moduleUsage("chestshop", "create <buy|sell|dual> <price> [sell-price] [amount]"), "@commands.help.desc.chestshop-create"))
         addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_USE), helpLine(moduleUsage("chestshop", "stock | history"), "@commands.help.desc.chestshop-stock-history"))
         addHelp(lines, showModuleHelp("chestshop") && Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), helpLine(moduleUsage("chestshop", "edit | remove | price | amount | mode"), "@commands.help.desc.chestshop-manage"))
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "open", "@commands.help.desc.cart-open")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout [valid_only]", "@commands.help.desc.cart-checkout")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), shopHelpEntries("cart"), "checkout confirm [valid_only] | conflict", "@commands.help.desc.cart-conflict")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_CLEAR), shopHelpEntries("cart"), "remove <slot> | remove_invalid | clear", "@commands.help.desc.cart-manage")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("cart") && Permissions.has(player, PermissionNodes.CART_USE), shopHelpEntries("cart"), "amount <slot> <number>", "@commands.help.desc.cart-amount")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "open [keyword]", "@commands.help.desc.record-open")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), shopHelpEntries("record"), "detail <id>", "@commands.help.desc.record-detail")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_USE), shopHelpEntries("record"), "filter [module|all]", "@commands.help.desc.record-filter")
-        addBoundShopHelp(lines, ModuleRegistry.isEnabled("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), shopHelpEntries("record"), "income | expense | stats", "@commands.help.desc.record-stats")
+        addHelp(lines, showModuleHelp("cart") && Permissions.has(player, PermissionNodes.CART_USE), helpLine(moduleUsage("cart", "open"), "@commands.help.desc.cart-open"))
+        addHelp(lines, showModuleHelp("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), helpLine(moduleUsage("cart", "checkout [valid_only]"), "@commands.help.desc.cart-checkout"))
+        addHelp(lines, showModuleHelp("cart") && Permissions.has(player, PermissionNodes.CART_CHECKOUT), helpLine(moduleUsage("cart", "checkout confirm [valid_only] | conflict"), "@commands.help.desc.cart-conflict"))
+        addHelp(lines, showModuleHelp("cart") && Permissions.has(player, PermissionNodes.CART_CLEAR), helpLine(moduleUsage("cart", "remove <slot> | remove_invalid | clear"), "@commands.help.desc.cart-manage"))
+        addHelp(lines, showModuleHelp("cart") && Permissions.has(player, PermissionNodes.CART_USE), helpLine(moduleUsage("cart", "amount <slot> <number>"), "@commands.help.desc.cart-amount"))
+        addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_USE), helpLine(moduleUsage("record", "open [keyword]"), "@commands.help.desc.record-open"))
+        addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), helpLine(moduleUsage("record", "detail <id>"), "@commands.help.desc.record-detail"))
+        addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_USE), helpLine(moduleUsage("record", "filter [module|all]"), "@commands.help.desc.record-filter"))
+        addHelp(lines, showModuleHelp("record") && Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), helpLine(moduleUsage("record", "income | expense | stats"), "@commands.help.desc.record-stats"))
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "open", "@commands.help.desc.transaction-open")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "request <player>", "@commands.help.desc.transaction-request")
         addBoundShopHelp(lines, ModuleRegistry.isEnabled("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), shopHelpEntries("transaction"), "accept [player] | ready | confirm | cancel | logs", "@commands.help.desc.transaction-control")
@@ -922,8 +920,6 @@ object MatrixShopCommands {
             "auction" -> ModuleRegistry.auction.helpEntries()
             "player-shop" -> ModuleRegistry.playerShop.helpEntries()
             "global-market" -> ModuleRegistry.globalMarket.helpEntries()
-            "cart" -> ModuleRegistry.cart.helpEntries()
-            "record" -> ModuleRegistry.record.helpEntries()
             "transaction" -> ModuleRegistry.transaction.helpEntries()
             else -> emptyList()
         }
@@ -1068,12 +1064,6 @@ object MatrixShopCommands {
         if ((moduleId == null || moduleId == "menu") && ModuleRegistry.isEnabled("menu")) {
             ModuleRegistry.menu.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("menu", it.id), it) }
         }
-        if ((moduleId == null || moduleId == "cart") && ModuleRegistry.isEnabled("cart")) {
-            ModuleRegistry.cart.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("cart", it.id), it) }
-        }
-        if ((moduleId == null || moduleId == "record") && ModuleRegistry.isEnabled("record")) {
-            ModuleRegistry.record.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("record", it.id), it) }
-        }
         if ((moduleId == null || moduleId == "player-shop") && ModuleRegistry.isEnabled("player-shop")) {
             ModuleRegistry.playerShop.allShopEntries().forEach { routes += BoundShopEntry(ShopBindingRoute("player-shop", it.id), it) }
         }
@@ -1144,8 +1134,6 @@ object MatrixShopCommands {
         val entries = mutableListOf<BoundShopEntry>()
         when (moduleId) {
             "menu" -> if (ModuleRegistry.isEnabled("menu")) ModuleRegistry.menu.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("menu", it.id), it) }
-            "cart" -> if (ModuleRegistry.isEnabled("cart")) ModuleRegistry.cart.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("cart", it.id), it) }
-            "record" -> if (ModuleRegistry.isEnabled("record")) ModuleRegistry.record.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("record", it.id), it) }
             "global-market" -> if (ModuleRegistry.isEnabled("global-market")) ModuleRegistry.globalMarket.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("global-market", it.id), it) }
             "player-shop" -> if (ModuleRegistry.isEnabled("player-shop")) ModuleRegistry.playerShop.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("player-shop", it.id), it) }
             "auction" -> if (ModuleRegistry.isEnabled("auction")) ModuleRegistry.auction.standaloneEntries().forEach { entries += BoundShopEntry(ShopBindingRoute("auction", it.id), it) }
