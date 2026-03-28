@@ -647,6 +647,10 @@ object MatrixShopCommands {
     private fun handleStandaloneModule(sender: CommandSender, label: String, moduleId: String, args: List<String>): Boolean {
         val player = requirePlayer(sender) ?: return true
         CommandUsageContext.rememberModule(player, moduleId, "/$label")
+        if (args.firstOrNull()?.equals("help", true) == true) {
+            sendModuleHelp(player, moduleId, label)
+            return true
+        }
         when (moduleId) {
             "menu" -> handleMenu(player, args)
             "cart" -> handleCart(player, args)
@@ -787,6 +791,57 @@ object MatrixShopCommands {
         addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine(mainModuleUsage(rootLabel, "transaction", "request <player>"), "@commands.help.desc.transaction-request"))
         addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine(mainModuleUsage(rootLabel, "transaction", "accept [player] | ready | confirm | cancel | logs"), "@commands.help.desc.transaction-control"))
         addHelp(lines, showModuleHelp("transaction") && Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine(mainModuleUsage(rootLabel, "transaction", "money <amount> | exp <amount>"), "@commands.help.desc.transaction-offer"))
+        Texts.sendRaw(player, lines.joinToString("\n"))
+    }
+
+    private fun sendModuleHelp(player: Player, moduleId: String, label: String) {
+        val lines = mutableListOf(Texts.tr("@commands.help.player-title"))
+        when (moduleId) {
+            "menu" -> addHelp(lines, Permissions.has(player, PermissionNodes.MENU_USE), helpLine("/$label open", bindingHelpKeyOrDefault("menu", "@commands.help.desc.menu-open")))
+            "auction" -> {
+                addHelp(lines, Permissions.has(player, PermissionNodes.AUCTION_USE), helpLine("/$label open", bindingHelpKeyOrDefault("auction", "@commands.help.desc.auction-open")))
+                addHelp(lines, Permissions.has(player, PermissionNodes.AUCTION_SELL), helpLine("/$label upload <english|dutch> <start> [buyout|end] [duration]", "@commands.help.desc.auction-upload"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.AUCTION_BID), helpLine("/$label bid <id> [price]", "@commands.help.desc.auction-bid"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.AUCTION_BUYOUT), helpLine("/$label buyout <id>", "@commands.help.desc.auction-buyout"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.AUCTION_MANAGE_OWN), helpLine("/$label manage | bids", "@commands.help.desc.auction-manage"))
+            }
+            "player-shop" -> {
+                addHelp(lines, Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), helpLine("/$label open", bindingHelpKeyOrDefault("player-shop", "@commands.help.desc.player-shop-open-self")))
+                addHelp(lines, Permissions.has(player, PermissionNodes.PLAYERSHOP_USE), helpLine("/$label open [player]", "@commands.help.desc.player-shop-open-other"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.PLAYERSHOP_MANAGE_OWN), helpLine("/$label edit", "@commands.help.desc.player-shop-edit"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.PLAYERSHOP_SELL), helpLine("/$label upload <price> [amount]", "@commands.help.desc.player-shop-upload"))
+            }
+            "global-market" -> {
+                addHelp(lines, Permissions.has(player, PermissionNodes.GLOBALMARKET_USE), helpLine("/$label open", bindingHelpKeyOrDefault("global-market", "@commands.help.desc.global-market-open")))
+                addHelp(lines, Permissions.has(player, PermissionNodes.GLOBALMARKET_SELL), helpLine("/$label upload <price> [amount]", "@commands.help.desc.global-market-upload"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.GLOBALMARKET_MANAGE_OWN), helpLine("/$label manage", "@commands.help.desc.global-market-manage"))
+            }
+            "transaction" -> {
+                addHelp(lines, Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine("/$label open", bindingHelpKeyOrDefault("transaction", "@commands.help.desc.transaction-open")))
+                addHelp(lines, Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine("/$label request <player>", "@commands.help.desc.transaction-request"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine("/$label accept [player] | ready | confirm | cancel | logs", "@commands.help.desc.transaction-control"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.TRANSACTION_USE), helpLine("/$label money <amount> | exp <amount>", "@commands.help.desc.transaction-offer"))
+            }
+            "chestshop" -> {
+                addHelp(lines, Permissions.has(player, PermissionNodes.CHESTSHOP_USE), helpLine("/$label open", bindingHelpKeyOrDefault("chestshop", "@commands.help.desc.chestshop-open")))
+                addHelp(lines, Permissions.has(player, PermissionNodes.CHESTSHOP_CREATE), helpLine("/$label create <buy|sell|dual> <price> [sell-price] [amount]", "@commands.help.desc.chestshop-create"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.CHESTSHOP_USE), helpLine("/$label stock | history", "@commands.help.desc.chestshop-stock-history"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.CHESTSHOP_MANAGE_OWN), helpLine("/$label edit | remove | price | amount | mode", "@commands.help.desc.chestshop-manage"))
+            }
+            "cart" -> {
+                addHelp(lines, Permissions.has(player, PermissionNodes.CART_USE), helpLine("/$label open", bindingHelpKeyOrDefault("cart", "@commands.help.desc.cart-open")))
+                addHelp(lines, Permissions.has(player, PermissionNodes.CART_CHECKOUT), helpLine("/$label checkout [valid_only]", "@commands.help.desc.cart-checkout"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.CART_CHECKOUT), helpLine("/$label checkout confirm [valid_only] | conflict", "@commands.help.desc.cart-conflict"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.CART_CLEAR), helpLine("/$label remove <slot> | remove_invalid | clear", "@commands.help.desc.cart-manage"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.CART_USE), helpLine("/$label amount <slot> <number>", "@commands.help.desc.cart-amount"))
+            }
+            "record" -> {
+                addHelp(lines, Permissions.has(player, PermissionNodes.RECORD_USE), helpLine("/$label open [keyword]", bindingHelpKeyOrDefault("record", "@commands.help.desc.record-open")))
+                addHelp(lines, Permissions.has(player, PermissionNodes.RECORD_DETAIL_SELF), helpLine("/$label detail <id>", "@commands.help.desc.record-detail"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.RECORD_USE), helpLine("/$label filter [module|all]", "@commands.help.desc.record-filter"))
+                addHelp(lines, Permissions.has(player, PermissionNodes.RECORD_STATS_SELF), helpLine("/$label income | expense | stats", "@commands.help.desc.record-stats"))
+            }
+        }
         Texts.sendRaw(player, lines.joinToString("\n"))
     }
 
@@ -1052,24 +1107,24 @@ object MatrixShopCommands {
             return emptyList()
         }
         return when (moduleId) {
-            "menu" -> if (args.size == 1) filterSuggestions(listOf("open"), args[0]) else emptyList()
+            "menu" -> if (args.size == 1) filterSuggestions(listOf("help", "open"), args[0]) else emptyList()
             "cart" -> when (args.size) {
-                1 -> filterSuggestions(listOf("open", "checkout", "clear", "remove", "remove_invalid", "conflict", "amount"), args[0])
+                1 -> filterSuggestions(listOf("help", "open", "checkout", "clear", "remove", "remove_invalid", "conflict", "amount"), args[0])
                 else -> emptyList()
             }
             "record" -> when (args.size) {
-                1 -> filterSuggestions(listOf("open", "detail", "income", "expense", "search", "filter", "stats"), args[0])
+                1 -> filterSuggestions(listOf("help", "open", "detail", "income", "expense", "search", "filter", "stats"), args[0])
                 else -> emptyList()
             }
             "global-market" -> when (args.size) {
-                1 -> filterSuggestions(listOf("open", "upload", "manage"), args[0])
+                1 -> filterSuggestions(listOf("help", "open", "upload", "manage"), args[0])
                 2 -> if (args[0].lowercase() in setOf("open", "upload", "manage")) {
                     filterSuggestions(ModuleRegistry.globalMarket.allShopEntries().map { it.id }, args[1])
                 } else emptyList()
                 else -> emptyList()
             }
             "player-shop" -> when (args.size) {
-                1 -> filterSuggestions(listOf("open", "edit", "upload"), args[0])
+                1 -> filterSuggestions(listOf("help", "open", "edit", "upload"), args[0])
                 2 -> if (args[0].equals("open", true)) {
                     filterSuggestions(org.bukkit.Bukkit.getOnlinePlayers().map { it.name } + ModuleRegistry.playerShop.allShopEntries().map { it.id }, args[1])
                 } else if (args[0].lowercase() in setOf("edit", "upload")) {
@@ -1078,14 +1133,14 @@ object MatrixShopCommands {
                 else -> emptyList()
             }
             "auction" -> when (args.size) {
-                1 -> filterSuggestions(listOf("open", "upload", "detail", "bid", "buyout", "manage", "bids", "remove"), args[0])
+                1 -> filterSuggestions(listOf("help", "open", "upload", "detail", "bid", "buyout", "manage", "bids", "remove"), args[0])
                 2 -> if (args[0].lowercase() in setOf("open", "upload", "manage", "bids")) {
                     filterSuggestions(ModuleRegistry.auction.allShopEntries().map { it.id }, args[1])
                 } else emptyList()
                 else -> emptyList()
             }
             "transaction" -> when (args.size) {
-                1 -> filterSuggestions(listOf("open", "request", "accept", "deny", "money", "exp", "ready", "confirm", "cancel", "logs"), args[0])
+                1 -> filterSuggestions(listOf("help", "open", "request", "accept", "deny", "money", "exp", "ready", "confirm", "cancel", "logs"), args[0])
                 2 -> if (args[0].lowercase() in setOf("request", "accept", "deny")) {
                     filterSuggestions(org.bukkit.Bukkit.getOnlinePlayers().map { it.name }.filterNot { it.equals(player.name, true) }, args[1])
                 } else if (args[0].equals("open", true)) {
@@ -1094,12 +1149,12 @@ object MatrixShopCommands {
                 else -> emptyList()
             }
             "chestshop" -> when (args.size) {
-                1 -> filterSuggestions(listOf("open", "create", "edit", "stock", "history", "remove", "price", "amount", "mode"), args[0])
+                1 -> filterSuggestions(listOf("help", "open", "create", "edit", "stock", "history", "remove", "price", "amount", "mode"), args[0])
                 2 -> if (args[0].lowercase() in setOf("create", "mode")) filterSuggestions(listOf("buy", "sell", "dual"), args[1]) else emptyList()
                 else -> emptyList()
             }
             "system-shop" -> when (args.size) {
-                1 -> filterSuggestions(listOf("open", "confirm"), args[0])
+                1 -> filterSuggestions(listOf("help", "open", "confirm"), args[0])
                 else -> emptyList()
             }
             else -> emptyList()
@@ -1108,10 +1163,7 @@ object MatrixShopCommands {
 
     private fun filterSuggestions(candidates: Collection<String>, token: String): List<String> {
         val normalized = token.lowercase()
-        return candidates
-            .filter { it.lowercase().startsWith(normalized) }
-            .distinct()
-            .sorted()
+        return candidates.filter { it.lowercase().startsWith(normalized) }.distinct().sorted()
     }
 
     private fun resolvePlayerShopOpen(player: Player, args: List<String>, defaultShopId: String? = null): Pair<String, String?> {
