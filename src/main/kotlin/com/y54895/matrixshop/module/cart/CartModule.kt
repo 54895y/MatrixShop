@@ -155,7 +155,7 @@ object CartModule : MatrixModule {
     fun addCurrentSystemSelection(player: Player) {
         val selection = SystemShopModule.currentSelection(player)
         if (selection == null) {
-            Texts.send(player, "&cThere is no current SystemShop selection to add.")
+            Texts.sendKey(player, "@cart.errors.no-system-selection")
             return
         }
         val store = CartRepository.load(player.uniqueId)
@@ -175,7 +175,7 @@ object CartModule : MatrixModule {
             )
         )
         CartRepository.save(store)
-        Texts.send(player, "&aAdded to cart: &f${selection.product.name} &7x&f${selection.amount}")
+        Texts.sendKey(player, "@cart.success.added", mapOf("name" to selection.product.name, "amount" to selection.amount.toString()))
     }
 
     fun addPlayerShopListing(player: Player, ownerId: String, ownerName: String, listingId: String) {
@@ -185,7 +185,7 @@ object CartModule : MatrixModule {
     fun addPlayerShopListing(player: Player, shopId: String, ownerId: String, ownerName: String, listingId: String) {
         val selection = PlayerShopModule.selection(UUID.fromString(ownerId), ownerName, shopId, listingId)
         if (selection == null) {
-            Texts.send(player, "&cThat player shop listing is no longer available.")
+            Texts.sendKey(player, "@cart.errors.player-shop-listing-unavailable")
             return
         }
         val store = CartRepository.load(player.uniqueId)
@@ -208,7 +208,14 @@ object CartModule : MatrixModule {
             )
         )
         CartRepository.save(store)
-        Texts.send(player, "&aAdded to cart: &f${selection.listing.item.itemMeta?.displayName ?: selection.listing.item.type.name}")
+        Texts.sendKey(
+            player,
+            "@cart.success.added",
+            mapOf(
+                "name" to (selection.listing.item.itemMeta?.displayName ?: selection.listing.item.type.name),
+                "amount" to selection.listing.item.amount.toString()
+            )
+        )
     }
 
     fun addGlobalMarketListing(player: Player, listingId: String) {
@@ -218,7 +225,7 @@ object CartModule : MatrixModule {
     fun addGlobalMarketListing(player: Player, shopId: String, listingId: String) {
         val listing = GlobalMarketModule.selection(shopId, listingId)
         if (listing == null) {
-            Texts.send(player, "&cThat GlobalMarket listing is no longer available.")
+            Texts.sendKey(player, "@cart.errors.global-market-listing-unavailable")
             return
         }
         val store = CartRepository.load(player.uniqueId)
@@ -241,19 +248,26 @@ object CartModule : MatrixModule {
             )
         )
         CartRepository.save(store)
-        Texts.send(player, "&aAdded to cart: &f${listing.item.itemMeta?.displayName ?: listing.item.type.name}")
+        Texts.sendKey(
+            player,
+            "@cart.success.added",
+            mapOf(
+                "name" to (listing.item.itemMeta?.displayName ?: listing.item.type.name),
+                "amount" to listing.item.amount.toString()
+            )
+        )
     }
 
     fun remove(player: Player, index: Int, shopId: String? = null) {
         val store = CartRepository.load(player.uniqueId)
         val entry = visibleEntries(store).getOrNull(index - 1)
         if (entry == null) {
-            Texts.send(player, "&cCart entry not found.")
+            Texts.sendKey(player, "@cart.errors.entry-not-found")
             return
         }
         store.entries.removeIf { it.id == entry.id }
         CartRepository.save(store)
-        Texts.send(player, "&aRemoved cart entry: &f${entry.name}")
+        Texts.sendKey(player, "@cart.success.removed", mapOf("name" to entry.name))
     }
 
     fun clear(player: Player, shopId: String? = null) {
@@ -265,7 +279,7 @@ object CartModule : MatrixModule {
         val before = store.entries.size
         store.entries.removeIf { it.id in removableIds }
         CartRepository.save(store)
-        Texts.send(player, "&aCleared cart entries: &f${before - store.entries.size}")
+        Texts.sendKey(player, "@cart.success.cleared", mapOf("count" to (before - store.entries.size).toString()))
     }
 
     fun removeInvalid(player: Player, shopId: String? = null) {
@@ -277,32 +291,32 @@ object CartModule : MatrixModule {
         val before = store.entries.size
         store.entries.removeIf { it.id in removableIds }
         CartRepository.save(store)
-        Texts.send(player, "&aRemoved invalid cart entries: &f${before - store.entries.size}")
+        Texts.sendKey(player, "@cart.success.removed-invalid", mapOf("count" to (before - store.entries.size).toString()))
     }
 
     fun changeAmount(player: Player, index: Int, amount: Int, shopId: String? = null) {
         val store = CartRepository.load(player.uniqueId)
         val entry = visibleEntries(store).getOrNull(index - 1)
         if (entry == null) {
-            Texts.send(player, "&cCart entry not found.")
+            Texts.sendKey(player, "@cart.errors.entry-not-found")
             return
         }
         if (!entry.editableAmount) {
-            Texts.send(player, "&cThat cart entry does not allow amount changes.")
+            Texts.sendKey(player, "@cart.errors.amount-fixed")
             return
         }
         if (amount <= 0) {
-            Texts.send(player, "&cAmount must be greater than 0.")
+            Texts.sendKey(player, "@cart.errors.amount-positive")
             return
         }
         val validation = validate(entry.copy(amount = amount))
         if (!validation.valid) {
-            Texts.send(player, validation.reason.ifBlank { "&cThat amount is not valid." })
+            Texts.send(player, validation.reason.ifBlank { Texts.tr("@cart.errors.amount-invalid") })
             return
         }
         entry.amount = amount
         CartRepository.save(store)
-        Texts.send(player, "&aUpdated cart amount: &f${entry.name} &7x&f$amount")
+        Texts.sendKey(player, "@cart.success.amount-updated", mapOf("name" to entry.name, "amount" to amount.toString()))
     }
 
     fun checkout(player: Player, validOnly: Boolean, shopId: String? = null) {
@@ -338,7 +352,7 @@ object CartModule : MatrixModule {
                     entry.metadata["listing-id"].orEmpty(),
                     false
                 )
-                else -> ModuleOperationResult(false, "&cUnsupported cart source.")
+                else -> ModuleOperationResult(false, Texts.tr("@cart.errors.unsupported-source"))
             }
             if (result.success) {
                 store.entries.removeIf { it.id == entry.id }
@@ -348,7 +362,7 @@ object CartModule : MatrixModule {
             }
         }
         CartRepository.save(store)
-        Texts.send(player, "&aCart checkout finished. Success: &f$success &aInvalid/Skipped: &f$invalid")
+        Texts.sendKey(player, "@cart.success.checkout-finished", mapOf("success" to success.toString(), "invalid" to invalid.toString()))
         RecordService.append(
             module = "cart",
             type = "checkout",
@@ -410,7 +424,7 @@ object CartModule : MatrixModule {
                     CartValidation(false, "invalid", Texts.color(result.message), "listing", currentPrice)
                 }
             }
-            else -> CartValidation(false, "invalid", Texts.color("&cUnknown cart source."), "source")
+            else -> CartValidation(false, "invalid", Texts.colorKey("@cart.errors.unknown-source"), "source")
         }
     }
 
@@ -422,9 +436,10 @@ object CartModule : MatrixModule {
         slots: List<Int>
     ) {
         val ordered = visibleEntries(CartRepository.load(player.uniqueId))
+        val slotNumbers = ordered.withIndex().associate { it.value.id to (it.index + 1) }
         entries.forEachIndexed { index, entry ->
             val validation = validate(entry)
-            val slotNumber = (ordered.indexOfFirst { it.id == entry.id } + 1).coerceAtLeast(1)
+            val slotNumber = slotNumbers[entry.id] ?: (index + 1)
             val slot = slots[index]
             holder.backingInventory.setItem(slot, buildEntryItem(player, entry, definition.template, validation, slotNumber))
             holder.handlers[slot] = { event ->
@@ -537,7 +552,7 @@ object CartModule : MatrixModule {
         val lore = if (template.lore.isNotEmpty()) {
             Texts.apply(template.lore, placeholders)
         } else {
-            defaultEntryLore(entry, validation, slotNumber, currentPrice)
+            defaultEntryLore(player, entry, validation, slotNumber, currentPrice)
         }
         MenuRenderer.decorate(meta, name, lore)
         item.itemMeta = meta
@@ -572,11 +587,11 @@ object CartModule : MatrixModule {
             Texts.apply(conflictMenu.template.lore, placeholders)
         } else {
             listOf(
-                Texts.color("&7Source: &f${entry.sourceModule}"),
-                Texts.color("&7Conflict: &c${validation.conflictType.ifBlank { validation.state }}"),
-                Texts.color("&7Reason: &f${ChatColor.stripColor(validation.reason).orEmpty()}"),
-                Texts.color("&7Snapshot price: &e${trimDouble(entry.snapshotPrice)} ${entry.currency}"),
-                Texts.color("&7Current price: &6${trimDouble(validation.currentPrice ?: entry.snapshotPrice)} ${entry.currency}")
+                Texts.colorKey("@cart.lore.source", mapOf("source" to sourceLabel(entry.sourceModule))),
+                Texts.colorKey("@cart.lore.conflict", mapOf("type" to validation.conflictType.ifBlank { validation.state })),
+                Texts.colorKey("@cart.lore.reason", mapOf("reason" to ChatColor.stripColor(validation.reason).orEmpty())),
+                Texts.colorKey("@cart.lore.snapshot-price", mapOf("price" to trimDouble(entry.snapshotPrice), "currency" to entry.currency)),
+                Texts.colorKey("@cart.lore.current-price", mapOf("price" to trimDouble(validation.currentPrice ?: entry.snapshotPrice), "currency" to entry.currency))
             )
         }
         MenuRenderer.decorate(meta, name, lore)
@@ -584,29 +599,25 @@ object CartModule : MatrixModule {
         return item
     }
 
-    private fun defaultEntryLore(entry: CartEntry, validation: CartValidation, slotNumber: Int, currentPrice: Double): List<String> {
-        val command = CommandUsageContext.modulePrefix(org.bukkit.Bukkit.getPlayer(entry.ownerName ?: "") ?: return mutableListOf(
-            Texts.color("&7Source: &f${entry.sourceModule}"),
-            Texts.color("&7Amount: &f${entry.amount}"),
-            Texts.color("&7Snapshot price: &e${trimDouble(entry.snapshotPrice)} ${entry.currency}"),
-            Texts.color("&7Current price: &6${trimDouble(currentPrice)} ${entry.currency}"),
-            Texts.color("&7State: &f${entryStateLabel(entry, validation)}"),
-            Texts.color("&7Slot: &f$slotNumber"),
-            Texts.color("&7Created at: &f${timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))}")
-        ), "cart", "/cart")
+    private fun defaultEntryLore(player: Player, entry: CartEntry, validation: CartValidation, slotNumber: Int, currentPrice: Double): List<String> {
+        val command = CommandUsageContext.modulePrefix(player, "cart", "/cart")
         val lore = mutableListOf(
-            Texts.color("&7Source: &f${entry.sourceModule}"),
-            Texts.color("&7Amount: &f${entry.amount}"),
-            Texts.color("&7Snapshot price: &e${trimDouble(entry.snapshotPrice)} ${entry.currency}"),
-            Texts.color("&7Current price: &6${trimDouble(currentPrice)} ${entry.currency}"),
-            Texts.color("&7State: &f${entryStateLabel(entry, validation)}"),
-            Texts.color("&7Slot: &f$slotNumber"),
-            Texts.color("&7Created at: &f${timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))}")
+            Texts.colorKey("@cart.lore.source", mapOf("source" to sourceLabel(entry.sourceModule))),
+            Texts.colorKey("@cart.lore.amount", mapOf("amount" to entry.amount.toString())),
+            Texts.colorKey("@cart.lore.snapshot-price", mapOf("price" to trimDouble(entry.snapshotPrice), "currency" to entry.currency)),
+            Texts.colorKey("@cart.lore.current-price", mapOf("price" to trimDouble(currentPrice), "currency" to entry.currency)),
+            Texts.colorKey("@cart.lore.state", mapOf("state" to entryStateLabel(entry, validation))),
+            Texts.colorKey("@cart.lore.slot", mapOf("slot" to slotNumber.toString())),
+            Texts.colorKey("@cart.lore.created-at", mapOf("time" to timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))))
         )
         if (validation.reason.isNotBlank()) {
-            lore += Texts.color("&7Reason: &f${ChatColor.stripColor(validation.reason).orEmpty()}")
+            lore += Texts.colorKey("@cart.lore.reason", mapOf("reason" to ChatColor.stripColor(validation.reason).orEmpty()))
         }
-        lore += Texts.color(if (entry.editableAmount) "&eRight click to remove. Use $command amount <slot> <number> to change amount." else "&eRight click to remove.")
+        lore += if (entry.editableAmount) {
+            Texts.colorKey("@cart.lore.action-editable", mapOf("command" to command))
+        } else {
+            Texts.colorKey("@cart.lore.action-remove")
+        }
         return lore
     }
 
@@ -657,9 +668,9 @@ object CartModule : MatrixModule {
 
     private fun entryStateLabel(entry: CartEntry, validation: CartValidation): String {
         return when {
-            entry.watchOnly -> "watch_only"
-            validation.valid -> "valid"
-            else -> validation.state.ifBlank { "invalid" }
+            entry.watchOnly -> Texts.tr("@cart.words.state-watch-only")
+            validation.valid -> Texts.tr("@cart.words.state-valid")
+            else -> Texts.tr("@cart.words.state-invalid")
         }
     }
 
@@ -733,6 +744,16 @@ object CartModule : MatrixModule {
 
     private fun defaultViewId(): String {
         return "cart"
+    }
+
+    private fun sourceLabel(source: String): String {
+        return when (source.lowercase()) {
+            "system_shop" -> Texts.tr("@cart.words.source-system-shop")
+            "player_shop" -> Texts.tr("@cart.words.source-player-shop")
+            "global_market" -> Texts.tr("@cart.words.source-global-market")
+            "auction" -> Texts.tr("@cart.words.source-auction")
+            else -> source
+        }
     }
 
     private fun trimDouble(value: Double): String {

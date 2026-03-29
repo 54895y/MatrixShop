@@ -3,6 +3,7 @@ package com.y54895.matrixshop.core.config
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.LinkedHashMap
+import java.util.concurrent.ConcurrentHashMap
 
 data class ModuleCommandBinding(
     val keys: List<String>,
@@ -38,6 +39,11 @@ object ModuleBindings {
         "cart" to ModuleCommandBinding(listOf("cart"), registerStandalone = true, showInHelp = true, priority = 40),
         "record" to ModuleCommandBinding(listOf("record", "records"), registerStandalone = true, showInHelp = true, priority = 30)
     )
+    private val cache = ConcurrentHashMap<String, ModuleCommandBinding>()
+
+    fun clearCache() {
+        cache.clear()
+    }
 
     fun primary(moduleId: String): String {
         return load(moduleId).keys.firstOrNull() ?: moduleId
@@ -78,6 +84,7 @@ object ModuleBindings {
     }
 
     private fun load(moduleId: String): ModuleCommandBinding {
+        cache[moduleId]?.let { return it }
         val fallback = defaults[moduleId] ?: ModuleCommandBinding(listOf(moduleId), registerStandalone = false, showInHelp = true, priority = 0)
         val relativePath = settingsPaths[moduleId] ?: return fallback
         val file = File(ConfigFiles.dataFolder(), relativePath)
@@ -96,7 +103,7 @@ object ModuleBindings {
             priority = yaml.getInt("Bindings.Commands.Priority", fallback.priority),
             helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null } ?: fallback.helpKey,
             hintKeys = loadHintKeys(yaml, "Bindings.Commands.Hint-Keys") + fallback.hintKeys
-        )
+        ).also { cache[moduleId] = it }
     }
 
     private fun loadHintKeys(yaml: YamlConfiguration, path: String): Map<String, String> {

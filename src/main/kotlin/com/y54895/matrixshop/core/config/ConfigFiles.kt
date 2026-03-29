@@ -60,6 +60,7 @@ object ConfigFiles {
         config = load("config.yml")
         module = load("module.yml")
         database = load("database.yml")
+        ModuleBindings.clearCache()
     }
 
     fun dataFolder(): File {
