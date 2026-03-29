@@ -221,7 +221,7 @@ object AuctionModule : MatrixModule {
         cleanupExpiredListings()
         val listing = activeListings(shopId).firstOrNull { it.id == listingId }
         if (listing == null) {
-            Texts.send(player, "&cAuction listing not found.")
+            Texts.sendKey(player, "@auction.errors.listing-not-found")
             return
         }
         val placeholders = detailPlaceholders(listing)
@@ -250,11 +250,11 @@ object AuctionModule : MatrixModule {
         cleanupExpiredListings()
         val listing = activeListings(shopId).firstOrNull { it.id == listingId }
         if (listing == null) {
-            Texts.send(player, "&cAuction listing not found.")
+            Texts.sendKey(player, "@auction.errors.listing-not-found")
             return
         }
         if (listing.mode != AuctionMode.ENGLISH) {
-            Texts.send(player, "&cDutch auctions do not use the bid menu. Use buyout/current-price purchase instead.")
+            Texts.sendKey(player, "@auction.errors.dutch-no-bid-menu")
             return
         }
         val suggestions = bidSuggestions(listing)
@@ -294,50 +294,50 @@ object AuctionModule : MatrixModule {
         val resolvedShopId = resolveShopId(shopId)
         val mode = parseMode(modeRaw)
         if (mode == null) {
-            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "auction", "/auction")} upload <english|dutch> <start-price> [buyout|end-price] [duration-seconds]")
+            Texts.sendKey(player, "@auction.errors.upload-usage", mapOf("command" to CommandUsageContext.modulePrefix(player, "auction", "/auction")))
             return
         }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
         if (hand.type == Material.AIR || hand.amount <= 0) {
-            Texts.send(player, "&cHold the item you want to list in your main hand.")
+            Texts.sendKey(player, "@auction.errors.hold-item")
             return
         }
         val listings = AuctionRepository.loadAll().toMutableList()
         if (listings.count { it.ownerId == player.uniqueId } >= settings.maxActive) {
-            Texts.send(player, "&cYou already reached the maximum active auction listings.")
+            Texts.sendKey(player, "@auction.errors.max-active")
             return
         }
         val safeStart = (startPrice ?: 0.0).coerceAtLeast(0.0)
         val safeDuration = (durationSeconds ?: settings.defaultDuration).coerceIn(settings.minDuration, settings.maxDuration)
         if (mode == AuctionMode.ENGLISH && safeStart < settings.englishMinStartPrice) {
-            Texts.send(player, "&cStart price is below the minimum for English auctions.")
+            Texts.sendKey(player, "@auction.errors.english-min-start")
             return
         }
         if (mode == AuctionMode.DUTCH && safeStart < settings.dutchMinStartPrice) {
-            Texts.send(player, "&cStart price is below the minimum for Dutch auctions.")
+            Texts.sendKey(player, "@auction.errors.dutch-min-start")
             return
         }
         val buyoutPrice = if (mode == AuctionMode.ENGLISH && settings.englishAllowBuyout) (secondPrice ?: 0.0).coerceAtLeast(0.0) else 0.0
         val endPrice = if (mode == AuctionMode.DUTCH) (secondPrice ?: settings.dutchEndPriceMin).coerceAtLeast(settings.dutchEndPriceMin) else 0.0
         if (mode == AuctionMode.ENGLISH && buyoutPrice > 0 && buyoutPrice <= safeStart) {
-            Texts.send(player, "&cBuyout price must be higher than the start price.")
+            Texts.sendKey(player, "@auction.errors.buyout-higher-than-start")
             return
         }
         if (mode == AuctionMode.DUTCH && endPrice >= safeStart) {
-            Texts.send(player, "&cDutch end price must be lower than the start price.")
+            Texts.sendKey(player, "@auction.errors.dutch-end-lower-than-start")
             return
         }
         val deposit = listingFee(safeStart, settings.depositMode, settings.depositValue).takeIf { settings.depositEnabled } ?: 0.0
         if (deposit > 0 && !VaultEconomyBridge.isAvailable()) {
-            Texts.send(player, "&cVault economy is required for auction deposits.")
+            Texts.sendKey(player, "@auction.errors.deposit-vault-required")
             return
         }
         if (deposit > 0 && !VaultEconomyBridge.has(player, deposit)) {
-            Texts.send(player, "&cYou need &e${trimDouble(deposit)} &cto pay the listing deposit.")
+            Texts.sendKey(player, "@auction.errors.deposit-not-enough", mapOf("amount" to trimDouble(deposit)))
             return
         }
         if (deposit > 0 && !VaultEconomyBridge.withdraw(player, deposit)) {
-            Texts.send(player, "&cFailed to charge the listing deposit.")
+            Texts.sendKey(player, "@auction.errors.deposit-withdraw-failed")
             return
         }
         val listingItem = hand.clone()
@@ -361,7 +361,7 @@ object AuctionModule : MatrixModule {
         listings += listing
         AuctionRepository.saveAll(listings)
         player.updateInventory()
-        Texts.send(player, "&aAuction listed in &f${listing.shopId}&a: &f${itemDisplayName(listingItem)} &7- &e${trimDouble(safeStart)}")
+        Texts.sendKey(player, "@auction.success.listed", mapOf("shop" to listing.shopId, "name" to itemDisplayName(listingItem), "price" to trimDouble(safeStart)))
         if (settings.recordWriteOnCreate) {
             RecordService.append(
                 module = "auction",
@@ -386,11 +386,11 @@ object AuctionModule : MatrixModule {
         val listings = AuctionRepository.loadAll().toMutableList()
         val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
         if (listing == null) {
-            Texts.send(player, "&cAuction listing not found.")
+            Texts.sendKey(player, "@auction.errors.listing-not-found")
             return
         }
         if (listing.ownerId == player.uniqueId) {
-            Texts.send(player, "&cYou cannot bid on your own auction.")
+            Texts.sendKey(player, "@auction.errors.bid-own")
             return
         }
         if (listing.mode == AuctionMode.DUTCH) {
@@ -400,19 +400,19 @@ object AuctionModule : MatrixModule {
         val offered = amount ?: nextMinimumBid(listing)
         val minimum = nextMinimumBid(listing)
         if (offered < minimum) {
-            Texts.send(player, "&cYour bid must be at least &e${trimDouble(minimum)}&c.")
+            Texts.sendKey(player, "@auction.errors.bid-too-low", mapOf("amount" to trimDouble(minimum)))
             return
         }
         if (!VaultEconomyBridge.isAvailable()) {
-            Texts.send(player, "&cVault economy is required for auction bidding.")
+            Texts.sendKey(player, "@auction.errors.bid-vault-required")
             return
         }
         if (!VaultEconomyBridge.has(player, offered)) {
-            Texts.send(player, "&cYou do not have enough balance for this bid.")
+            Texts.sendKey(player, "@auction.errors.bid-balance-not-enough")
             return
         }
         if (!VaultEconomyBridge.withdraw(player, offered)) {
-            Texts.send(player, "&cFailed to reserve your bid money.")
+            Texts.sendKey(player, "@auction.errors.bid-withdraw-failed")
             return
         }
         refundPreviousBidder(listing)
@@ -422,9 +422,9 @@ object AuctionModule : MatrixModule {
         listing.bidHistory += AuctionBidEntry(player.uniqueId, player.name, offered, System.currentTimeMillis())
         applySnipeProtection(listing)
         AuctionRepository.saveAll(listings)
-        Texts.send(player, "&aBid placed successfully at &e${trimDouble(offered)}&a.")
+        Texts.sendKey(player, "@auction.success.bid-placed", mapOf("amount" to trimDouble(offered)))
         Bukkit.getPlayer(listing.ownerId)?.let {
-            Texts.send(it, "&e${player.name} placed a bid on your auction &f${listing.id}&e.")
+            Texts.sendKey(it, "@auction.notify.bid-received", mapOf("player" to player.name, "listing" to listing.id))
         }
         if (settings.recordWriteOnBid) {
             RecordService.append(
@@ -451,35 +451,35 @@ object AuctionModule : MatrixModule {
         val listings = AuctionRepository.loadAll().toMutableList()
         val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
         if (listing == null) {
-            Texts.send(player, "&cAuction listing not found.")
+            Texts.sendKey(player, "@auction.errors.listing-not-found")
             return
         }
         if (listing.ownerId == player.uniqueId) {
-            Texts.send(player, "&cYou cannot buy your own auction.")
+            Texts.sendKey(player, "@auction.errors.buy-own")
             return
         }
         val price = when (listing.mode) {
             AuctionMode.DUTCH -> currentDutchPrice(listing)
             AuctionMode.ENGLISH -> listing.buyoutPrice.takeIf { it > 0 } ?: run {
-                Texts.send(player, "&cThis auction has no buyout price.")
+                Texts.sendKey(player, "@auction.errors.no-buyout")
                 return
             }
         }
         if (!VaultEconomyBridge.isAvailable()) {
-            Texts.send(player, "&cVault economy is required for auction purchases.")
+            Texts.sendKey(player, "@auction.errors.buyout-vault-required")
             return
         }
         if (!VaultEconomyBridge.has(player, price)) {
-            Texts.send(player, "&cYou do not have enough balance.")
+            Texts.sendKey(player, "@auction.errors.buyout-balance-not-enough")
             return
         }
         if (!VaultEconomyBridge.withdraw(player, price)) {
-            Texts.send(player, "&cFailed to charge the auction price.")
+            Texts.sendKey(player, "@auction.errors.buyout-withdraw-failed")
             return
         }
         refundPreviousBidder(listing)
         completeSale(listing, player.uniqueId, player.name, price, listings, if (listing.mode == AuctionMode.DUTCH) "dutch" else "buyout")
-        Texts.send(player, "&aAuction purchased for &e${trimDouble(price)}&a.")
+        Texts.sendKey(player, "@auction.success.purchased", mapOf("price" to trimDouble(price)))
     }
 
     fun remove(player: Player, listingId: String) {
@@ -495,19 +495,19 @@ object AuctionModule : MatrixModule {
         val listings = AuctionRepository.loadAll().toMutableList()
         val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
         if (listing == null) {
-            Texts.send(player, "&cAuction listing not found.")
+            Texts.sendKey(player, "@auction.errors.listing-not-found")
             return
         }
         if (listing.ownerId != player.uniqueId) {
-            Texts.send(player, "&cYou can only remove your own listings.")
+            Texts.sendKey(player, "@auction.errors.remove-not-owner")
             return
         }
         if (!settings.ownerCancelAllow) {
-            Texts.send(player, "&cOwner cancel is disabled on this server.")
+            Texts.sendKey(player, "@auction.errors.owner-cancel-disabled")
             return
         }
         if (settings.ownerCancelDenyIfHasBid && listing.highestBidderId != null) {
-            Texts.send(player, "&cYou cannot remove an auction that already has bids.")
+            Texts.sendKey(player, "@auction.errors.remove-has-bids")
             return
         }
         listings.removeIf { it.id == listing.id }
@@ -519,7 +519,7 @@ object AuctionModule : MatrixModule {
         if (settings.depositRefundOnCancel && listing.depositPaid > 0) {
             deliverMoneyOrQueue(player.uniqueId, player.name, listing.depositPaid, "Cancelled auction deposit refunded for ${listing.id}.")
         }
-        Texts.send(player, "&aAuction removed and returned.")
+        Texts.sendKey(player, "@auction.success.removed")
         if (settings.recordWriteOnCancel) {
             RecordService.append(
                 module = "auction",
@@ -801,7 +801,7 @@ object AuctionModule : MatrixModule {
 
     private fun ensureReady(player: Player): Boolean {
         if (!isEnabled() || !::settings.isInitialized) {
-            Texts.send(player, "&cAuction module is disabled.")
+            Texts.sendKey(player, "@auction.errors.module-disabled")
             return false
         }
         return true

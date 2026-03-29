@@ -73,38 +73,38 @@ object TransactionModule : MatrixModule {
         }
         val resolvedName = targetName?.trim().orEmpty()
         if (resolvedName.isBlank()) {
-            Texts.send(requester, "&cUsage: ${CommandUsageContext.modulePrefix(requester, "transaction", "/trade")} request <player>")
+            Texts.sendKey(requester, "@transaction.errors.request-usage", mapOf("command" to CommandUsageContext.modulePrefix(requester, "transaction", "/trade")))
             return
         }
         cleanupExpiredRequests()
         val target = Bukkit.getPlayer(resolvedName)
         if (target == null || !target.isOnline) {
-            Texts.send(requester, "&cTarget player is not online.")
+            Texts.sendKey(requester, "@transaction.errors.target-offline")
             return
         }
         if (target.uniqueId == requester.uniqueId) {
-            Texts.send(requester, "&cYou cannot trade with yourself.")
+            Texts.sendKey(requester, "@transaction.errors.self-trade")
             return
         }
         if (activeSession(requester.uniqueId) != null) {
-            Texts.send(requester, "&cYou already have an active trade.")
+            Texts.sendKey(requester, "@transaction.errors.active-session-self")
             return
         }
         if (activeSession(target.uniqueId) != null) {
-            Texts.send(requester, "&cThe target player already has an active trade.")
+            Texts.sendKey(requester, "@transaction.errors.active-session-target")
             return
         }
         val requests = pendingRequests.computeIfAbsent(target.uniqueId) { mutableListOf() }
         if (!settings.allowMultiPending && requests.isNotEmpty()) {
-            Texts.send(requester, "&cThe target already has a pending trade request.")
+            Texts.sendKey(requester, "@transaction.errors.pending-target")
             return
         }
         if (requests.size >= settings.maxPending) {
-            Texts.send(requester, "&cThe target already reached the maximum pending requests.")
+            Texts.sendKey(requester, "@transaction.errors.pending-limit")
             return
         }
         if (requests.any { it.requesterId == requester.uniqueId && !it.isExpired() }) {
-            Texts.send(requester, "&cYou already sent a pending request to this player.")
+            Texts.sendKey(requester, "@transaction.errors.pending-duplicate")
             return
         }
         val request = TransactionRequest(
@@ -117,8 +117,8 @@ object TransactionModule : MatrixModule {
             expireAt = System.currentTimeMillis() + settings.requestTimeoutSeconds * 1000L
         )
         requests += request
-        Texts.send(requester, "&aTrade request sent to &f${target.name}&a.")
-        Texts.send(target, "&e${requester.name} &frequested a trade with you.")
+        Texts.sendKey(requester, "@transaction.success.request-sent", mapOf("target" to target.name))
+        Texts.sendKey(target, "@transaction.notify.request-received", mapOf("requester" to requester.name))
         openRequestMenu(target, request)
     }
 
@@ -129,18 +129,18 @@ object TransactionModule : MatrixModule {
         cleanupExpiredRequests()
         val request = findRequest(target.uniqueId, requesterName)
         if (request == null) {
-            Texts.send(target, "&cNo matching trade request was found.")
+            Texts.sendKey(target, "@transaction.errors.request-not-found")
             return
         }
         val requester = Bukkit.getPlayer(request.requesterId)
         if (requester == null || !requester.isOnline) {
             removeRequest(request)
-            Texts.send(target, "&cThe requester is no longer online.")
+            Texts.sendKey(target, "@transaction.errors.requester-offline")
             return
         }
         if (activeSession(target.uniqueId) != null || activeSession(requester.uniqueId) != null) {
             removeRequest(request)
-            Texts.send(target, "&cOne of the players already has an active trade.")
+            Texts.sendKey(target, "@transaction.errors.session-conflict")
             return
         }
         val violation = sessionConstraintViolation(requester, target)
@@ -162,8 +162,8 @@ object TransactionModule : MatrixModule {
         sessionsById[session.id] = session
         sessionByPlayer[requester.uniqueId] = session.id
         sessionByPlayer[target.uniqueId] = session.id
-        Texts.send(requester, "&a${target.name} accepted your trade request.")
-        Texts.send(target, "&aTrade started with &f${requester.name}&a.")
+        Texts.sendKey(requester, "@transaction.success.request-accepted", mapOf("target" to target.name))
+        Texts.sendKey(target, "@transaction.success.trade-started", mapOf("target" to requester.name))
         openTrade(requester, session)
         openTrade(target, session)
     }
@@ -175,13 +175,13 @@ object TransactionModule : MatrixModule {
         cleanupExpiredRequests()
         val request = findRequest(target.uniqueId, requesterName)
         if (request == null) {
-            Texts.send(target, "&cNo matching trade request was found.")
+            Texts.sendKey(target, "@transaction.errors.request-not-found")
             return
         }
         removeRequest(request)
-        Texts.send(target, "&aTrade request denied.")
+        Texts.sendKey(target, "@transaction.success.request-denied")
         Bukkit.getPlayer(request.requesterId)?.let {
-            Texts.send(it, "&c${target.name} denied your trade request.")
+            Texts.sendKey(it, "@transaction.notify.request-denied", mapOf("target" to target.name))
         }
     }
 
@@ -210,26 +210,26 @@ object TransactionModule : MatrixModule {
             return
         }
         if (!settings.allowMoney) {
-            Texts.send(player, "&cThis server disabled money offers in trade.")
+            Texts.sendKey(player, "@transaction.errors.money-disabled")
             return
         }
         val session = activeSession(player.uniqueId)
         if (session == null) {
-            Texts.send(player, "&cYou do not have an active trade.")
+            Texts.sendKey(player, "@transaction.errors.no-active-session")
             return
         }
         val safeAmount = (amount ?: 0.0).coerceAtLeast(0.0)
         if (!VaultEconomyBridge.isAvailable() && safeAmount > 0) {
-            Texts.send(player, "&cVault economy is not available.")
+            Texts.sendKey(player, "@transaction.errors.vault-required")
             return
         }
         if (safeAmount > VaultEconomyBridge.balance(player)) {
-            Texts.send(player, "&cYou do not have enough balance for this offer.")
+            Texts.sendKey(player, "@transaction.errors.money-not-enough")
             return
         }
         setMoney(session, sideOf(session, player.uniqueId), safeAmount)
         markDirty(session)
-        Texts.send(player, "&aTrade money offer updated to &e${trimDouble(safeAmount)}&a.")
+        Texts.sendKey(player, "@transaction.success.money-updated", mapOf("amount" to trimDouble(safeAmount)))
     }
 
     fun setExp(player: Player, amount: Int?) {
@@ -237,22 +237,22 @@ object TransactionModule : MatrixModule {
             return
         }
         if (!settings.allowExp) {
-            Texts.send(player, "&cThis server disabled exp offers in trade.")
+            Texts.sendKey(player, "@transaction.errors.exp-disabled")
             return
         }
         val session = activeSession(player.uniqueId)
         if (session == null) {
-            Texts.send(player, "&cYou do not have an active trade.")
+            Texts.sendKey(player, "@transaction.errors.no-active-session")
             return
         }
         val safeAmount = (amount ?: 0).coerceAtLeast(0)
         if (safeAmount > totalExperience(player)) {
-            Texts.send(player, "&cYou do not have enough experience for this offer.")
+            Texts.sendKey(player, "@transaction.errors.exp-not-enough")
             return
         }
         setExp(session, sideOf(session, player.uniqueId), safeAmount)
         markDirty(session)
-        Texts.send(player, "&aTrade exp offer updated to &f$safeAmount&a.")
+        Texts.sendKey(player, "@transaction.success.exp-updated", mapOf("amount" to safeAmount.toString()))
     }
 
     fun toggleReady(player: Player) {
@@ -261,11 +261,11 @@ object TransactionModule : MatrixModule {
         }
         val session = activeSession(player.uniqueId)
         if (session == null) {
-            Texts.send(player, "&cYou do not have an active trade.")
+            Texts.sendKey(player, "@transaction.errors.no-active-session")
             return
         }
         if (session.confirmPhase) {
-            Texts.send(player, "&cThe trade is already in confirm phase.")
+            Texts.sendKey(player, "@transaction.errors.already-confirm-phase")
             return
         }
         val side = sideOf(session, player.uniqueId)
@@ -274,9 +274,9 @@ object TransactionModule : MatrixModule {
         setConfirmed(session, TransactionSide.RIGHT, false)
         refreshSessionViews(session)
         if (session.leftReady && session.rightReady) {
-            notifyPlayers(session, "&aBoth players are ready. Click confirm to enter final confirmation.")
+            notifyPlayers(session, Texts.tr("@transaction.notify.both-ready"))
         } else {
-            notifyPlayers(session, "&eTrade ready state updated.")
+            notifyPlayers(session, Texts.tr("@transaction.notify.ready-updated"))
         }
     }
 
@@ -286,11 +286,11 @@ object TransactionModule : MatrixModule {
         }
         val session = activeSession(player.uniqueId)
         if (session == null) {
-            Texts.send(player, "&cYou do not have an active trade.")
+            Texts.sendKey(player, "@transaction.errors.no-active-session")
             return
         }
         if (!session.leftReady || !session.rightReady) {
-            Texts.send(player, "&cBoth players must be ready before final confirmation.")
+            Texts.sendKey(player, "@transaction.errors.confirm-requires-ready")
             return
         }
         if (!session.confirmPhase && !submit) {
@@ -308,9 +308,9 @@ object TransactionModule : MatrixModule {
         if (session.leftConfirmed && session.rightConfirmed) {
             completeSession(session)
         } else {
-            Texts.send(player, "&aYour confirmation was submitted. Waiting for the other player.")
+            Texts.sendKey(player, "@transaction.success.confirm-submitted")
             Bukkit.getPlayer(otherId(session, player.uniqueId))?.let {
-                Texts.send(it, "&e${player.name} confirmed the trade. Submit yours to finish.")
+                Texts.sendKey(it, "@transaction.notify.confirm-submitted", mapOf("player" to player.name))
             }
             openConfirm(player, session)
         }
@@ -319,10 +319,10 @@ object TransactionModule : MatrixModule {
     fun cancel(player: Player) {
         val session = activeSession(player.uniqueId)
         if (session == null) {
-            Texts.send(player, "&cYou do not have an active trade.")
+            Texts.sendKey(player, "@transaction.errors.no-active-session")
             return
         }
-        cancelSession(session, "&c${player.name} cancelled the trade.", true)
+        cancelSession(session, Texts.tr("@transaction.notify.cancelled-by-player", mapOf("player" to player.name)), true)
     }
 
     fun openLogs(player: Player) {
@@ -409,7 +409,7 @@ object TransactionModule : MatrixModule {
             return
         }
         if (event.clickedInventory == player.inventory) {
-            Texts.send(player, "&7Shift-click an item to add it to the trade.")
+            Texts.sendKey(player, "@transaction.hints.shift-add-item")
         }
     }
 
@@ -424,7 +424,7 @@ object TransactionModule : MatrixModule {
             return
         }
         activeSession(player.uniqueId)?.let {
-            cancelSession(it, "&cTrade cancelled because one player took damage.", true)
+            cancelSession(it, Texts.tr("@transaction.notify.cancelled-damage"), true)
         }
     }
 
@@ -433,7 +433,7 @@ object TransactionModule : MatrixModule {
             return
         }
         activeSession(player.uniqueId)?.let {
-            cancelSession(it, "&cTrade cancelled because one player died.", true)
+            cancelSession(it, Texts.tr("@transaction.notify.cancelled-death"), true)
         }
     }
 
@@ -442,7 +442,7 @@ object TransactionModule : MatrixModule {
             return
         }
         activeSession(player.uniqueId)?.let {
-            cancelSession(it, "&cTrade cancelled because one player left the server.", true)
+            cancelSession(it, Texts.tr("@transaction.notify.cancelled-quit"), true)
         }
     }
 
@@ -451,7 +451,7 @@ object TransactionModule : MatrixModule {
             return
         }
         activeSession(player.uniqueId)?.let {
-            cancelSession(it, "&cTrade cancelled because one player changed world.", true)
+            cancelSession(it, Texts.tr("@transaction.notify.cancelled-world-change"), true)
         }
     }
 
@@ -488,7 +488,7 @@ object TransactionModule : MatrixModule {
                     holder.handlers[slot] = {
                         val session = activeSession(player.uniqueId)
                         if (session == null) {
-                            Texts.send(player, "&cYou do not have an active trade.")
+                            Texts.sendKey(player, "@transaction.errors.no-active-session")
                         } else if (session.confirmPhase) {
                             openConfirm(player, session)
                         } else {
@@ -611,21 +611,21 @@ object TransactionModule : MatrixModule {
 
     private fun addOfferFromInventory(player: Player, session: TransactionSession, inventorySlot: Int, current: ItemStack) {
         if (!settings.allowItems) {
-            Texts.send(player, "&cThis server disabled item offers in trade.")
+            Texts.sendKey(player, "@transaction.errors.items-disabled")
             return
         }
         val side = sideOf(session, player.uniqueId)
         val offers = offersOf(session, side)
         val freeIndex = offers.indexOfFirst { it == null || it.type == Material.AIR }
         if (freeIndex == -1) {
-            Texts.send(player, "&cYour trade offer slots are full.")
+            Texts.sendKey(player, "@transaction.errors.offer-slots-full")
             return
         }
         offers[freeIndex] = current.clone()
         player.inventory.setItem(inventorySlot, ItemStack(Material.AIR))
         player.updateInventory()
         markDirty(session)
-        notifyPlayers(session, "&e${player.name} updated the offered items.")
+        notifyPlayers(session, Texts.tr("@transaction.notify.offers-updated", mapOf("player" to player.name)))
     }
 
     private fun returnOffer(player: Player, session: TransactionSession, offerIndex: Int) {
@@ -636,14 +636,14 @@ object TransactionModule : MatrixModule {
         returnItem(player, item)
         player.updateInventory()
         markDirty(session)
-        notifyPlayers(session, "&e${player.name} updated the offered items.")
+        notifyPlayers(session, Texts.tr("@transaction.notify.offers-updated", mapOf("player" to player.name)))
     }
 
     private fun completeSession(session: TransactionSession) {
         val left = Bukkit.getPlayer(session.leftId)
         val right = Bukkit.getPlayer(session.rightId)
         if (left == null || right == null || !left.isOnline || !right.isOnline) {
-            cancelSession(session, "&cTrade cancelled because one player is offline.", true)
+            cancelSession(session, Texts.tr("@transaction.notify.cancelled-offline"), true)
             return
         }
         val violation = sessionConstraintViolation(left, right)
@@ -659,28 +659,28 @@ object TransactionModule : MatrixModule {
         val rightIncoming = offeredItems(session.leftOffers)
         if (!canFit(left.inventory.contents.filterNotNull(), leftIncoming)) {
             markDirty(session)
-            notifyPlayers(session, "&c${left.name} does not have enough inventory space.")
+            notifyPlayers(session, Texts.tr("@transaction.notify.inventory-no-space", mapOf("player" to left.name)))
             openTrade(left, session)
             openTrade(right, session)
             return
         }
         if (!canFit(right.inventory.contents.filterNotNull(), rightIncoming)) {
             markDirty(session)
-            notifyPlayers(session, "&c${right.name} does not have enough inventory space.")
+            notifyPlayers(session, Texts.tr("@transaction.notify.inventory-no-space", mapOf("player" to right.name)))
             openTrade(left, session)
             openTrade(right, session)
             return
         }
         if (settings.allowMoney && (session.leftMoney > 0 || session.rightMoney > 0) && !VaultEconomyBridge.isAvailable()) {
             markDirty(session)
-            notifyPlayers(session, "&cVault economy is not available.")
+            notifyPlayers(session, Texts.tr("@transaction.errors.vault-required"))
             openTrade(left, session)
             openTrade(right, session)
             return
         }
         if (session.leftMoney > VaultEconomyBridge.balance(left) || session.rightMoney > VaultEconomyBridge.balance(right)) {
             markDirty(session)
-            notifyPlayers(session, "&cOne player does not have enough balance anymore.")
+            notifyPlayers(session, Texts.tr("@transaction.notify.balance-invalid"))
             openTrade(left, session)
             openTrade(right, session)
             return
@@ -689,7 +689,7 @@ object TransactionModule : MatrixModule {
         val rightOriginalExp = totalExperience(right)
         if (session.leftExp > leftOriginalExp || session.rightExp > rightOriginalExp) {
             markDirty(session)
-            notifyPlayers(session, "&cOne player does not have enough experience anymore.")
+            notifyPlayers(session, Texts.tr("@transaction.notify.exp-invalid"))
             openTrade(left, session)
             openTrade(right, session)
             return
@@ -701,7 +701,7 @@ object TransactionModule : MatrixModule {
         if (session.leftMoney > 0) {
             if (!VaultEconomyBridge.withdraw(left, session.leftMoney)) {
                 markDirty(session)
-                notifyPlayers(session, "&cFailed to withdraw ${left.name}'s money offer.")
+                notifyPlayers(session, Texts.tr("@transaction.notify.withdraw-failed", mapOf("player" to left.name)))
                 openTrade(left, session)
                 openTrade(right, session)
                 return
@@ -714,7 +714,7 @@ object TransactionModule : MatrixModule {
                     VaultEconomyBridge.deposit(left, session.leftMoney)
                 }
                 markDirty(session)
-                notifyPlayers(session, "&cFailed to withdraw ${right.name}'s money offer.")
+                notifyPlayers(session, Texts.tr("@transaction.notify.withdraw-failed", mapOf("player" to right.name)))
                 openTrade(left, session)
                 openTrade(right, session)
                 return
@@ -725,7 +725,7 @@ object TransactionModule : MatrixModule {
             if (!VaultEconomyBridge.deposit(left, session.rightMoney)) {
                 rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeft, depositedRight)
                 markDirty(session)
-                notifyPlayers(session, "&cFailed to deposit ${right.name}'s money offer.")
+                notifyPlayers(session, Texts.tr("@transaction.notify.deposit-failed", mapOf("player" to right.name)))
                 openTrade(left, session)
                 openTrade(right, session)
                 return
@@ -736,7 +736,7 @@ object TransactionModule : MatrixModule {
             if (!VaultEconomyBridge.deposit(right, session.leftMoney)) {
                 rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeft, depositedRight)
                 markDirty(session)
-                notifyPlayers(session, "&cFailed to deposit ${left.name}'s money offer.")
+                notifyPlayers(session, Texts.tr("@transaction.notify.deposit-failed", mapOf("player" to left.name)))
                 openTrade(left, session)
                 openTrade(right, session)
                 return
@@ -755,8 +755,8 @@ object TransactionModule : MatrixModule {
         left.closeInventory()
         right.closeInventory()
         removeSession(session)
-        Texts.send(left, "&aTrade completed successfully with &f${right.name}&a.")
-        Texts.send(right, "&aTrade completed successfully with &f${left.name}&a.")
+        Texts.sendKey(left, "@transaction.success.completed", mapOf("target" to right.name))
+        Texts.sendKey(right, "@transaction.success.completed", mapOf("target" to left.name))
     }
 
     private fun rollbackMoney(
@@ -848,11 +848,11 @@ object TransactionModule : MatrixModule {
         session.confirmPhase = false
         if (wasConfirm) {
             Bukkit.getPlayer(session.leftId)?.let {
-                Texts.send(it, "&eTrade changed, returning to the trade view.")
+                Texts.sendKey(it, "@transaction.notify.changed-return-trade")
                 openTrade(it, session)
             }
             Bukkit.getPlayer(session.rightId)?.let {
-                Texts.send(it, "&eTrade changed, returning to the trade view.")
+                Texts.sendKey(it, "@transaction.notify.changed-return-trade")
                 openTrade(it, session)
             }
         } else {
@@ -877,7 +877,7 @@ object TransactionModule : MatrixModule {
 
     private fun ensureReady(player: Player): Boolean {
         if (!isEnabled() || !::settings.isInitialized) {
-            Texts.send(player, "&cTransaction module is disabled.")
+            Texts.sendKey(player, "@transaction.errors.module-disabled")
             return false
         }
         return true
@@ -921,10 +921,10 @@ object TransactionModule : MatrixModule {
 
     private fun sessionConstraintViolation(first: Player, second: Player): String? {
         if (settings.sameWorldOnly && first.world.name != second.world.name) {
-            return "&cBoth players must be in the same world to trade."
+            return Texts.tr("@transaction.errors.same-world-required")
         }
         if (first.location.distance(second.location) > settings.maxDistance) {
-            return "&cPlayers are too far apart to trade."
+            return Texts.tr("@transaction.errors.too-far")
         }
         return null
     }

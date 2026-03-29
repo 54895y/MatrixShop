@@ -5,9 +5,9 @@ messages:
 
 console:
   boot:
-    headline: "正在加载商业模块"
+    headline: "正在加载 MatrixShop"
     scope-label: "功能范围"
-    scope-value: "系统商店 / 玩家市场 / 拍卖行 / 交易"
+    scope-value: "系统商店 / 玩家商店 / 全球市场 / 拍卖 / 箱子商店 / 交易 / 购物车 / 交易记录"
   ready:
     backend-label: "数据后端"
     economy-label: "经济系统"
@@ -159,6 +159,42 @@ system-shop:
   success:
     purchase: "&a购买成功: &f{name} &7x&f{amount} &7- &e{total}"
 
+auction:
+  errors:
+    listing-not-found: "&c未找到对应的拍卖条目。"
+    dutch-no-bid-menu: "&c荷兰式拍卖不支持出价菜单，请直接购买当前价格。"
+    upload-usage: "&c用法: &f{command} upload <english|dutch> <起拍价> [一口价|结束价] [持续秒数]"
+    hold-item: "&c请将要上架的物品拿在主手。"
+    max-active: "&c你当前已达到拍卖上架数量上限。"
+    english-min-start: "&c英式拍卖的起拍价低于最低要求。"
+    dutch-min-start: "&c荷兰式拍卖的起拍价低于最低要求。"
+    buyout-higher-than-start: "&c一口价必须高于起拍价。"
+    dutch-end-lower-than-start: "&c荷兰式拍卖的结束价必须低于起拍价。"
+    deposit-vault-required: "&c拍卖保证金需要 Vault 经济支持。"
+    deposit-not-enough: "&c你的余额不足，无法支付保证金 &e{amount}&c。"
+    deposit-withdraw-failed: "&c扣除拍卖保证金失败。"
+    bid-own: "&c你不能对自己的拍卖出价。"
+    bid-too-low: "&c出价不得低于 &e{amount}&c。"
+    bid-vault-required: "&c拍卖出价需要 Vault 经济支持。"
+    bid-balance-not-enough: "&c你的余额不足，无法完成本次出价。"
+    bid-withdraw-failed: "&c冻结出价金额失败。"
+    buy-own: "&c你不能购买自己的拍卖。"
+    no-buyout: "&c该拍卖未设置一口价。"
+    buyout-vault-required: "&c拍卖购买需要 Vault 经济支持。"
+    buyout-balance-not-enough: "&c你的余额不足，无法购买该拍卖。"
+    buyout-withdraw-failed: "&c扣除拍卖金额失败。"
+    remove-not-owner: "&c你只能下架自己的拍卖。"
+    owner-cancel-disabled: "&c当前服务器未启用卖家主动下架。"
+    remove-has-bids: "&c该拍卖已有出价，无法下架。"
+    module-disabled: "&c拍卖模块当前不可用。"
+  success:
+    listed: "&a已在 &f{shop} &a上架拍卖: &f{name} &7- &e{price}"
+    bid-placed: "&a出价成功，当前出价为 &e{amount}&a。"
+    purchased: "&a拍卖购买成功，成交价 &e{price}&a。"
+    removed: "&a已下架拍卖并返还物品。"
+  notify:
+    bid-received: "&e{player} &f对你的拍卖 &f{listing} &f进行了出价。"
+
 global-market:
   errors:
     price-positive: "&c价格必须大于 0。"
@@ -215,6 +251,63 @@ player-shop:
     left-remove: "&c左键移除"
   hints:
     upload-command: "&7使用 {command} 上架主手物品。"
+
+transaction:
+  errors:
+    request-usage: "&c用法: &f{command} request <玩家>"
+    target-offline: "&c目标玩家当前不在线。"
+    self-trade: "&c你不能向自己发起交易。"
+    active-session-self: "&c你当前已有进行中的交易。"
+    active-session-target: "&c目标玩家当前已有进行中的交易。"
+    pending-target: "&c目标玩家当前已有待处理的交易请求。"
+    pending-limit: "&c目标玩家的待处理请求数量已达上限。"
+    pending-duplicate: "&c你已向该玩家发送过待处理请求。"
+    request-not-found: "&c未找到匹配的交易请求。"
+    requester-offline: "&c请求发起者当前不在线。"
+    session-conflict: "&c其中一方当前已有进行中的交易。"
+    money-disabled: "&c当前服务器未启用金币报价。"
+    exp-disabled: "&c当前服务器未启用经验报价。"
+    items-disabled: "&c当前服务器未启用物品报价。"
+    no-active-session: "&c当前没有进行中的交易。"
+    vault-required: "&c当前未接入 Vault 经济。"
+    money-not-enough: "&c你的余额不足，无法设置该报价。"
+    exp-not-enough: "&c你的经验不足，无法设置该报价。"
+    already-confirm-phase: "&c当前交易已进入最终确认阶段。"
+    confirm-requires-ready: "&c双方都准备完成后才能进入最终确认。"
+    offer-slots-full: "&c你的报价栏位已满。"
+    module-disabled: "&c交易模块当前不可用。"
+    same-world-required: "&c双方必须位于同一世界才能交易。"
+    too-far: "&c双方距离过远，无法发起交易。"
+  success:
+    request-sent: "&a已向 &f{target} &a发送交易请求。"
+    request-accepted: "&a&f{target} &a已接受你的交易请求。"
+    trade-started: "&a已与 &f{target} &a开始交易。"
+    request-denied: "&a已拒绝该交易请求。"
+    money-updated: "&a金币报价已更新为 &e{amount}&a。"
+    exp-updated: "&a经验报价已更新为 &f{amount}&a。"
+    confirm-submitted: "&a已提交确认，正在等待对方确认。"
+    completed: "&a已与 &f{target} &a完成交易。"
+  notify:
+    request-received: "&e{requester} &f向你发起了交易请求。"
+    request-denied: "&c{target} &f已拒绝你的交易请求。"
+    both-ready: "&a双方已准备完成，点击确认即可进入最终确认。"
+    ready-updated: "&e交易准备状态已更新。"
+    confirm-submitted: "&e{player} &f已确认本次交易，请提交你的确认以完成交易。"
+    offers-updated: "&e{player} &f更新了交易报价。"
+    cancelled-by-player: "&c{player} 已取消本次交易。"
+    cancelled-damage: "&c交易已取消：一方受到伤害。"
+    cancelled-death: "&c交易已取消：一方已死亡。"
+    cancelled-quit: "&c交易已取消：一方已离开服务器。"
+    cancelled-world-change: "&c交易已取消：一方切换了世界。"
+    cancelled-offline: "&c交易已取消：一方当前不在线。"
+    inventory-no-space: "&c{player} 的背包空间不足。"
+    balance-invalid: "&c其中一方的余额已不足。"
+    exp-invalid: "&c其中一方的经验已不足。"
+    withdraw-failed: "&c无法扣除 {player} 的报价金额。"
+    deposit-failed: "&c无法发放 {player} 的报价金额。"
+    changed-return-trade: "&e交易内容已变更，已返回交易界面。"
+  hints:
+    shift-add-item: "&7Shift + 点击物品可将其加入交易。"
 
 cart:
   errors:

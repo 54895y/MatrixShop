@@ -5,9 +5,9 @@ messages:
 
 console:
   boot:
-    headline: "Loading commerce modules"
+    headline: "Loading MatrixShop"
     scope-label: "Scope"
-    scope-value: "SystemShop / Player Market / Auction / Trade"
+    scope-value: "SystemShop / PlayerShop / GlobalMarket / Auction / ChestShop / Trade / Cart / Records"
   ready:
     backend-label: "Data Backend"
     economy-label: "Economy"
@@ -159,6 +159,42 @@ system-shop:
   success:
     purchase: "&aPurchase complete: &f{name} &7x&f{amount} &7- &e{total}"
 
+auction:
+  errors:
+    listing-not-found: "&cThe auction listing was not found."
+    dutch-no-bid-menu: "&cDutch auctions do not use the bid menu. Purchase the current price instead."
+    upload-usage: "&cUsage: &f{command} upload <english|dutch> <start-price> [buyout|end-price] [duration-seconds]"
+    hold-item: "&cHold the item you want to list in your main hand."
+    max-active: "&cYou have reached the maximum number of active auction listings."
+    english-min-start: "&cThe start price is below the minimum for English auctions."
+    dutch-min-start: "&cThe start price is below the minimum for Dutch auctions."
+    buyout-higher-than-start: "&cThe buyout price must be higher than the start price."
+    dutch-end-lower-than-start: "&cThe Dutch end price must be lower than the start price."
+    deposit-vault-required: "&cVault economy is required for auction deposits."
+    deposit-not-enough: "&cYou do not have enough balance to pay the deposit &e{amount}&c."
+    deposit-withdraw-failed: "&cFailed to charge the auction deposit."
+    bid-own: "&cYou cannot bid on your own auction."
+    bid-too-low: "&cYour bid must be at least &e{amount}&c."
+    bid-vault-required: "&cVault economy is required for auction bidding."
+    bid-balance-not-enough: "&cYou do not have enough balance for this bid."
+    bid-withdraw-failed: "&cFailed to reserve the bid amount."
+    buy-own: "&cYou cannot purchase your own auction."
+    no-buyout: "&cThis auction does not have a buyout price."
+    buyout-vault-required: "&cVault economy is required for auction purchases."
+    buyout-balance-not-enough: "&cYou do not have enough balance for this purchase."
+    buyout-withdraw-failed: "&cFailed to charge the auction price."
+    remove-not-owner: "&cYou can only remove your own auctions."
+    owner-cancel-disabled: "&cSeller cancel is disabled on this server."
+    remove-has-bids: "&cThis auction already has bids and cannot be removed."
+    module-disabled: "&cThe auction module is currently unavailable."
+  success:
+    listed: "&aAuction listed in &f{shop}&a: &f{name} &7- &e{price}"
+    bid-placed: "&aBid placed successfully at &e{amount}&a."
+    purchased: "&aAuction purchased for &e{price}&a."
+    removed: "&aAuction removed and returned."
+  notify:
+    bid-received: "&e{player} &fplaced a bid on your auction &f{listing}&f."
+
 global-market:
   errors:
     price-positive: "&cPrice must be greater than 0."
@@ -215,6 +251,63 @@ player-shop:
     left-remove: "&cLeft click to remove"
   hints:
     upload-command: "&7Use {command} to list the item in your main hand."
+
+transaction:
+  errors:
+    request-usage: "&cUsage: &f{command} request <player>"
+    target-offline: "&cThe target player is not online."
+    self-trade: "&cYou cannot trade with yourself."
+    active-session-self: "&cYou already have an active trade."
+    active-session-target: "&cThe target player already has an active trade."
+    pending-target: "&cThe target player already has a pending trade request."
+    pending-limit: "&cThe target player has reached the maximum number of pending requests."
+    pending-duplicate: "&cYou have already sent a pending request to this player."
+    request-not-found: "&cNo matching trade request was found."
+    requester-offline: "&cThe requester is no longer online."
+    session-conflict: "&cOne of the players already has an active trade."
+    money-disabled: "&cMoney offers are disabled on this server."
+    exp-disabled: "&cExperience offers are disabled on this server."
+    items-disabled: "&cItem offers are disabled on this server."
+    no-active-session: "&cYou do not have an active trade."
+    vault-required: "&cVault economy is not available."
+    money-not-enough: "&cYou do not have enough balance for this offer."
+    exp-not-enough: "&cYou do not have enough experience for this offer."
+    already-confirm-phase: "&cThis trade is already in the final confirmation stage."
+    confirm-requires-ready: "&cBoth players must be ready before final confirmation."
+    offer-slots-full: "&cYour offer slots are full."
+    module-disabled: "&cThe trade module is currently unavailable."
+    same-world-required: "&cBoth players must be in the same world to trade."
+    too-far: "&cThe players are too far apart to trade."
+  success:
+    request-sent: "&aTrade request sent to &f{target}&a."
+    request-accepted: "&a{target} accepted your trade request."
+    trade-started: "&aTrade started with &f{target}&a."
+    request-denied: "&aTrade request denied."
+    money-updated: "&aMoney offer updated to &e{amount}&a."
+    exp-updated: "&aExperience offer updated to &f{amount}&a."
+    confirm-submitted: "&aConfirmation submitted. Waiting for the other player."
+    completed: "&aTrade completed with &f{target}&a."
+  notify:
+    request-received: "&e{requester} &fhas sent you a trade request."
+    request-denied: "&c{target} &fdenied your trade request."
+    both-ready: "&aBoth players are ready. Click confirm to enter final confirmation."
+    ready-updated: "&eTrade ready state updated."
+    confirm-submitted: "&e{player} &fconfirmed the trade. Submit yours to finish."
+    offers-updated: "&e{player} &fupdated the trade offers."
+    cancelled-by-player: "&c{player} cancelled the trade."
+    cancelled-damage: "&cTrade cancelled because one player took damage."
+    cancelled-death: "&cTrade cancelled because one player died."
+    cancelled-quit: "&cTrade cancelled because one player left the server."
+    cancelled-world-change: "&cTrade cancelled because one player changed world."
+    cancelled-offline: "&cTrade cancelled because one player is offline."
+    inventory-no-space: "&c{player} does not have enough inventory space."
+    balance-invalid: "&cOne player no longer has enough balance."
+    exp-invalid: "&cOne player no longer has enough experience."
+    withdraw-failed: "&cFailed to withdraw {player}'s offer amount."
+    deposit-failed: "&cFailed to deliver {player}'s offer amount."
+    changed-return-trade: "&eThe trade changed. Returning to the trade view."
+  hints:
+    shift-add-item: "&7Shift-click an item to add it to the trade."
 
 cart:
   errors:

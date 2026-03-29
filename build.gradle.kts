@@ -18,6 +18,9 @@ taboolib {
     description {
         name = "MatrixShop"
         bukkitApi("1.12")
+        contributors {
+            name("54895y")
+        }
         dependencies {
             name("MatrixLib")
         }
