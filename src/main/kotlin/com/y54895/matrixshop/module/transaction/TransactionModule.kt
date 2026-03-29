@@ -1111,7 +1111,7 @@ object TransactionModule : MatrixModule {
         return items.filterNotNull()
             .filter { it.type != Material.AIR && it.amount > 0 }
             .joinToString("|") { "${it.type.name}:${it.amount}" }
-            .ifBlank { "none" }
+            .ifBlank { Texts.tr("@transaction.words.none") }
     }
 
     private fun nextSessionId(): String {

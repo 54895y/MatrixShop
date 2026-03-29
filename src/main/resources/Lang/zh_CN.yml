@@ -415,6 +415,7 @@ transaction:
   words:
     ready: "已准备"
     not-ready: "未准备"
+    none: "无"
 
 cart:
   errors:

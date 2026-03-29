@@ -415,6 +415,7 @@ transaction:
   words:
     ready: "Ready"
     not-ready: "Not Ready"
+    none: "None"
 
 cart:
   errors:
