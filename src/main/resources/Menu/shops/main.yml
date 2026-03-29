@@ -8,7 +8,7 @@ Bindings:
     Priority: 100
 
 Title:
-  - '&8MatrixShop Menu &7{shop-id}'
+  - '&8MatrixShop 菜单 &7{shop-id}'
 
 layout:
   - '#########'
@@ -23,63 +23,63 @@ icons:
     name: ' '
   'S':
     material: 'DIAMOND'
-    name: '&bSystem Shop'
+    name: '&b系统商店'
     lore:
-      - '&7Open the default system shop'
+      - '&7打开默认系统商店'
     actions:
       left:
         - 'matrixshop open systemshop:weapon'
   'P':
     material: 'CHEST'
-    name: '&aPlayer Shop'
+    name: '&a玩家商店'
     lore:
-      - '&7Open your player shop'
+      - '&7打开你的玩家商店'
     actions:
       left:
         - 'matrixshop open playershop:default'
   'G':
     material: 'ENDER_CHEST'
-    name: '&6Global Market'
+    name: '&6全球市场'
     lore:
-      - '&7Open the global market'
+      - '&7打开全球市场'
     actions:
       left:
         - 'matrixshop open globalmarket:default'
   'A':
     material: 'GOLD_INGOT'
-    name: '&eAuction'
+    name: '&e拍卖行'
     lore:
-      - '&7Open the auction hall'
+      - '&7打开拍卖大厅'
     actions:
       left:
         - 'matrixshop open auction:default'
   'T':
     material: 'NAME_TAG'
-    name: '&dTrade'
+    name: '&d交易'
     lore:
-      - '&7Open the trade hub'
+      - '&7打开交易中心'
     actions:
       left:
         - 'matrixshop open transaction:default'
   'C':
     material: 'MINECART'
-    name: '&fCart'
+    name: '&f购物车'
     lore:
-      - '&7Open your shopping cart'
+      - '&7打开你的购物车'
     actions:
       left:
-        - 'matrixshop open cart:cart'
+        - 'matrixshop cart open'
   'R':
     material: 'BOOK'
-    name: '&fRecord'
+    name: '&f账本'
     lore:
-      - '&7Open your ledger'
+      - '&7打开交易记录'
     actions:
       left:
-        - 'matrixshop open record:record'
+        - 'matrixshop record open'
   'X':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'

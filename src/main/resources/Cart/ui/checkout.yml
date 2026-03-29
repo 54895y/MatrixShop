@@ -1,5 +1,5 @@
 Title:
-  - '&8Cart Checkout &7{page}/{max-page}'
+  - '&8购物车结算 &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -18,40 +18,40 @@ icons:
     mode: 'checkout'
   'S':
     material: 'PAPER'
-    name: '&fCheckout Summary'
+    name: '&f结算概览'
     lore:
-      - '&7Valid entries: &f{valid-size}'
-      - '&7Invalid entries: &f{invalid-size}'
-      - '&7Auction watch: &f{auction-watch-size}'
-      - '&7Final total: &e{final-total}'
+      - '&7有效条目: &f{valid-size}'
+      - '&7失效条目: &f{invalid-size}'
+      - '&7拍卖关注: &f{auction-watch-size}'
+      - '&7最终总价: &e{final-total}'
   'I':
     material: 'BOOK'
-    name: '&fCheckout Mode'
+    name: '&f结算模式'
     lore:
-      - '&7Mode: &f{checkout-mode}'
-      - '&7Source filter: &f{source-filter}'
+      - '&7模式: &f{checkout-mode}'
+      - '&7来源过滤: &f{source-filter}'
   'F':
     material: 'HOPPER'
-    name: '&eReview Conflicts'
+    name: '&e查看冲突'
   'C':
     material: 'LIME_WOOL'
-    name: '&aConfirm Checkout'
+    name: '&a确认结算'
   'R':
     material: 'BARRIER'
-    name: '&cBack to Cart'
+    name: '&c返回购物车'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'
 
 template:
   name: '&f{name}'
   lore:
-    - '&7Source: &f{source-module}'
-    - '&7Snapshot price: &e{snapshot-price} {currency}'
-    - '&7Current price: &6{current-price} {currency}'
-    - '&7Amount: &f{amount}'
-    - '&7State: &f{state}'
-    - '&7Reason: &f{reason}'
+    - '&7来源: &f{source-module}'
+    - '&7快照价格: &e{snapshot-price} {currency}'
+    - '&7当前价格: &6{current-price} {currency}'
+    - '&7数量: &f{amount}'
+    - '&7状态: &f{state}'
+    - '&7原因: &f{reason}'

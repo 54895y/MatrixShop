@@ -1,5 +1,5 @@
 Title:
-  - '&8Income Stats &7{page}/{max-page}'
+  - '&8收入统计 &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -17,19 +17,19 @@ icons:
     mode: 'goods'
   'T':
     material: 'EMERALD'
-    name: '&aIncome Summary'
+    name: '&a收入概览'
     lore:
-      - '&7Total income: &a{total}'
-      - '&7Entries: &f{count}'
+      - '&7总收入: &a{total}'
+      - '&7条目数: &f{count}'
   'L':
     material: 'BOOK'
-    name: '&fBack to Ledger'
+    name: '&f返回账本'
   'X':
     material: 'REDSTONE'
-    name: '&cSwitch to Expense'
+    name: '&c切换到支出'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'

@@ -1,5 +1,5 @@
 Title:
-  - '&8Ledger &7{page}/{max-page}'
+  - '&8账本 &7{page}/{max-page}'
 
 Options:
   Modules:
@@ -29,47 +29,47 @@ icons:
     mode: 'records'
   'F':
     material: 'HOPPER'
-    name: '&eCycle Filter'
+    name: '&e轮换筛选'
     lore:
-      - '&7Current module filter: &f{module-filter}'
+      - '&7当前模块过滤: &f{module-filter}'
   'I':
     material: 'EMERALD'
-    name: '&aIncome'
+    name: '&a收入'
     lore:
-      - '&7Total income: &a{income-total}'
-      - '&7Open income statistics'
+      - '&7总收入: &a{income-total}'
+      - '&7打开收入统计'
   'E':
     material: 'REDSTONE'
-    name: '&cExpense'
+    name: '&c支出'
     lore:
-      - '&7Total expense: &c{expense-total}'
-      - '&7Open expense statistics'
+      - '&7总支出: &c{expense-total}'
+      - '&7打开支出统计'
   'K':
     material: 'BOOK'
-    name: '&fLedger Info'
+    name: '&f账本信息'
     lore:
-      - '&7Visible entries: &f{size}'
-      - '&7Keyword: &f{keyword}'
-      - '&7Module filter: &f{module-filter}'
-      - '&7Use {command} filter <module|all>'
+      - '&7可见条目: &f{size}'
+      - '&7关键词: &f{keyword}'
+      - '&7模块过滤: &f{module-filter}'
+      - '&7使用 {command} filter <module|all>'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'
 
 template:
   name: '&f{module} &7/ &b{type}'
   lore:
-    - '&7Time: &f{time}'
-    - '&7Money: &f{money}'
-    - '&7Note: &f{note}'
-    - '&7Reason: &f{admin_reason}'
-    - '&7Id: &f{id}'
+    - '&7时间: &f{time}'
+    - '&7金额: &f{money}'
+    - '&7备注: &f{note}'
+    - '&7原因: &f{admin_reason}'
+    - '&7编号: &f{id}'

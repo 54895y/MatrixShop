@@ -331,13 +331,10 @@ object CartModule : MatrixModule {
                 return@forEach
             }
             val result = when (entry.sourceModule.lowercase()) {
-                "system_shop" -> SystemShopModule.purchaseDirect(
-                    player,
-                    entry.metadata["category-id"].orEmpty(),
-                    entry.metadata["product-id"].orEmpty(),
-                    entry.amount,
-                    false
-                )
+                "system_shop" -> {
+                    val (categoryId, productId) = systemShopTarget(entry)
+                    SystemShopModule.purchaseDirect(player, categoryId, productId, entry.amount, false)
+                }
                 "player_shop" -> PlayerShopModule.purchaseDirect(
                     player,
                     UUID.fromString(entry.metadata["owner-id"].orEmpty()),
@@ -374,14 +371,15 @@ object CartModule : MatrixModule {
     fun validate(entry: CartEntry): CartValidation {
         return when (entry.sourceModule.lowercase()) {
             "system_shop" -> {
+                val (categoryId, productId) = systemShopTarget(entry)
                 val result = SystemShopModule.validateProduct(
-                    entry.metadata["category-id"].orEmpty(),
-                    entry.metadata["product-id"].orEmpty(),
+                    categoryId,
+                    productId,
                     entry.amount
                 )
                 val currentPrice = SystemShopModule.currentPrice(
-                    entry.metadata["category-id"].orEmpty(),
-                    entry.metadata["product-id"].orEmpty()
+                    categoryId,
+                    productId
                 )
                 if (result.success) {
                     CartValidation(true, "valid", "", "", currentPrice)
@@ -648,8 +646,10 @@ object CartModule : MatrixModule {
 
     private fun effectiveCheckoutTotal(entry: CartEntry): Double {
         return when (entry.sourceModule.lowercase()) {
-            "system_shop" -> (SystemShopModule.currentPrice(entry.metadata["category-id"].orEmpty(), entry.metadata["product-id"].orEmpty())
-                ?: entry.snapshotPrice) * entry.amount
+            "system_shop" -> {
+                val (categoryId, productId) = systemShopTarget(entry)
+                (SystemShopModule.currentPrice(categoryId, productId) ?: entry.snapshotPrice) * entry.amount
+            }
             "player_shop" -> PlayerShopModule.currentListingPrice(
                 UUID.fromString(entry.metadata["owner-id"].orEmpty()),
                 entry.metadata["owner-name"].orEmpty(),
@@ -664,6 +664,18 @@ object CartModule : MatrixModule {
 
     private fun currentEntryName(entry: CartEntry): String {
         return entry.item.itemMeta?.displayName ?: entry.name
+    }
+
+    private fun systemShopTarget(entry: CartEntry): Pair<String, String> {
+        val categoryId = entry.metadata["category-id"]
+            ?.takeIf(String::isNotBlank)
+            ?: entry.sourceId.substringBefore(':', "")
+        val productId = entry.metadata["product-id"]
+            ?.takeIf(String::isNotBlank)
+            ?: entry.sourceId.substringAfter(':', "")
+                .takeUnless { it == entry.sourceId }
+                .orEmpty()
+        return categoryId to productId
     }
 
     private fun entryStateLabel(entry: CartEntry, validation: CartValidation): String {

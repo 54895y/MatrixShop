@@ -1,5 +1,5 @@
 Title:
-  - '&8Trading - {self} -> {target}'
+  - '&8交易中 - {self} -> {target}'
 
 layout:
   - 'AAA#BBB##'
@@ -16,43 +16,43 @@ icons:
   'A':
     material: 'AIR'
     mode: 'self-offer'
-    name: '&aMy Offer'
+    name: '&a我的报价'
   'B':
     material: 'AIR'
     mode: 'target-offer'
-    name: '&bTarget Offer'
+    name: '&b对方报价'
   'M':
     material: 'GOLD_INGOT'
-    name: '&6Money Offer'
+    name: '&6金币出价'
     lore:
-      - '&7Current: &e{self-money}'
+      - '&7当前: &e{self-money}'
       - '&7{hint-money} <amount>'
-      - '&7Right click to clear'
+      - '&7右键清空'
   'E':
     material: 'EXP_BOTTLE'
-    name: '&aExp Offer'
+    name: '&a经验出价'
     lore:
-      - '&7Current: &f{self-exp}'
+      - '&7当前: &f{self-exp}'
       - '&7{hint-exp} <amount>'
-      - '&7Right click to clear'
+      - '&7右键清空'
   'T':
     material: 'PAPER'
-    name: '&fTarget Summary'
+    name: '&f对方摘要'
     lore:
-      - '&7Money: &e{target-money}'
-      - '&7Exp: &f{target-exp}'
-      - '&7Ready: &f{target-ready}'
-      - '&7Shift-click items from your inventory'
+      - '&7金币: &e{target-money}'
+      - '&7经验: &f{target-exp}'
+      - '&7已准备: &f{target-ready}'
+      - '&7Shift+点击背包物品可快速放入'
   'R':
     material: 'SLIME_BALL'
-    name: '&aReady'
+    name: '&a准备完成'
     lore:
-      - '&7Any change resets both players'
+      - '&7任何改动都会重置双方准备状态'
   'C':
     material: 'EMERALD_BLOCK'
-    name: '&aConfirm'
+    name: '&a确认'
     lore:
-      - '&7Enter final confirmation when both ready'
+      - '&7双方都准备后进入最终确认'
   'Q':
     material: 'BARRIER'
-    name: '&cCancel Trade'
+    name: '&c取消交易'

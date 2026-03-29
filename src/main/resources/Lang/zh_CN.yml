@@ -75,6 +75,7 @@ commands:
     bound-line: "&7/{command} {suffix} &8- &f{description} &7({shop})"
     admin-alias: "&8[&bMatrixShop&8] &7当前管理入口: &f{command} ..."
     desc:
+      main-help: "显示 MatrixShop 帮助列表"
       system-main: "打开系统商店首页"
       system-open: "打开一个系统商店分类"
       ms-open: "按标识打开已配置商店或系统商店分类"

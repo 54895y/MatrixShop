@@ -1,5 +1,5 @@
 Title:
-  - '&8Auction Upload'
+  - '&8拍卖上架'
 
 layout:
   - '#########'
@@ -17,40 +17,40 @@ icons:
     name: '&f{item}'
   'M':
     material: 'PAPER'
-    name: '&fMode'
+    name: '&f模式'
     lore:
-      - '&7Use: {hint-upload-english} <start> [buyout] [duration]'
-      - '&7Use: {hint-upload-dutch} <start> <end> [duration]'
+      - '&7使用: {hint-upload-english} <start> [buyout] [duration]'
+      - '&7使用: {hint-upload-dutch} <start> <end> [duration]'
   'T':
     material: 'WATCH'
-    name: '&fDuration'
+    name: '&f时长'
     lore:
-      - '&7Default: &f{default-duration}'
-      - '&7Range: &f{min-duration} - {max-duration}'
+      - '&7默认: &f{default-duration}'
+      - '&7范围: &f{min-duration} - {max-duration}'
   'D':
     material: 'GOLD_NUGGET'
-    name: '&fDeposit'
+    name: '&f保证金'
     lore:
-      - '&7Listing deposit applies from settings'
+      - '&7保证金按模块设置收取'
   'P':
     material: 'PAPER'
-    name: '&fPrice'
+    name: '&f价格'
     lore:
-      - '&7Values are entered with command arguments'
+      - '&7价格通过命令参数输入'
   'B':
     material: 'BOOK'
-    name: '&fBuyout / End'
+    name: '&f一口价 / 终止价'
     lore:
-      - '&7English uses buyout'
-      - '&7Dutch uses end price'
+      - '&7英式拍卖使用一口价'
+      - '&7荷式拍卖使用终止价'
   'S':
     material: 'CHEST'
-    name: '&fSource'
+    name: '&f来源'
     lore:
-      - '&7The item in your main hand is listed'
+      - '&7上架主手中的物品'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'

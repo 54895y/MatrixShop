@@ -1,5 +1,5 @@
 Title:
-  - '&8Final Confirm'
+  - '&8最终确认'
 
 layout:
   - '#########'
@@ -13,24 +13,24 @@ icons:
     name: ' '
   'S':
     material: 'PAPER'
-    name: '&fTrade Summary'
+    name: '&f交易摘要'
     lore:
-      - '&7My items: &f{self-item-size}'
-      - '&7My money: &e{self-money}'
-      - '&7My exp: &f{self-exp}'
-      - '&7Target items: &f{target-item-size}'
-      - '&7Target money: &e{target-money}'
-      - '&7Target exp: &f{target-exp}'
-      - '&7System will recheck distance, world, balance, exp and bag space'
+      - '&7我的物品: &f{self-item-size}'
+      - '&7我的金币: &e{self-money}'
+      - '&7我的经验: &f{self-exp}'
+      - '&7对方物品: &f{target-item-size}'
+      - '&7对方金币: &e{target-money}'
+      - '&7对方经验: &f{target-exp}'
+      - '&7系统会再次检查距离、世界、余额、经验和背包空间'
   'C':
     material: 'EMERALD'
-    name: '&aSubmit Confirm'
+    name: '&a提交确认'
   'I':
     material: 'BOOK'
-    name: '&fSafety'
+    name: '&f安全提示'
     lore:
-      - '&7Any failed recheck rolls back the whole trade'
-      - '&7No partial completion will happen'
+      - '&7任一复检失败都会回滚整个交易'
+      - '&7不会出现部分完成'
   'X':
     material: 'BARRIER'
-    name: '&cCancel'
+    name: '&c取消'

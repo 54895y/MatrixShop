@@ -1,5 +1,5 @@
 Title:
-  - '&8Confirm Bid'
+  - '&8确认出价'
 
 layout:
   - '#########'
@@ -15,7 +15,7 @@ icons:
     name: ' '
   'i':
     material: 'AIR'
-    name: '&fBid Menu'
+    name: '&f出价菜单'
   '1':
     material: 'GOLD_NUGGET'
     name: '&e{bid-1}'
@@ -36,19 +36,19 @@ icons:
     name: '&e{bid-6}'
   'A':
     material: 'EMERALD'
-    name: '&aAuto Next Bid'
+    name: '&a自动跟最低价'
     lore:
-      - '&7Use the next minimum bid'
+      - '&7使用下一口最低出价'
   'C':
     material: 'EMERALD_BLOCK'
-    name: '&aBuyout'
+    name: '&a一口价购买'
     lore:
-      - '&7Use buyout if available'
+      - '&7可用时直接按一口价购买'
   'I':
     material: 'PAPER'
-    name: '&fInfo'
+    name: '&f信息'
     lore:
-      - '&7Command: {hint-bid} <id> [price]'
+      - '&7命令: {hint-bid} <id> [price]'
   'R':
     material: 'ARROW'
-    name: '&aBack'
+    name: '&a返回'

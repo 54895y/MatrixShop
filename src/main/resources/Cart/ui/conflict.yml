@@ -1,5 +1,5 @@
 Title:
-  - '&8Cart Conflict &7{page}/{max-page}'
+  - '&8冲突条目 &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -18,29 +18,29 @@ icons:
     mode: 'conflict'
   'R':
     material: 'CLOCK'
-    name: '&eRecheck'
+    name: '&e重新检查'
   'V':
     material: 'LIME_WOOL'
-    name: '&aCheckout Valid Only'
+    name: '&a仅结算有效条目'
   'D':
     material: 'REDSTONE'
-    name: '&cRemove Invalid'
+    name: '&c清理失效条目'
   'C':
     material: 'BARRIER'
-    name: '&fBack to Checkout'
+    name: '&f返回结算页'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'
 
 template:
   name: '&c{name}'
   lore:
-    - '&7Source: &f{source-module}'
-    - '&7Conflict: &c{conflict-type}'
-    - '&7Reason: &f{reason}'
-    - '&7Snapshot price: &e{snapshot-price} {currency}'
-    - '&7Current price: &6{current-price} {currency}'
-    - '&7Amount: &f{amount}'
+    - '&7来源: &f{source-module}'
+    - '&7冲突类型: &c{conflict-type}'
+    - '&7原因: &f{reason}'
+    - '&7快照价格: &e{snapshot-price} {currency}'
+    - '&7当前价格: &6{current-price} {currency}'
+    - '&7数量: &f{amount}'

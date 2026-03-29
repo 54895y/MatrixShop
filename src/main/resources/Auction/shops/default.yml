@@ -14,7 +14,7 @@ Bindings:
       upload-dutch: '@commands.hints.auction-upload-dutch'
 
 Title:
-  - '&8Auction Hall &7{page}/{max-page}'
+  - '&8拍卖大厅 &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -33,28 +33,28 @@ icons:
     mode: 'goods'
   'U':
     material: 'CHEST'
-    name: '&aUpload'
+    name: '&a上架'
     lore:
-      - '&7Open upload instructions'
+      - '&7打开上架说明'
   'B':
     material: 'GOLD_INGOT'
-    name: '&6My Bids'
+    name: '&6我的出价'
     lore:
-      - '&7View auctions you have bid on'
+      - '&7查看你参与出价的拍卖'
   'M':
     material: 'BOOK'
-    name: '&fMy Auctions'
+    name: '&f我的拍卖'
     lore:
-      - '&7Manage your active listings'
+      - '&7管理你当前的上架'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'

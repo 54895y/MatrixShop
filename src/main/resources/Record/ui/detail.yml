@@ -1,5 +1,5 @@
 Title:
-  - '&8Record Detail'
+  - '&8记录详情'
 
 layout:
   - '#########'
@@ -15,26 +15,26 @@ icons:
     material: 'PAPER'
     name: '&f{module} &7/ &b{type}'
     lore:
-      - '&7Time: &f{time}'
-      - '&7ID: &f{record-id}'
+      - '&7时间: &f{time}'
+      - '&7编号: &f{record-id}'
   'S':
     material: 'EMERALD'
-    name: '&aIncome Stats'
+    name: '&a收入统计'
     lore:
-      - '&7Open income statistics'
+      - '&7打开收入统计'
   'E':
     material: 'REDSTONE'
-    name: '&cExpense Stats'
+    name: '&c支出统计'
     lore:
-      - '&7Open expense statistics'
+      - '&7打开支出统计'
   'L':
     material: 'BOOK'
-    name: '&fBack to Ledger'
+    name: '&f返回账本'
     lore:
-      - '&7Return to the record list'
+      - '&7返回记录列表'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'

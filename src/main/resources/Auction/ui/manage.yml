@@ -1,5 +1,5 @@
 Title:
-  - '&8My Auctions &7{page}/{max-page}'
+  - '&8我的拍卖 &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -18,29 +18,29 @@ icons:
     mode: 'goods'
   'F':
     material: 'PAPER'
-    name: '&fMy Listings'
+    name: '&f我的上架'
     lore:
-      - '&7Active: &f{size}'
-      - '&7Right click a listing to remove it'
+      - '&7当前上架: &f{size}'
+      - '&7右键点击条目可下架'
   'O':
     material: 'BOOK'
-    name: '&fOpen Hall'
+    name: '&f打开大厅'
     lore:
-      - '&7Return to auction hall'
+      - '&7返回拍卖大厅'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'
   'I':
     material: 'CHEST'
-    name: '&aUpload'
+    name: '&a上架'
     lore:
-      - '&7Open upload instructions'
+      - '&7打开上架说明'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'

@@ -14,7 +14,7 @@ Bindings:
       exp: '@commands.hints.transaction-exp'
 
 Title:
-  - '&8Trade Hub &7{shop-id}'
+  - '&8交易中心 &7{shop-id}'
 
 layout:
   - '#########'
@@ -29,16 +29,16 @@ icons:
     name: ' '
   'R':
     material: 'NAME_TAG'
-    name: '&aRequest Trade'
+    name: '&a发起交易'
     lore:
       - '&7{hint-request} <player>'
   'A':
     material: 'EMERALD'
-    name: '&fActive Trade'
+    name: '&f当前交易'
     lore:
-      - '&7Open your current trade session'
+      - '&7打开当前交易会话'
   'L':
     material: 'BOOK'
-    name: '&6Trade Records'
+    name: '&6交易记录'
     lore:
-      - '&7Open transaction records'
+      - '&7打开交易记录'

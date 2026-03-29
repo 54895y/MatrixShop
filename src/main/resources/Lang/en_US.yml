@@ -75,6 +75,7 @@ commands:
     bound-line: "&7/{command} {suffix} &8- &f{description} &7({shop})"
     admin-alias: "&8[&bMatrixShop&8] &7Current admin root: &f{command} ..."
     desc:
+      main-help: "Show the MatrixShop help list"
       system-main: "Open SystemShop home"
       system-open: "Open a SystemShop category"
       ms-open: "Open a configured shop or a SystemShop category by id"

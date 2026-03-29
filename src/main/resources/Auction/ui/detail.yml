@@ -1,5 +1,5 @@
 Title:
-  - '&8Auction Detail - {id}'
+  - '&8拍卖详情 - {id}'
 
 layout:
   - '#########'
@@ -18,40 +18,40 @@ icons:
     name: '&f{id}'
   'P':
     material: 'GOLD_INGOT'
-    name: '&fCurrent Price'
+    name: '&f当前价格'
     lore:
       - '&e{current-price}'
   'N':
     material: 'PAPER'
-    name: '&fNext Minimum'
+    name: '&f下一口最低价'
     lore:
       - '&e{next-bid}'
   'B':
     material: 'EMERALD'
-    name: '&aBid / Buy'
+    name: '&a出价 / 购买'
     lore:
-      - '&7English: open bid menu'
-      - '&7Dutch: buy at current price'
+      - '&7英式拍卖: 打开出价菜单'
+      - '&7荷式拍卖: 按当前价购买'
   'T':
     material: 'EMERALD_BLOCK'
-    name: '&aBuyout'
+    name: '&a一口价购买'
     lore:
-      - '&7Buyout price: &e{buyout}'
+      - '&7一口价: &e{buyout}'
   'O':
     material: 'BOOK'
-    name: '&fOverview'
+    name: '&f概览'
     lore:
-      - '&7Mode: &f{mode}'
-      - '&7Owner: &f{owner}'
-      - '&7Highest: &f{highest-bidder}'
+      - '&7模式: &f{mode}'
+      - '&7卖家: &f{owner}'
+      - '&7最高出价者: &f{highest-bidder}'
   'S':
     material: 'WATCH'
-    name: '&fTime Left'
+    name: '&f剩余时间'
     lore:
-      - '&7Remaining: &f{remain}'
+      - '&7剩余: &f{remain}'
   'M':
     material: 'BARRIER'
-    name: '&cRemove My Listing'
+    name: '&c下架我的拍卖'
   'R':
     material: 'ARROW'
-    name: '&aBack'
+    name: '&a返回'

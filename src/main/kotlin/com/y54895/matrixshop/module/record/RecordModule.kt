@@ -84,7 +84,8 @@ object RecordModule : MatrixModule {
         rememberState(player, defaultViewId(), keyword, normalizedFilter)
         val allEntries = visibleEntries(player, keyword, normalizedFilter)
         val goodsSlots = goodsSlots(menus.record)
-        val maxPage = ((allEntries.size + goodsSlots.size - 1) / goodsSlots.size).coerceAtLeast(1)
+        val goodsPerPage = goodsSlots.size.coerceAtLeast(1)
+        val maxPage = ((allEntries.size + goodsPerPage - 1) / goodsPerPage).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val pageEntries = allEntries.drop((currentPage - 1) * goodsSlots.size).take(goodsSlots.size)
         val actorEntries = actorEntries(player, normalizedFilter)
@@ -177,7 +178,8 @@ object RecordModule : MatrixModule {
         val normalizedFilter = normalizeModuleFilter(moduleFilter)
         val allStats = aggregates(player, positive, normalizedFilter)
         val goodsSlots = goodsSlots(definition)
-        val maxPage = ((allStats.size + goodsSlots.size - 1) / goodsSlots.size).coerceAtLeast(1)
+        val goodsPerPage = goodsSlots.size.coerceAtLeast(1)
+        val maxPage = ((allStats.size + goodsPerPage - 1) / goodsPerPage).coerceAtLeast(1)
         val currentPage = page.coerceIn(1, maxPage)
         val pageEntries = allStats.drop((currentPage - 1) * goodsSlots.size).take(goodsSlots.size)
         val total = allStats.sumOf { it.total }
@@ -436,7 +438,7 @@ object RecordModule : MatrixModule {
         definition.layout.forEachIndexed { row, line ->
             line.forEachIndexed { column, char ->
                 val icon = definition.icons[char] ?: return@forEachIndexed
-                if (icon.mode.equals("goods", true)) {
+                if (icon.mode.equals("goods", true) || icon.mode.equals("records", true)) {
                     slots += row * 9 + column
                 }
             }

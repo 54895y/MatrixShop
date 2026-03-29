@@ -13,7 +13,7 @@ Bindings:
       upload: '@player-shop.hints.upload-command'
 
 Title:
-  - '&8{owner} Shop &7{page}/{max-page}'
+  - '&8{owner}的商店 &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -32,26 +32,26 @@ icons:
     mode: 'goods'
   'I':
     material: 'PAPER'
-    name: '&fShop Info'
+    name: '&f商店信息'
     lore:
-      - '&7Owner: &f{owner}'
-      - '&7Listed: &f{listed}'
-      - '&7Your Balance: &e{money}'
+      - '&7店主: &f{owner}'
+      - '&7已上架: &f{listed}'
+      - '&7你的余额: &e{money}'
   'E':
     material: 'BOOK'
-    name: '&eEdit My Shop'
+    name: '&e编辑我的商店'
     lore:
-      - '&7Only visible for the owner'
-      - '&eLeft click to open the edit view'
+      - '&7仅店主可见'
+      - '&e左键打开编辑界面'
   'B':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'

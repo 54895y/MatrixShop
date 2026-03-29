@@ -1,8 +1,8 @@
 Bindings:
   Commands:
     Bindings:
-      - 'market'
       - 'gm'
+      - 'market'
     Register: true
     Show-In-Help: true
     Priority: 100
@@ -12,7 +12,7 @@ Bindings:
       upload: '@commands.hints.global-market-upload'
 
 Title:
-  - '&8Global Market &7{page}/{max-page}'
+  - '&8全球市场 &7{page}/{max-page}'
 
 layout:
   - '#########'
@@ -31,28 +31,28 @@ icons:
     mode: 'goods'
   'U':
     material: 'CHEST'
-    name: '&aUpload'
+    name: '&a上架'
     lore:
-      - '&7Open the upload view for this market'
+      - '&7打开当前市场的上架说明'
   'C':
     material: 'CHEST_MINECART'
-    name: '&6Cart'
+    name: '&6购物车'
     lore:
-      - '&7Open your shopping cart'
+      - '&7打开你的购物车'
   'M':
     material: 'BOOK'
-    name: '&dMy Listings'
+    name: '&d我的上架'
     lore:
-      - '&7Manage your listings in this market'
+      - '&7管理你在当前市场的商品'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'

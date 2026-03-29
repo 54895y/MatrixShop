@@ -1,5 +1,5 @@
 Title:
-  - '&8Cart &7{page}/{max-page}'
+  - '&8购物车 &7{page}/{max-page}'
 
 Options:
   Source-Modules:
@@ -24,50 +24,50 @@ icons:
     mode: 'goods'
   'K':
     material: 'BOOK'
-    name: '&fCart Info'
+    name: '&f购物车信息'
     lore:
-      - '&7Entries: &f{size}'
-      - '&7Estimated total: &e{estimate-total}'
-      - '&7Auction watch only: &f{auction-watch-size}'
-      - '&7Source filter: &f{source-filter}'
+      - '&7条目数: &f{size}'
+      - '&7预计总价: &e{estimate-total}'
+      - '&7拍卖关注条目: &f{auction-watch-size}'
+      - '&7来源过滤: &f{source-filter}'
   'V':
     material: 'HOPPER'
-    name: '&eRemove Invalid'
+    name: '&e清理失效条目'
   'X':
     material: 'LAVA_BUCKET'
-    name: '&cClear Cart'
+    name: '&c清空购物车'
   'A':
     material: 'PAPER'
-    name: '&bChange Amount'
+    name: '&b修改数量'
     lore:
-      - '&7Use command:'
+      - '&7使用命令:'
       - '&f{command} amount <slot> <number>'
   'C':
     material: 'LIME_WOOL'
-    name: '&aOpen Checkout'
+    name: '&a打开结算页'
   'R':
     material: 'BARRIER'
-    name: '&cClose'
+    name: '&c关闭'
     actions:
       left:
         - 'close'
   'P':
     material: 'ARROW'
-    name: '&aPrevious'
+    name: '&a上一页'
   'N':
     material: 'ARROW'
-    name: '&aNext'
+    name: '&a下一页'
 
 template:
   name: '&f{name}'
   lore:
-    - '&7Source: &f{source-module}'
-    - '&7Source id: &f{source-id}'
-    - '&7Snapshot price: &e{snapshot-price} {currency}'
-    - '&7Current price: &6{current-price} {currency}'
-    - '&7Amount: &f{amount}'
-    - '&7State: &f{state}'
-    - '&7Limit: &f{limitation}'
-    - '&7Added at: &f{created-at}'
-    - '&7Slot: &f{slot}'
-    - '&7Reason: &f{reason}'
+    - '&7来源: &f{source-module}'
+    - '&7来源标识: &f{source-id}'
+    - '&7快照价格: &e{snapshot-price} {currency}'
+    - '&7当前价格: &6{current-price} {currency}'
+    - '&7数量: &f{amount}'
+    - '&7状态: &f{state}'
+    - '&7限制: &f{limitation}'
+    - '&7加入时间: &f{created-at}'
+    - '&7槽位: &f{slot}'
+    - '&7原因: &f{reason}'

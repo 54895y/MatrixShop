@@ -1,5 +1,5 @@
 Title:
-  - '&8Trade Request'
+  - '&8交易请求'
 
 layout:
   - '#########'
@@ -15,17 +15,17 @@ icons:
     material: 'SKULL_ITEM'
     name: '&f{requester}'
     lore:
-      - '&7Sent you a trade request'
-      - '&7Expires in: &f{expire}'
+      - '&7向你发送了交易请求'
+      - '&7剩余时间: &f{expire}'
   'A':
     material: 'EMERALD'
-    name: '&aAccept'
+    name: '&a接受'
   'D':
     material: 'REDSTONE'
-    name: '&cDeny'
+    name: '&c拒绝'
   'I':
     material: 'PAPER'
-    name: '&fInfo'
+    name: '&f信息'
     lore:
-      - '&7Accept to open the trade view'
-      - '&7Only one active trade per player'
+      - '&7接受后打开交易界面'
+      - '&7每名玩家同时只能有一个活跃交易'
