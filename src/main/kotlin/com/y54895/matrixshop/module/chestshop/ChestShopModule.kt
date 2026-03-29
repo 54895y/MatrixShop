@@ -161,11 +161,11 @@ object ChestShopModule : MatrixModule {
             return
         }
         val shop = resolveContextShop(player) ?: run {
-            Texts.send(player, "&cLook at a chest shop chest or sign first.")
+            Texts.sendKey(player, "@chestshop.errors.context-required")
             return
         }
         if (!canManage(player, shop)) {
-            Texts.send(player, "&cOnly the shop owner can edit this chest shop.")
+            Texts.sendKey(player, "@chestshop.errors.edit-not-owner")
             return
         }
         openEditMenu(player, shop)
@@ -179,7 +179,7 @@ object ChestShopModule : MatrixModule {
             return
         }
         val shop = resolveContextShop(player) ?: run {
-            Texts.send(player, "&cLook at a chest shop chest or sign first.")
+            Texts.sendKey(player, "@chestshop.errors.context-required")
             return
         }
         openStockMenu(player, shop, page)
@@ -193,7 +193,7 @@ object ChestShopModule : MatrixModule {
             return
         }
         val shop = resolveContextShop(player) ?: run {
-            Texts.send(player, "&cLook at a chest shop chest or sign first.")
+            Texts.sendKey(player, "@chestshop.errors.context-required")
             return
         }
         openHistoryMenu(player, shop, page)
@@ -208,7 +208,7 @@ object ChestShopModule : MatrixModule {
         }
         val mode = parseMode(modeRaw) ?: run {
             openCreate(player)
-            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create <buy|sell|dual> <price> [sell-price] [amount]")
+            Texts.sendKey(player, "@chestshop.errors.create-usage", mapOf("command" to CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")))
             return
         }
         val target = (
@@ -216,38 +216,38 @@ object ChestShopModule : MatrixModule {
                 ?: targetBlock(player)
                 ?: nearestChestBlock(player)
             ) ?: run {
-            Texts.send(player, "&cLook at a chest block first.")
+            Texts.sendKey(player, "@chestshop.errors.look-at-chest")
             return
         }
         if (!isChestBlock(target)) {
-            Texts.send(player, "&cThe target block is not a chest.")
+            Texts.sendKey(player, "@chestshop.errors.target-not-chest")
             return
         }
         if (findShopByBlock(target) != null) {
-            Texts.send(player, "&cThis chest is already bound to a chest shop.")
+            Texts.sendKey(player, "@chestshop.errors.primary-bound")
             return
         }
         val hand = player.inventory.itemInMainHand ?: ItemStack(Material.AIR)
         if (hand.type == Material.AIR || hand.amount <= 0) {
-            Texts.send(player, "&cHold the shop item in your main hand first.")
+            Texts.sendKey(player, "@chestshop.errors.hold-item")
             return
         }
         val secondary = findAdjacentChest(target)
         if (mode == ChestShopMode.DUAL && secondary == null) {
-            Texts.send(player, "&cDUAL mode requires a double chest.")
+            Texts.sendKey(player, "@chestshop.errors.dual-requires-double")
             return
         }
         if (secondary != null && findShopByBlock(secondary) != null) {
-            Texts.send(player, "&cThe second chest is already bound to another chest shop.")
+            Texts.sendKey(player, "@chestshop.errors.secondary-bound")
             return
         }
         val tradeAmount = (amountRaw ?: hand.amount).coerceAtLeast(1)
         if ((mode == ChestShopMode.BUY || mode == ChestShopMode.SELL) && firstPrice == null) {
-            Texts.send(player, "&cPrice is required.")
+            Texts.sendKey(player, "@chestshop.errors.price-required")
             return
         }
         if (mode == ChestShopMode.DUAL && (firstPrice == null || secondPrice == null)) {
-            Texts.send(player, "&cDUAL mode requires both buy and sell price.")
+            Texts.sendKey(player, "@chestshop.errors.dual-price-required")
             return
         }
         val shop = ChestShopShop(
@@ -278,7 +278,7 @@ object ChestShopModule : MatrixModule {
         refreshFloatingDisplay(shop)
         pendingCreateTargets.remove(player.uniqueId)
         lastContext[player.uniqueId] = shop.id
-        Texts.send(player, "&aChest shop created: &f${shop.id}")
+        Texts.sendKey(player, "@chestshop.success.created", mapOf("shop" to shop.id))
         RecordService.append(
             module = "chestshop",
             type = "create",
@@ -295,11 +295,11 @@ object ChestShopModule : MatrixModule {
             return
         }
         val shop = resolveContextShop(player) ?: run {
-            Texts.send(player, "&cLook at a chest shop chest or sign first.")
+            Texts.sendKey(player, "@chestshop.errors.context-required")
             return
         }
         if (!canManage(player, shop)) {
-            Texts.send(player, "&cOnly the shop owner can remove this chest shop.")
+            Texts.sendKey(player, "@chestshop.errors.remove-not-owner")
             return
         }
         clearSigns(shop)
@@ -308,7 +308,7 @@ object ChestShopModule : MatrixModule {
         shops.removeIf { it.id == shop.id }
         ChestShopRepository.saveAll(shops)
         lastContext.entries.removeIf { it.value == shop.id }
-        Texts.send(player, "&aChest shop removed: &f${shop.id}")
+        Texts.sendKey(player, "@chestshop.success.removed", mapOf("shop" to shop.id))
         RecordService.append(
             module = "chestshop",
             type = "remove",
@@ -325,30 +325,30 @@ object ChestShopModule : MatrixModule {
             return
         }
         val shop = resolveContextShop(player) ?: run {
-            Texts.send(player, "&cLook at a chest shop chest or sign first.")
+            Texts.sendKey(player, "@chestshop.errors.context-required")
             return
         }
         if (!canManage(player, shop)) {
-            Texts.send(player, "&cOnly the owner can edit prices.")
+            Texts.sendKey(player, "@chestshop.errors.price-not-owner")
             return
         }
         val side = sideRaw?.lowercase(Locale.ROOT)
         val newPrice = value?.coerceAtLeast(0.0)
         if (newPrice == null || side !in listOf("buy", "sell")) {
-            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} price <buy|sell> <value>")
+            Texts.sendKey(player, "@chestshop.errors.price-usage", mapOf("command" to CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")))
             return
         }
         when (side) {
             "buy" -> {
                 if (shop.mode == ChestShopMode.SELL) {
-                    Texts.send(player, "&cThis shop mode does not support buy price.")
+                    Texts.sendKey(player, "@chestshop.errors.buy-price-unsupported")
                     return
                 }
                 shop.buyPrice = newPrice
             }
             "sell" -> {
                 if (shop.mode == ChestShopMode.BUY) {
-                    Texts.send(player, "&cThis shop mode does not support sell price.")
+                    Texts.sendKey(player, "@chestshop.errors.sell-price-unsupported")
                     return
                 }
                 shop.sellPrice = newPrice
@@ -356,7 +356,7 @@ object ChestShopModule : MatrixModule {
         }
         saveShop(shop)
         updateSigns(shop)
-        Texts.send(player, "&aChest shop price updated.")
+        Texts.sendKey(player, "@chestshop.success.price-updated")
         openEditMenu(player, shop)
     }
 
@@ -368,22 +368,22 @@ object ChestShopModule : MatrixModule {
             return
         }
         val shop = resolveContextShop(player) ?: run {
-            Texts.send(player, "&cLook at a chest shop chest or sign first.")
+            Texts.sendKey(player, "@chestshop.errors.context-required")
             return
         }
         if (!canManage(player, shop)) {
-            Texts.send(player, "&cOnly the owner can edit trade amount.")
+            Texts.sendKey(player, "@chestshop.errors.amount-not-owner")
             return
         }
         val amount = value?.coerceAtLeast(1)
         if (amount == null) {
-            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} amount <number>")
+            Texts.sendKey(player, "@chestshop.errors.amount-usage", mapOf("command" to CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")))
             return
         }
         shop.tradeAmount = amount
         saveShop(shop)
         updateSigns(shop)
-        Texts.send(player, "&aChest shop trade amount updated.")
+        Texts.sendKey(player, "@chestshop.success.amount-updated")
         openEditMenu(player, shop)
     }
 
@@ -395,25 +395,25 @@ object ChestShopModule : MatrixModule {
             return
         }
         val shop = resolveContextShop(player) ?: run {
-            Texts.send(player, "&cLook at a chest shop chest or sign first.")
+            Texts.sendKey(player, "@chestshop.errors.context-required")
             return
         }
         if (!canManage(player, shop)) {
-            Texts.send(player, "&cOnly the owner can edit shop mode.")
+            Texts.sendKey(player, "@chestshop.errors.mode-not-owner")
             return
         }
         val mode = parseMode(modeRaw) ?: run {
-            Texts.send(player, "&cUsage: ${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} mode <buy|sell|dual>")
+            Texts.sendKey(player, "@chestshop.errors.mode-usage", mapOf("command" to CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")))
             return
         }
         if (mode == ChestShopMode.DUAL && shop.secondaryChest == null) {
-            Texts.send(player, "&cDUAL mode requires a double chest.")
+            Texts.sendKey(player, "@chestshop.errors.dual-requires-double")
             return
         }
         shop.mode = mode
         saveShop(shop)
         updateSigns(shop)
-        Texts.send(player, "&aChest shop mode updated to &f${mode.name}&a.")
+        Texts.sendKey(player, "@chestshop.success.mode-updated", mapOf("mode" to modeDisplay(mode)))
         openEditMenu(player, shop)
     }
 
@@ -470,7 +470,7 @@ object ChestShopModule : MatrixModule {
                 )
             )
         } else {
-            Texts.send(player, "&cThis chest shop is protected.")
+            Texts.sendKey(player, "@chestshop.errors.protected")
         }
         return false
     }
@@ -567,12 +567,12 @@ object ChestShopModule : MatrixModule {
                     icon.itemMeta = icon.itemMeta?.apply {
                         MenuRenderer.decorate(
                             this,
-                            Texts.color("&f${entry.type.uppercase(Locale.ROOT)} &7/ &b${entry.actor}"),
+                            Texts.colorKey("@chestshop.history.title", mapOf("type" to historyTypeDisplay(entry.type), "actor" to entry.actor)),
                             listOf(
-                                Texts.color("&7数量: &f${entry.amount}"),
-                                Texts.color("&7金额: &e${trimDouble(entry.money)}"),
-                                Texts.color("&7时间: &f${dateFormat.format(Date(entry.createdAt))}"),
-                                Texts.color("&7备注: &f${entry.note.ifBlank { "-" }}")
+                                Texts.colorKey("@chestshop.history.amount", mapOf("amount" to entry.amount.toString())),
+                                Texts.colorKey("@chestshop.history.money", mapOf("money" to trimDouble(entry.money))),
+                                Texts.colorKey("@chestshop.history.time", mapOf("time" to dateFormat.format(Date(entry.createdAt)))),
+                                Texts.colorKey("@chestshop.history.note", mapOf("note" to entry.note.ifBlank { "-" }))
                             )
                         )
                     }
@@ -597,7 +597,7 @@ object ChestShopModule : MatrixModule {
                     buyFromShop(player, shop, multiplier)
                     openShop(player, reloadShop(shop.id) ?: shop)
                 } else {
-                    Texts.send(player, "&cThis shop does not sell items.")
+                    Texts.sendKey(player, "@chestshop.errors.shop-not-selling")
                 }
             }
         }
@@ -607,7 +607,7 @@ object ChestShopModule : MatrixModule {
                     sellToShop(player, shop, multiplier)
                     openShop(player, reloadShop(shop.id) ?: shop)
                 } else {
-                    Texts.send(player, "&cThis shop does not buy items.")
+                    Texts.sendKey(player, "@chestshop.errors.shop-not-buying")
                 }
             }
         }
@@ -652,7 +652,7 @@ object ChestShopModule : MatrixModule {
             holder.handlers[slot] = {
                 val nextMode = nextMode(shop)
                 if (nextMode == ChestShopMode.DUAL && shop.secondaryChest == null) {
-                    Texts.send(player, "&cDUAL mode requires a double chest.")
+                    Texts.sendKey(player, "@chestshop.errors.dual-requires-double")
                 } else {
                     shop.mode = nextMode
                     saveShop(shop)
@@ -674,7 +674,7 @@ object ChestShopModule : MatrixModule {
                 detectSigns(shop, preferredGeneratedSignFace(player))
                 saveShop(shop)
                 updateSigns(shop)
-                Texts.send(player, "&aSigns rescanned and updated.")
+                Texts.sendKey(player, "@chestshop.success.signs-updated")
                 openEditMenu(player, shop)
             }
         }
@@ -703,38 +703,38 @@ object ChestShopModule : MatrixModule {
         val totalAmount = (shop.tradeAmount * multiplier).coerceAtLeast(1)
         val totalPrice = shop.sellPrice * multiplier
         if (shop.mode == ChestShopMode.BUY) {
-            Texts.send(player, "&cThis shop does not sell items.")
+            Texts.sendKey(player, "@chestshop.errors.shop-not-selling")
             return
         }
         if (countStock(shop) < totalAmount) {
-            Texts.send(player, "&cThis chest shop does not have enough stock.")
+            Texts.sendKey(player, "@chestshop.errors.stock-not-enough")
             return
         }
         val purchaseStacks = splitStacks(shop.item, totalAmount)
         if (!canFitPlayer(player, purchaseStacks)) {
-            Texts.send(player, "&cYou do not have enough inventory space.")
+            Texts.sendKey(player, "@chestshop.errors.inventory-no-space")
             return
         }
         if (totalPrice > 0 && (!VaultEconomyBridge.isAvailable() || !VaultEconomyBridge.has(player, totalPrice))) {
-            Texts.send(player, "&cYou do not have enough balance.")
+            Texts.sendKey(player, "@chestshop.errors.balance-not-enough")
             return
         }
         if (totalPrice > 0 && !VaultEconomyBridge.withdraw(player, totalPrice)) {
-            Texts.send(player, "&cFailed to charge the purchase price.")
+            Texts.sendKey(player, "@chestshop.errors.charge-failed")
             return
         }
         if (!removeFromStock(shop, totalAmount)) {
             if (totalPrice > 0) {
                 VaultEconomyBridge.deposit(player, totalPrice)
             }
-            Texts.send(player, "&cFailed to remove items from chest stock.")
+            Texts.sendKey(player, "@chestshop.errors.stock-remove-failed")
             return
         }
         val owner = Bukkit.getOfflinePlayer(shop.ownerId)
         if (totalPrice > 0 && !VaultEconomyBridge.deposit(owner, totalPrice)) {
             addToStock(shop, purchaseStacks)
             VaultEconomyBridge.deposit(player, totalPrice)
-            Texts.send(player, "&cFailed to transfer money to the shop owner.")
+            Texts.sendKey(player, "@chestshop.errors.owner-pay-failed")
             return
         }
         purchaseStacks.forEach { player.inventory.addItem(it) }
@@ -743,9 +743,9 @@ object ChestShopModule : MatrixModule {
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)
         if (ownerPlayer != null && ownerPlayer.isOnline) {
-            Texts.send(ownerPlayer, "&a${player.name} bought &f${itemDisplayName(shop.item)} &7x&f$totalAmount &7for &e${trimDouble(totalPrice)}")
+            Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-purchase", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to trimDouble(totalPrice)))
         }
-        Texts.send(player, "&aBought &f${itemDisplayName(shop.item)} &7x&f$totalAmount &7for &e${trimDouble(totalPrice)}")
+        Texts.sendKey(player, "@chestshop.success.purchase", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to trimDouble(totalPrice)))
         RecordService.append(
             module = "chestshop",
             type = "purchase",
@@ -769,32 +769,32 @@ object ChestShopModule : MatrixModule {
         val totalAmount = (shop.tradeAmount * multiplier).coerceAtLeast(1)
         val totalPrice = shop.buyPrice * multiplier
         if (shop.mode == ChestShopMode.SELL) {
-            Texts.send(player, "&cThis shop does not buy items.")
+            Texts.sendKey(player, "@chestshop.errors.shop-not-buying")
             return
         }
         if (countMatching(player.inventory.contents.take(36), shop.item) < totalAmount) {
-            Texts.send(player, "&cYou do not have enough matching items.")
+            Texts.sendKey(player, "@chestshop.errors.matching-items-not-enough")
             return
         }
         val incomingStacks = splitStacks(shop.item, totalAmount)
         if (!canFitInventories(stockInventories(shop), incomingStacks)) {
-            Texts.send(player, "&cThis chest shop does not have enough free space.")
+            Texts.sendKey(player, "@chestshop.errors.stock-free-space-not-enough")
             return
         }
         val owner = Bukkit.getOfflinePlayer(shop.ownerId)
         if (totalPrice > 0 && (!VaultEconomyBridge.isAvailable() || !VaultEconomyBridge.has(owner, totalPrice))) {
-            Texts.send(player, "&cThe shop owner does not have enough balance.")
+            Texts.sendKey(player, "@chestshop.errors.owner-balance-not-enough")
             return
         }
         if (totalPrice > 0 && !VaultEconomyBridge.withdraw(owner, totalPrice)) {
-            Texts.send(player, "&cFailed to withdraw money from the shop owner.")
+            Texts.sendKey(player, "@chestshop.errors.owner-withdraw-failed")
             return
         }
         if (!removeFromPlayer(player, shop.item, totalAmount)) {
             if (totalPrice > 0) {
                 VaultEconomyBridge.deposit(owner, totalPrice)
             }
-            Texts.send(player, "&cFailed to remove items from your inventory.")
+            Texts.sendKey(player, "@chestshop.errors.player-remove-failed")
             return
         }
         if (!addToStock(shop, incomingStacks)) {
@@ -802,14 +802,14 @@ object ChestShopModule : MatrixModule {
             if (totalPrice > 0) {
                 VaultEconomyBridge.deposit(owner, totalPrice)
             }
-            Texts.send(player, "&cFailed to add items into the shop chest.")
+            Texts.sendKey(player, "@chestshop.errors.stock-add-failed")
             return
         }
         if (totalPrice > 0 && !VaultEconomyBridge.deposit(player, totalPrice)) {
             removeFromStock(shop, totalAmount)
             player.inventory.addItem(*incomingStacks.toTypedArray())
             VaultEconomyBridge.deposit(owner, totalPrice)
-            Texts.send(player, "&cFailed to pay the seller.")
+            Texts.sendKey(player, "@chestshop.errors.player-pay-failed")
             return
         }
         player.updateInventory()
@@ -817,9 +817,9 @@ object ChestShopModule : MatrixModule {
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)
         if (ownerPlayer != null && ownerPlayer.isOnline) {
-            Texts.send(ownerPlayer, "&a${player.name} sold &f${itemDisplayName(shop.item)} &7x&f$totalAmount &7for &e${trimDouble(totalPrice)}")
+            Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-sell", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to trimDouble(totalPrice)))
         }
-        Texts.send(player, "&aSold &f${itemDisplayName(shop.item)} &7x&f$totalAmount &7for &e${trimDouble(totalPrice)}")
+        Texts.sendKey(player, "@chestshop.success.sell", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to trimDouble(totalPrice)))
         RecordService.append(
             module = "chestshop",
             type = "expense",
@@ -840,11 +840,11 @@ object ChestShopModule : MatrixModule {
 
     private fun ensureReady(player: Player): Boolean {
         if (!isEnabled()) {
-            Texts.send(player, "&cChestShop is disabled.")
+            Texts.sendKey(player, "@chestshop.errors.module-disabled")
             return false
         }
         if (!::settings.isInitialized || !::menus.isInitialized) {
-            Texts.send(player, "&cChestShop is not loaded yet.")
+            Texts.sendKey(player, "@chestshop.errors.module-not-loaded")
             return false
         }
         return true
@@ -985,13 +985,13 @@ object ChestShopModule : MatrixModule {
 
     private fun wireCreateControls(player: Player, holder: MatrixMenuHolder) {
         buttonSlot(menus.create, 'B')?.let { slot ->
-            holder.handlers[slot] = { Texts.send(player, "&e创建收购店: &f${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create buy <价格> [数量]") }
+            holder.handlers[slot] = { Texts.sendKey(player, "@chestshop.hints.create-buy", mapOf("command" to CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop"))) }
         }
         buttonSlot(menus.create, 'S')?.let { slot ->
-            holder.handlers[slot] = { Texts.send(player, "&e创建出售店: &f${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create sell <价格> [数量]") }
+            holder.handlers[slot] = { Texts.sendKey(player, "@chestshop.hints.create-sell", mapOf("command" to CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop"))) }
         }
         buttonSlot(menus.create, 'D')?.let { slot ->
-            holder.handlers[slot] = { Texts.send(player, "&e创建双向店: &f${CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop")} create dual <收购价> <出售价> [数量]") }
+            holder.handlers[slot] = { Texts.sendKey(player, "@chestshop.hints.create-dual", mapOf("command" to CommandUsageContext.modulePrefix(player, "chestshop", "/chestshop"))) }
         }
         buttonSlot(menus.create, 'R')?.let { slot ->
             holder.handlers[slot] = { player.closeInventory() }
@@ -1072,22 +1072,40 @@ object ChestShopModule : MatrixModule {
         }
         val lore = ArrayList<String>()
         lore += preview.itemMeta?.lore ?: emptyList()
-        lore += Texts.color("&7商店ID: &f${shop.id}")
-        lore += Texts.color("&7店主: &f${shop.ownerName}")
-        lore += Texts.color("&7模式: &f${shop.mode.name}")
-        lore += Texts.color("&7单次数量: &f${shop.tradeAmount}")
-        lore += Texts.color("&7预览数量: &f$totalAmount")
-        lore += Texts.color("&7库存: &f${countStock(shop)}")
+        lore += Texts.colorKey("@chestshop.lore.shop-id", mapOf("shop" to shop.id))
+        lore += Texts.colorKey("@chestshop.lore.owner", mapOf("owner" to shop.ownerName))
+        lore += Texts.colorKey("@chestshop.lore.mode", mapOf("mode" to modeDisplay(shop.mode)))
+        lore += Texts.colorKey("@chestshop.lore.trade-amount", mapOf("amount" to shop.tradeAmount.toString()))
+        lore += Texts.colorKey("@chestshop.lore.preview-amount", mapOf("amount" to totalAmount.toString()))
+        lore += Texts.colorKey("@chestshop.lore.stock", mapOf("stock" to countStock(shop).toString()))
         if (shop.mode != ChestShopMode.SELL) {
-            lore += Texts.color("&7向玩家收购: &e${trimDouble(shop.buyPrice)}")
+            lore += Texts.colorKey("@chestshop.lore.buy-price", mapOf("price" to trimDouble(shop.buyPrice)))
         }
         if (shop.mode != ChestShopMode.BUY) {
-            lore += Texts.color("&7出售给玩家: &e${trimDouble(shop.sellPrice)}")
+            lore += Texts.colorKey("@chestshop.lore.sell-price", mapOf("price" to trimDouble(shop.sellPrice)))
         }
         preview.itemMeta = preview.itemMeta?.apply {
             MenuRenderer.decorate(this, itemDisplayName(shop.item), lore)
         }
         return preview
+    }
+
+    private fun modeDisplay(mode: ChestShopMode): String {
+        return when (mode) {
+            ChestShopMode.BUY -> Texts.tr("@chestshop.words.mode-buy")
+            ChestShopMode.SELL -> Texts.tr("@chestshop.words.mode-sell")
+            ChestShopMode.DUAL -> Texts.tr("@chestshop.words.mode-dual")
+        }
+    }
+
+    private fun historyTypeDisplay(type: String): String {
+        return when (type.lowercase(Locale.ROOT)) {
+            "buy", "purchase", "income" -> Texts.tr("@chestshop.words.history-buy")
+            "sell", "sale", "expense" -> Texts.tr("@chestshop.words.history-sell")
+            "create" -> Texts.tr("@chestshop.words.history-create")
+            "remove" -> Texts.tr("@chestshop.words.history-remove")
+            else -> type.uppercase(Locale.ROOT)
+        }
     }
 
     private fun historyMaterial(type: String): Material {
