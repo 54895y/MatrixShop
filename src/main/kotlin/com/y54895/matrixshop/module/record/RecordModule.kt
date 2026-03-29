@@ -467,13 +467,13 @@ object RecordModule : MatrixModule {
     private fun moduleDisplay(module: String): String {
         settings.moduleAliases[module.lowercase()]?.takeIf(String::isNotBlank)?.let { return it }
         return when (module.lowercase()) {
-            "system_shop" -> "SystemShop"
-            "player_shop" -> "PlayerShop"
-            "global_market" -> "GlobalMarket"
-            "cart" -> "Cart"
-            "auction" -> "Auction"
-            "transaction" -> "Transaction"
-            "chestshop" -> "ChestShop"
+            "system_shop" -> Texts.tr("@commands.modules.system-shop")
+            "player_shop" -> Texts.tr("@commands.modules.player-shop")
+            "global_market" -> Texts.tr("@commands.modules.global-market")
+            "cart" -> Texts.tr("@commands.modules.cart")
+            "auction" -> Texts.tr("@commands.modules.auction")
+            "transaction" -> Texts.tr("@commands.modules.transaction")
+            "chestshop" -> Texts.tr("@commands.modules.chestshop")
             else -> module
         }
     }

@@ -567,12 +567,12 @@ object ChestShopModule : MatrixModule {
                     icon.itemMeta = icon.itemMeta?.apply {
                         MenuRenderer.decorate(
                             this,
-                            Texts.colorKey("@chestshop.history.title", mapOf("type" to historyTypeDisplay(entry.type), "actor" to entry.actor)),
-                            listOf(
-                                Texts.colorKey("@chestshop.history.amount", mapOf("amount" to entry.amount.toString())),
-                                Texts.colorKey("@chestshop.history.money", mapOf("money" to trimDouble(entry.money))),
-                                Texts.colorKey("@chestshop.history.time", mapOf("time" to dateFormat.format(Date(entry.createdAt)))),
-                                Texts.colorKey("@chestshop.history.note", mapOf("note" to entry.note.ifBlank { "-" }))
+                                Texts.colorKey("@chestshop.history.title", mapOf("type" to historyTypeDisplay(entry.type), "actor" to entry.actor)),
+                                listOf(
+                                    Texts.colorKey("@chestshop.history.amount", mapOf("amount" to entry.amount.toString())),
+                                    Texts.colorKey("@chestshop.history.money", mapOf("money" to trimDouble(entry.money))),
+                                    Texts.colorKey("@chestshop.history.time", mapOf("time" to dateFormat.format(Date(entry.createdAt)))),
+                                Texts.colorKey("@chestshop.history.note", mapOf("note" to historyNoteDisplay(entry.note)))
                             )
                         )
                     }
@@ -739,7 +739,7 @@ object ChestShopModule : MatrixModule {
         }
         purchaseStacks.forEach { player.inventory.addItem(it) }
         player.updateInventory()
-        appendHistory(shop, "buy", player.name, totalAmount, totalPrice, "player bought from shop")
+        appendHistory(shop, "buy", player.name, totalAmount, totalPrice, "purchase-from-shop")
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)
         if (ownerPlayer != null && ownerPlayer.isOnline) {
@@ -813,7 +813,7 @@ object ChestShopModule : MatrixModule {
             return
         }
         player.updateInventory()
-        appendHistory(shop, "sell", player.name, totalAmount, totalPrice, "player sold to shop")
+        appendHistory(shop, "sell", player.name, totalAmount, totalPrice, "sell-to-shop")
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)
         if (ownerPlayer != null && ownerPlayer.isOnline) {
@@ -1105,6 +1105,15 @@ object ChestShopModule : MatrixModule {
             "create" -> Texts.tr("@chestshop.words.history-create")
             "remove" -> Texts.tr("@chestshop.words.history-remove")
             else -> type.uppercase(Locale.ROOT)
+        }
+    }
+
+    private fun historyNoteDisplay(note: String): String {
+        return when (note.lowercase(Locale.ROOT)) {
+            "purchase-from-shop" -> Texts.tr("@chestshop.words.note-purchase-from-shop")
+            "sell-to-shop" -> Texts.tr("@chestshop.words.note-sell-to-shop")
+            "" -> "-"
+            else -> note
         }
     }
 

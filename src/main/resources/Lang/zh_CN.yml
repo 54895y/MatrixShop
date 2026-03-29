@@ -194,6 +194,28 @@ auction:
     removed: "&a已下架拍卖并返还物品。"
   notify:
     bid-received: "&e{player} &f对你的拍卖 &f{listing} &f进行了出价。"
+    deposit-refunded: "&a拍卖 &f{listing} &a的保证金已返还。"
+    sale-delivered: "&a拍卖 &f{listing} &a已成交，买家 &f{buyer} &a支付了 &e{price}&a。"
+    item-delivered: "&a拍卖 &f{listing} &a的物品已发放。"
+    expired-returned: "&e拍卖 &f{listing} &e已过期，物品已返还。"
+    bid-refunded: "&a拍卖 &f{listing} &a的上一笔出价已返还。"
+  lore:
+    mode: "&7模式: &f{mode}"
+    owner: "&7卖家: &f{owner}"
+    current: "&7当前价格: &e{price}"
+    remaining: "&7剩余时间: &f{time}"
+    next-min: "&7下一口最低价: &e{price}"
+    buyout: "&7一口价: &e{price}"
+    highest-bidder: "&7最高出价者: &f{player}"
+    action-owner: "&e左键查看详情，右键下架"
+    action-view: "&e左键查看详情"
+    id: "&7拍卖ID: &f{id}"
+    created: "&7创建时间: &f{time}"
+    bids: "&7出价次数: &f{count}"
+  words:
+    mode-english: "英式拍卖"
+    mode-dutch: "荷兰式拍卖"
+    none: "无"
 
 chestshop:
   errors:
@@ -274,6 +296,8 @@ chestshop:
     history-sell: "出售"
     history-create: "创建"
     history-remove: "移除"
+    note-purchase-from-shop: "玩家从商店购买"
+    note-sell-to-shop: "玩家向商店出售"
 
 global-market:
   errors:
@@ -388,6 +412,9 @@ transaction:
     changed-return-trade: "&e交易内容已变更，已返回交易界面。"
   hints:
     shift-add-item: "&7Shift + 点击物品可将其加入交易。"
+  words:
+    ready: "已准备"
+    not-ready: "未准备"
 
 cart:
   errors:

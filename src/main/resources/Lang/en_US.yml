@@ -194,6 +194,28 @@ auction:
     removed: "&aAuction removed and returned."
   notify:
     bid-received: "&e{player} &fplaced a bid on your auction &f{listing}&f."
+    deposit-refunded: "&aThe deposit for auction &f{listing} &ahas been refunded."
+    sale-delivered: "&aAuction &f{listing} &asold to &f{buyer} &afor &e{price}&a."
+    item-delivered: "&aThe item from auction &f{listing} &ahas been delivered."
+    expired-returned: "&eAuction &f{listing} &eexpired without a sale. The item has been returned."
+    bid-refunded: "&aYour previous highest bid for auction &f{listing} &ahas been refunded."
+  lore:
+    mode: "&7Mode: &f{mode}"
+    owner: "&7Owner: &f{owner}"
+    current: "&7Current Price: &e{price}"
+    remaining: "&7Time Remaining: &f{time}"
+    next-min: "&7Next Minimum: &e{price}"
+    buyout: "&7Buyout: &e{price}"
+    highest-bidder: "&7Highest Bidder: &f{player}"
+    action-owner: "&eLeft click for details, right click to remove"
+    action-view: "&eLeft click for details"
+    id: "&7Auction ID: &f{id}"
+    created: "&7Created At: &f{time}"
+    bids: "&7Bid Count: &f{count}"
+  words:
+    mode-english: "English Auction"
+    mode-dutch: "Dutch Auction"
+    none: "None"
 
 chestshop:
   errors:
@@ -274,6 +296,8 @@ chestshop:
     history-sell: "Sale"
     history-create: "Create"
     history-remove: "Remove"
+    note-purchase-from-shop: "Player purchased from shop"
+    note-sell-to-shop: "Player sold to shop"
 
 global-market:
   errors:
@@ -388,6 +412,9 @@ transaction:
     changed-return-trade: "&eThe trade changed. Returning to the trade view."
   hints:
     shift-add-item: "&7Shift-click an item to add it to the trade."
+  words:
+    ready: "Ready"
+    not-ready: "Not Ready"
 
 cart:
   errors:

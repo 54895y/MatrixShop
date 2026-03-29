@@ -692,10 +692,10 @@ object AuctionModule : MatrixModule {
         val tax = taxAmount(finalPrice)
         val sellerIncome = (finalPrice - tax).coerceAtLeast(0.0)
         if (listing.depositPaid > 0 && settings.depositRefundOnSell) {
-            deliverMoneyOrQueue(listing.ownerId, listing.ownerName, listing.depositPaid, "Auction deposit refunded for ${listing.id}.")
+            deliverMoneyOrQueue(listing.ownerId, listing.ownerName, listing.depositPaid, Texts.tr("@auction.notify.deposit-refunded", mapOf("listing" to listing.id)))
         }
-        deliverMoneyOrQueue(listing.ownerId, listing.ownerName, sellerIncome, "Auction ${listing.id} sold to $buyerName for ${trimDouble(finalPrice)}.")
-        deliverItemOrQueue(buyerId, buyerName, listing.item.clone(), "Auction ${listing.id} item delivered.")
+        deliverMoneyOrQueue(listing.ownerId, listing.ownerName, sellerIncome, Texts.tr("@auction.notify.sale-delivered", mapOf("listing" to listing.id, "buyer" to buyerName, "price" to trimDouble(finalPrice))))
+        deliverItemOrQueue(buyerId, buyerName, listing.item.clone(), Texts.tr("@auction.notify.item-delivered", mapOf("listing" to listing.id)))
         if (settings.recordWriteOnComplete) {
             RecordService.append(
                 module = "auction",
@@ -737,7 +737,7 @@ object AuctionModule : MatrixModule {
                 )
             } else {
                 listings.removeIf { it.id == listing.id }
-                deliverItemOrQueue(listing.ownerId, listing.ownerName, listing.item.clone(), "Auction ${listing.id} expired without sale. Item returned.")
+                deliverItemOrQueue(listing.ownerId, listing.ownerName, listing.item.clone(), Texts.tr("@auction.notify.expired-returned", mapOf("listing" to listing.id)))
                 if (settings.recordWriteOnCancel) {
                     RecordService.append(
                         module = "auction",
@@ -756,7 +756,7 @@ object AuctionModule : MatrixModule {
         if (listing.currentBid <= 0) {
             return
         }
-        deliverMoneyOrQueue(bidderId, listing.highestBidderName, listing.currentBid, "Auction ${listing.id} refunded your previous highest bid.")
+        deliverMoneyOrQueue(bidderId, listing.highestBidderName, listing.currentBid, Texts.tr("@auction.notify.bid-refunded", mapOf("listing" to listing.id)))
     }
 
     private fun deliverMoneyOrQueue(ownerId: UUID, ownerName: String, amount: Double, message: String) {
@@ -975,30 +975,41 @@ object AuctionModule : MatrixModule {
 
     private fun listLore(listing: AuctionListing, player: Player): List<String> {
         val lore = mutableListOf(
-            Texts.color("&7Mode: &f${listing.mode.name}"),
-            Texts.color("&7Owner: &f${listing.ownerName}"),
-            Texts.color("&7Current: &e${trimDouble(currentPrice(listing))}"),
-            Texts.color("&7Remaining: &f${remainingText(listing)}")
+            Texts.colorKey("@auction.lore.mode", mapOf("mode" to modeDisplay(listing.mode))),
+            Texts.colorKey("@auction.lore.owner", mapOf("owner" to listing.ownerName)),
+            Texts.colorKey("@auction.lore.current", mapOf("price" to trimDouble(currentPrice(listing)))),
+            Texts.colorKey("@auction.lore.remaining", mapOf("time" to remainingText(listing)))
         )
         if (listing.mode == AuctionMode.ENGLISH) {
-            lore += Texts.color("&7Next min: &e${trimDouble(nextMinimumBid(listing))}")
+            lore += Texts.colorKey("@auction.lore.next-min", mapOf("price" to trimDouble(nextMinimumBid(listing))))
             if (listing.buyoutPrice > 0) {
-                lore += Texts.color("&7Buyout: &e${trimDouble(listing.buyoutPrice)}")
+                lore += Texts.colorKey("@auction.lore.buyout", mapOf("price" to trimDouble(listing.buyoutPrice)))
             }
-            lore += Texts.color("&7Highest bidder: &f${listing.highestBidderName.ifBlank { "none" }}")
+            lore += Texts.colorKey("@auction.lore.highest-bidder", mapOf("player" to listing.highestBidderName.ifBlank { Texts.tr("@auction.words.none") }))
         }
-        lore += Texts.color(if (listing.ownerId == player.uniqueId) "&eLeft detail / right remove" else "&eLeft detail")
+        lore += if (listing.ownerId == player.uniqueId) {
+            Texts.colorKey("@auction.lore.action-owner")
+        } else {
+            Texts.colorKey("@auction.lore.action-view")
+        }
         return lore
     }
 
     private fun detailLore(listing: AuctionListing, player: Player): List<String> {
         val lore = listLore(listing, player).toMutableList()
-        lore += Texts.color("&7ID: &f${listing.id}")
-        lore += Texts.color("&7Created: &f${listing.createdAt}")
+        lore += Texts.colorKey("@auction.lore.id", mapOf("id" to listing.id))
+        lore += Texts.colorKey("@auction.lore.created", mapOf("time" to listing.createdAt.toString()))
         if (listing.bidHistory.isNotEmpty()) {
-            lore += Texts.color("&7Bids: &f${listing.bidHistory.size}")
+            lore += Texts.colorKey("@auction.lore.bids", mapOf("count" to listing.bidHistory.size.toString()))
         }
         return lore
+    }
+
+    private fun modeDisplay(mode: AuctionMode): String {
+        return when (mode) {
+            AuctionMode.ENGLISH -> Texts.tr("@auction.words.mode-english")
+            AuctionMode.DUTCH -> Texts.tr("@auction.words.mode-dutch")
+        }
     }
 
     private fun remainingText(listing: AuctionListing): String {

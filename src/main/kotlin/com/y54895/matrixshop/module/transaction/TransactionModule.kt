@@ -964,7 +964,7 @@ object TransactionModule : MatrixModule {
             "self-exp" to expOf(session, selfSide).toString(),
             "target-money" to trimDouble(moneyOf(session, targetSide)),
             "target-exp" to expOf(session, targetSide).toString(),
-            "target-ready" to if (readyOf(session, targetSide)) "READY" else "NOT READY",
+            "target-ready" to if (readyOf(session, targetSide)) Texts.tr("@transaction.words.ready") else Texts.tr("@transaction.words.not-ready"),
             "shop-id" to session.shopId
         )
     }
