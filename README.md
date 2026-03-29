@@ -1,5 +1,5 @@
-[!CAUTION]
-该项目由codex生成，如果有问题，请提交至[issue](https://github.com/54895y/MatrixShop/issues)
+> [!CAUTION]
+> 该项目由codex生成，如果有问题，请提交至[issue](https://github.com/54895y/MatrixShop/issues)
 
 # MatrixShop
 
