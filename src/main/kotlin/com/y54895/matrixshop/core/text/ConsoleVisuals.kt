@@ -13,8 +13,9 @@ object ConsoleVisuals {
             branding = branding,
             headline = Texts.tr("@console.boot.headline"),
             details = listOf(
-                MatrixConsoleFact(Texts.tr("@console.boot.scope-label"), Texts.tr("@console.boot.scope-value"))
-            )
+                MatrixConsoleFact("GitHub", "https://github.com/54895y/MatrixShop")
+            ),
+            includeDefaultDetails = false
         )
     }
 
@@ -27,7 +28,8 @@ object ConsoleVisuals {
                 MatrixConsoleFact(Texts.tr("@console.ready.economy-label"), economy),
                 MatrixConsoleFact(Texts.tr("@console.ready.schema-label"), schemaMessage),
                 MatrixConsoleFact(Texts.tr("@console.ready.modules-label"), modules)
-            )
+            ),
+            includeDefaultDetails = false
         )
     }
 
