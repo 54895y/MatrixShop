@@ -3,7 +3,7 @@
 
 # MatrixShop
 
-**Keywords:** Minecraft shop plugin, GUI shop plugin, auction plugin, player market plugin, trade plugin, Vault economy plugin, Paper plugin, Folia plugin, Bukkit plugin, Chinese Minecraft plugin
+**Keywords:** Minecraft shop plugin, GUI shop plugin, auction plugin, player market plugin, trade plugin, Vault economy plugin, Paper plugin, Folia plugin, Bukkit plugin,  Minecraft plugin
 
 MatrixShop is a Chinese-first Minecraft GUI economy and commerce plugin for Paper, Bukkit, Spigot and Folia. It combines system shop, player shop, global market, auction, chest shop, face-to-face trade, shopping cart and transaction records in one project.
 
