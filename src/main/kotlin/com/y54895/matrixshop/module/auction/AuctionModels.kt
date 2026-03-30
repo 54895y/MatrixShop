@@ -79,6 +79,7 @@ data class AuctionDeliveryEntry(
     val id: String,
     val ownerId: UUID,
     val ownerName: String,
+    val currencyKey: String = "vault",
     val money: Double = 0.0,
     val item: ItemStack? = null,
     val message: String,

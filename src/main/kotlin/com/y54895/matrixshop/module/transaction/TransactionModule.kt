@@ -107,8 +107,10 @@ object TransactionModule : MatrixModule {
             Texts.sendKey(requester, "@transaction.errors.pending-duplicate")
             return
         }
+        val selectedShop = ShopMenuLoader.resolve(menus.shopViews, shopId)
         val request = TransactionRequest(
-            shopId = resolveShopId(shopId),
+            shopId = selectedShop.id,
+            moneyCurrencyKey = selectedShop.currencyKey.ifBlank { settings.moneyCurrencyKey },
             requesterId = requester.uniqueId,
             requesterName = requester.name,
             targetId = target.uniqueId,
@@ -154,6 +156,7 @@ object TransactionModule : MatrixModule {
         val session = TransactionSession(
             id = nextSessionId(),
             shopId = request.shopId,
+            moneyCurrencyKey = request.moneyCurrencyKey,
             leftId = requester.uniqueId,
             leftName = requester.name,
             rightId = target.uniqueId,
@@ -219,17 +222,17 @@ object TransactionModule : MatrixModule {
             return
         }
         val safeAmount = (amount ?: 0.0).coerceAtLeast(0.0)
-        if (!EconomyModule.isAvailable(settings.moneyCurrencyKey) && safeAmount > 0) {
-            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.moneyCurrencyKey))))
+        if (!EconomyModule.isAvailable(session.moneyCurrencyKey) && safeAmount > 0) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(session.moneyCurrencyKey))))
             return
         }
-        if (!EconomyModule.has(player, settings.moneyCurrencyKey, safeAmount)) {
-            Texts.send(player, EconomyModule.insufficientMessage(player, settings.moneyCurrencyKey, safeAmount))
+        if (!EconomyModule.has(player, session.moneyCurrencyKey, safeAmount)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, session.moneyCurrencyKey, safeAmount))
             return
         }
         setMoney(session, sideOf(session, player.uniqueId), safeAmount)
         markDirty(session)
-        Texts.sendKey(player, "@transaction.success.money-updated", mapOf("amount" to EconomyModule.formatAmount(settings.moneyCurrencyKey, safeAmount)))
+        Texts.sendKey(player, "@transaction.success.money-updated", mapOf("amount" to EconomyModule.formatAmount(session.moneyCurrencyKey, safeAmount)))
     }
 
     fun setExp(player: Player, amount: Int?) {
@@ -671,14 +674,14 @@ object TransactionModule : MatrixModule {
             openTrade(right, session)
             return
         }
-        if (settings.allowMoney && (session.leftMoney > 0 || session.rightMoney > 0) && !EconomyModule.isAvailable(settings.moneyCurrencyKey)) {
+        if (settings.allowMoney && (session.leftMoney > 0 || session.rightMoney > 0) && !EconomyModule.isAvailable(session.moneyCurrencyKey)) {
             markDirty(session)
-            notifyPlayers(session, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.moneyCurrencyKey))))
+            notifyPlayers(session, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(session.moneyCurrencyKey))))
             openTrade(left, session)
             openTrade(right, session)
             return
         }
-        if (!EconomyModule.has(left, settings.moneyCurrencyKey, session.leftMoney) || !EconomyModule.has(right, settings.moneyCurrencyKey, session.rightMoney)) {
+        if (!EconomyModule.has(left, session.moneyCurrencyKey, session.leftMoney) || !EconomyModule.has(right, session.moneyCurrencyKey, session.rightMoney)) {
             markDirty(session)
             notifyPlayers(session, Texts.tr("@transaction.notify.balance-invalid"))
             openTrade(left, session)
@@ -699,7 +702,7 @@ object TransactionModule : MatrixModule {
         var depositedLeft = false
         var depositedRight = false
         if (session.leftMoney > 0) {
-            if (!EconomyModule.withdraw(left, settings.moneyCurrencyKey, session.leftMoney, mapOf("target" to right.name))) {
+            if (!EconomyModule.withdraw(left, session.moneyCurrencyKey, session.leftMoney, mapOf("target" to right.name))) {
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.withdraw-failed", mapOf("player" to left.name)))
                 openTrade(left, session)
@@ -709,9 +712,9 @@ object TransactionModule : MatrixModule {
             withdrewLeft = true
         }
         if (session.rightMoney > 0) {
-            if (!EconomyModule.withdraw(right, settings.moneyCurrencyKey, session.rightMoney, mapOf("target" to left.name))) {
+            if (!EconomyModule.withdraw(right, session.moneyCurrencyKey, session.rightMoney, mapOf("target" to left.name))) {
                 if (withdrewLeft) {
-                    EconomyModule.deposit(left, settings.moneyCurrencyKey, session.leftMoney)
+                    EconomyModule.deposit(left, session.moneyCurrencyKey, session.leftMoney)
                 }
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.withdraw-failed", mapOf("player" to right.name)))
@@ -722,7 +725,7 @@ object TransactionModule : MatrixModule {
             withdrewRight = true
         }
         if (session.rightMoney > 0) {
-            if (!EconomyModule.deposit(left, settings.moneyCurrencyKey, session.rightMoney, mapOf("target" to right.name))) {
+            if (!EconomyModule.deposit(left, session.moneyCurrencyKey, session.rightMoney, mapOf("target" to right.name))) {
                 rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeft, depositedRight)
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.deposit-failed", mapOf("player" to right.name)))
@@ -733,7 +736,7 @@ object TransactionModule : MatrixModule {
             depositedLeft = true
         }
         if (session.leftMoney > 0) {
-            if (!EconomyModule.deposit(right, settings.moneyCurrencyKey, session.leftMoney, mapOf("target" to left.name))) {
+            if (!EconomyModule.deposit(right, session.moneyCurrencyKey, session.leftMoney, mapOf("target" to left.name))) {
                 rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeft, depositedRight)
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.deposit-failed", mapOf("player" to left.name)))
@@ -769,16 +772,16 @@ object TransactionModule : MatrixModule {
         depositedRight: Boolean
     ) {
         if (depositedLeft && session.rightMoney > 0) {
-            EconomyModule.withdraw(left, settings.moneyCurrencyKey, session.rightMoney)
+            EconomyModule.withdraw(left, session.moneyCurrencyKey, session.rightMoney)
         }
         if (depositedRight && session.leftMoney > 0) {
-            EconomyModule.withdraw(right, settings.moneyCurrencyKey, session.leftMoney)
+            EconomyModule.withdraw(right, session.moneyCurrencyKey, session.leftMoney)
         }
         if (withdrewLeft && session.leftMoney > 0) {
-            EconomyModule.deposit(left, settings.moneyCurrencyKey, session.leftMoney)
+            EconomyModule.deposit(left, session.moneyCurrencyKey, session.leftMoney)
         }
         if (withdrewRight && session.rightMoney > 0) {
-            EconomyModule.deposit(right, settings.moneyCurrencyKey, session.rightMoney)
+            EconomyModule.deposit(right, session.moneyCurrencyKey, session.rightMoney)
         }
     }
 
@@ -961,9 +964,9 @@ object TransactionModule : MatrixModule {
             "hint-exp" to Texts.tr(ModuleBindings.hintKey("transaction", "exp") ?: "@commands.hints.transaction-exp", mapOf("command" to "$command exp")),
             "self" to nameOf(session, selfSide),
             "target" to nameOf(session, targetSide),
-            "self-money" to EconomyModule.formatAmount(settings.moneyCurrencyKey, moneyOf(session, selfSide)),
+            "self-money" to EconomyModule.formatAmount(session.moneyCurrencyKey, moneyOf(session, selfSide)),
             "self-exp" to expOf(session, selfSide).toString(),
-            "target-money" to EconomyModule.formatAmount(settings.moneyCurrencyKey, moneyOf(session, targetSide)),
+            "target-money" to EconomyModule.formatAmount(session.moneyCurrencyKey, moneyOf(session, targetSide)),
             "target-exp" to expOf(session, targetSide).toString(),
             "target-ready" to if (readyOf(session, targetSide)) Texts.tr("@transaction.words.ready") else Texts.tr("@transaction.words.not-ready"),
             "shop-id" to session.shopId

@@ -253,14 +253,15 @@ object SystemShopModule : MatrixModule {
         val id = yaml.getString("id", file.nameWithoutExtension).orEmpty()
         val menu = MenuLoader.load(file)
         val goodsSection = yaml.getConfigurationSection("goods")
+        val categoryCurrencyKey = EconomyModule.configuredKey(yaml, "Currency", currencyKey)
         val products = goodsSection?.getKeys(false)?.map { key ->
             val section = goodsSection.getConfigurationSection(key)!!
-            parseProduct(key, section)
+            parseProduct(key, section, categoryCurrencyKey)
         }.orEmpty()
-        categories[id] = SystemShopCategory(id = id, menu = menu, products = products)
+        categories[id] = SystemShopCategory(id = id, menu = menu, currencyKey = categoryCurrencyKey, products = products)
     }
 
-    private fun parseProduct(id: String, section: ConfigurationSection): SystemShopProduct {
+    private fun parseProduct(id: String, section: ConfigurationSection, categoryCurrencyKey: String): SystemShopProduct {
         return SystemShopProduct(
             id = id,
             material = section.getString("material", "STONE").orEmpty(),
@@ -268,7 +269,10 @@ object SystemShopModule : MatrixModule {
             name = section.getString("name", id).orEmpty(),
             lore = section.getStringList("lore"),
             price = section.getDouble("price", 0.0),
-            currency = currencyKey,
+            currency = section.getString("currency")
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?: categoryCurrencyKey,
             buyMax = section.getInt("buy-max", 64)
         )
     }

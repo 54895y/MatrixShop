@@ -162,17 +162,18 @@ object GlobalMarketModule : MatrixModule {
             Texts.sendKey(player, "@global-market.errors.main-hand-not-enough")
             return
         }
+        val selectedShop = selectShop(shopId)
         val listingItem = hand.clone().apply { this.amount = amount }
         val remain = hand.amount - amount
         player.inventory.itemInMainHand = if (remain <= 0) ItemStack(Material.AIR) else hand.apply { this.amount = remain }
         val now = System.currentTimeMillis()
         val listing = GlobalMarketListing(
             id = "gm-${now.toString(36)}",
-            shopId = resolveShopId(shopId),
+            shopId = selectedShop.id,
             ownerId = player.uniqueId,
             ownerName = player.name,
             price = price,
-            currency = settings.currencyKey,
+            currency = selectedShop.currencyKey.ifBlank { settings.currencyKey },
             item = listingItem,
             createdAt = now,
             expireAt = now + settings.expireHours.coerceAtLeast(1) * 3_600_000L

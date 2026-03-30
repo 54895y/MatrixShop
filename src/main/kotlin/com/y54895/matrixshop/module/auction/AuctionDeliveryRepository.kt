@@ -72,7 +72,7 @@ object AuctionDeliveryRepository {
         DatabaseManager.withConnection { connection ->
             connection.prepareStatement(
                 """
-                SELECT id, owner_id, owner_name, money, item_blob, message, created_at
+                SELECT id, owner_id, owner_name, currency_key, money, item_blob, message, created_at
                 FROM auction_deliveries
                 ORDER BY created_at ASC
                 """.trimIndent()
@@ -84,6 +84,7 @@ object AuctionDeliveryRepository {
                             id = result.getString("id"),
                             ownerId = UUID.fromString(result.getString("owner_id")),
                             ownerName = result.getString("owner_name"),
+                            currencyKey = result.getString("currency_key").orEmpty().ifBlank { "vault" },
                             money = result.getDouble("money"),
                             item = ItemStackCodec.decode(result.getString("item_blob")),
                             message = result.getString("message"),
@@ -106,18 +107,19 @@ object AuctionDeliveryRepository {
                 connection.prepareStatement(
                     """
                     INSERT INTO auction_deliveries (
-                        id, owner_id, owner_name, money, item_blob, message, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        id, owner_id, owner_name, currency_key, money, item_blob, message, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """.trimIndent()
                 ).use { insert ->
                     entries.sortedBy { it.createdAt }.forEach { entry ->
                         insert.setString(1, entry.id)
                         insert.setString(2, entry.ownerId.toString())
                         insert.setString(3, entry.ownerName)
-                        insert.setDouble(4, entry.money)
-                        insert.setString(5, ItemStackCodec.encode(entry.item))
-                        insert.setString(6, entry.message)
-                        insert.setLong(7, entry.createdAt)
+                        insert.setString(4, entry.currencyKey)
+                        insert.setDouble(5, entry.money)
+                        insert.setString(6, ItemStackCodec.encode(entry.item))
+                        insert.setString(7, entry.message)
+                        insert.setLong(8, entry.createdAt)
                         insert.addBatch()
                     }
                     insert.executeBatch()
@@ -146,6 +148,7 @@ object AuctionDeliveryRepository {
                 id = id,
                 ownerId = UUID.fromString(child.getString("owner-id").orEmpty()),
                 ownerName = child.getString("owner-name").orEmpty(),
+                currencyKey = child.getString("currency-key", "vault").orEmpty(),
                 money = child.getDouble("money"),
                 item = child.getItemStack("item"),
                 message = child.getString("message").orEmpty(),
@@ -161,6 +164,7 @@ object AuctionDeliveryRepository {
             val base = "entries.${entry.id}"
             yaml.set("$base.owner-id", entry.ownerId.toString())
             yaml.set("$base.owner-name", entry.ownerName)
+            yaml.set("$base.currency-key", entry.currencyKey)
             yaml.set("$base.money", entry.money)
             yaml.set("$base.item", entry.item)
             yaml.set("$base.message", entry.message)

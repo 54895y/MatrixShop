@@ -13,6 +13,9 @@ Bindings:
       money: '@commands.hints.transaction-money'
       exp: '@commands.hints.transaction-exp'
 
+Currency:
+  Key: vault
+
 Title:
   - '&8交易中心 &7{shop-id}'
 

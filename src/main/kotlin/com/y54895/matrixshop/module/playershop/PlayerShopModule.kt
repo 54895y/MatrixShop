@@ -139,6 +139,7 @@ object PlayerShopModule : MatrixModule {
             return
         }
         val resolvedShopId = resolveShopId(shopId)
+        val currencyKey = selectShop(resolvedShopId).currencyKey.ifBlank { settings.currencyKey }
         val store = loadStore(player.uniqueId, player.name, resolvedShopId)
         val slotIndex = PlayerShopRepository.nextFreeSlot(store)
         if (slotIndex == null) {
@@ -157,7 +158,7 @@ object PlayerShopModule : MatrixModule {
             id = "ps-${System.currentTimeMillis().toString(36)}-$slotIndex",
             slotIndex = slotIndex,
             price = price,
-            currency = settings.currencyKey,
+            currency = currencyKey,
             item = listed,
             createdAt = System.currentTimeMillis()
         )
@@ -423,7 +424,7 @@ object PlayerShopModule : MatrixModule {
             "owner" to store.ownerName,
             "page" to page.toString(),
             "max-page" to maxPage.toString(),
-            "money" to EconomyModule.formatAmount(settings.currencyKey, EconomyModule.balance(viewer, settings.currencyKey)),
+            "money" to EconomyModule.formatAmount(selectShop(store.shopId).currencyKey, EconomyModule.balance(viewer, selectShop(store.shopId).currencyKey)),
             "listed" to store.listings.size.toString(),
             "unlocked" to store.unlockedSlots.toString(),
             "shop-id" to store.shopId

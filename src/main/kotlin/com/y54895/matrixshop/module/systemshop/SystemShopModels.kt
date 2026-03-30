@@ -7,6 +7,7 @@ import org.bukkit.inventory.ItemStack
 data class SystemShopCategory(
     val id: String,
     val menu: com.y54895.matrixshop.core.menu.MenuDefinition,
+    val currencyKey: String,
     val products: List<SystemShopProduct>
 )
 

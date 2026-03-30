@@ -11,6 +11,9 @@ Bindings:
       open: '@commands.bindings.global-market'
       upload: '@commands.hints.global-market-upload'
 
+Currency:
+  Key: vault
+
 Title:
   - '&8全球市场 &7{page}/{max-page}'
 

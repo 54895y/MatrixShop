@@ -8,6 +8,7 @@ import java.util.UUID
 
 data class TransactionRequest(
     val shopId: String,
+    val moneyCurrencyKey: String,
     val requesterId: UUID,
     val requesterName: String,
     val targetId: UUID,
@@ -24,6 +25,7 @@ data class TransactionRequest(
 data class TransactionSession(
     val id: String,
     val shopId: String,
+    val moneyCurrencyKey: String,
     val leftId: UUID,
     val leftName: String,
     val rightId: UUID,

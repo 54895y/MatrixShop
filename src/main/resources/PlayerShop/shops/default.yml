@@ -12,6 +12,9 @@ Bindings:
       open: '@commands.bindings.player-shop'
       upload: '@player-shop.hints.upload-command'
 
+Currency:
+  Key: vault
+
 Title:
   - '&8{owner}的商店 &7{page}/{max-page}'
 

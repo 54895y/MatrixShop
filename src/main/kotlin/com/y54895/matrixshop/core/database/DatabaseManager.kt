@@ -404,6 +404,7 @@ object DatabaseManager {
                     id VARCHAR(64) PRIMARY KEY,
                     owner_id VARCHAR(64) NOT NULL,
                     owner_name VARCHAR(64) NOT NULL,
+                    currency_key VARCHAR(64) NOT NULL,
                     money DOUBLE NOT NULL,
                     item_blob TEXT NOT NULL,
                     message TEXT NOT NULL,
@@ -562,6 +563,11 @@ object DatabaseManager {
         }
         if (!columnExists(connection, "player_shop_listings", "shop_id")) {
             recreatePlayerShopListingsWithShopScope(connection)
+        }
+        if (!columnExists(connection, "auction_deliveries", "currency_key")) {
+            connection.createStatement().use { statement ->
+                statement.executeUpdate("ALTER TABLE auction_deliveries ADD COLUMN currency_key VARCHAR(64) NOT NULL DEFAULT 'vault'")
+            }
         }
     }
 

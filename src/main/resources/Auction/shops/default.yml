@@ -13,6 +13,9 @@ Bindings:
       upload-english: '@commands.hints.auction-upload-english'
       upload-dutch: '@commands.hints.auction-upload-dutch'
 
+Currency:
+  Key: vault
+
 Title:
   - '&8拍卖大厅 &7{page}/{max-page}'
 

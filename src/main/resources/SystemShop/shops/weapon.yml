@@ -39,6 +39,9 @@ template:
     - ''
     - '&e左键进入购买确认'
 
+Currency:
+  Key: vault
+
 goods:
   wooden_sword:
     material: 'WOOD_SWORD'

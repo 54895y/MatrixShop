@@ -2,6 +2,7 @@ package com.y54895.matrixshop.core.menu
 
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.config.ModuleCommandBinding
+import com.y54895.matrixshop.core.economy.EconomyModule
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.LinkedHashMap
@@ -9,13 +10,15 @@ import java.util.LinkedHashMap
 data class ConfiguredShopMenu(
     val id: String,
     val definition: MenuDefinition,
-    val bindings: ModuleCommandBinding = ModuleCommandBinding(emptyList(), false, false, 0)
+    val bindings: ModuleCommandBinding = ModuleCommandBinding(emptyList(), false, false, 0),
+    val currencyKey: String = "vault"
 )
 
 data class ShopMenuSelection(
     val id: String,
     val definition: MenuDefinition,
-    val bindings: ModuleCommandBinding
+    val bindings: ModuleCommandBinding,
+    val currencyKey: String
 )
 
 object ShopMenuLoader {
@@ -32,14 +35,16 @@ object ShopMenuLoader {
                 result[id] = ConfiguredShopMenu(
                     id = id,
                     definition = MenuLoader.load(file),
-                    bindings = loadBindings(yaml)
+                    bindings = loadBindings(yaml),
+                    currencyKey = EconomyModule.configuredKey(yaml)
                 )
             }
         if (result.isEmpty()) {
             val legacy = File(ConfigFiles.dataFolder(), "$moduleFolder/ui/$legacyMainUiFile")
             result["default"] = ConfiguredShopMenu(
                 id = "default",
-                definition = MenuLoader.load(legacy)
+                definition = MenuLoader.load(legacy),
+                currencyKey = "vault"
             )
         }
         return result
@@ -49,12 +54,12 @@ object ShopMenuLoader {
         val normalized = normalizeShopId(requestedId)
         if (normalized != null) {
             menus.entries.firstOrNull { normalizeShopId(it.key) == normalized }?.value
-                ?.let { return ShopMenuSelection(it.id, it.definition, it.bindings) }
+                ?.let { return ShopMenuSelection(it.id, it.definition, it.bindings, it.currencyKey) }
         }
         menus.entries.firstOrNull { normalizeShopId(it.key) == "default" }?.value
-            ?.let { return ShopMenuSelection(it.id, it.definition, it.bindings) }
+            ?.let { return ShopMenuSelection(it.id, it.definition, it.bindings, it.currencyKey) }
         val first = menus.entries.first()
-        return ShopMenuSelection(first.value.id, first.value.definition, first.value.bindings)
+        return ShopMenuSelection(first.value.id, first.value.definition, first.value.bindings, first.value.currencyKey)
     }
 
     fun contains(menus: Map<String, ConfiguredShopMenu>, shopId: String?): Boolean {
@@ -68,27 +73,27 @@ object ShopMenuLoader {
             .filter { it.bindings.keys.contains(normalized) }
             .sortedByDescending { it.bindings.priority }
             .firstOrNull()
-            ?.let { ShopMenuSelection(it.id, it.definition, it.bindings) }
+            ?.let { ShopMenuSelection(it.id, it.definition, it.bindings, it.currencyKey) }
     }
 
     fun helpEntries(menus: Map<String, ConfiguredShopMenu>): List<ShopMenuSelection> {
         return menus.values
             .filter { it.bindings.showInHelp && it.bindings.keys.isNotEmpty() }
             .sortedByDescending { it.bindings.priority }
-            .map { ShopMenuSelection(it.id, it.definition, it.bindings) }
+            .map { ShopMenuSelection(it.id, it.definition, it.bindings, it.currencyKey) }
     }
 
     fun allEntries(menus: Map<String, ConfiguredShopMenu>): List<ShopMenuSelection> {
         return menus.values
             .sortedByDescending { it.bindings.priority }
-            .map { ShopMenuSelection(it.id, it.definition, it.bindings) }
+            .map { ShopMenuSelection(it.id, it.definition, it.bindings, it.currencyKey) }
     }
 
     fun standaloneEntries(menus: Map<String, ConfiguredShopMenu>): List<ShopMenuSelection> {
         return menus.values
             .filter { it.bindings.registerStandalone && it.bindings.keys.isNotEmpty() }
             .sortedByDescending { it.bindings.priority }
-            .map { ShopMenuSelection(it.id, it.definition, it.bindings) }
+            .map { ShopMenuSelection(it.id, it.definition, it.bindings, it.currencyKey) }
     }
 
     private fun loadBindings(yaml: YamlConfiguration): ModuleCommandBinding {

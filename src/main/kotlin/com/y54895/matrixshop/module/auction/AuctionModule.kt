@@ -292,6 +292,7 @@ object AuctionModule : MatrixModule {
         }
         cleanupExpiredListings()
         val resolvedShopId = resolveShopId(shopId)
+        val moneyCurrencyKey = currencyKey(resolvedShopId)
         val mode = parseMode(modeRaw)
         if (mode == null) {
             Texts.sendKey(player, "@auction.errors.upload-usage", mapOf("command" to CommandUsageContext.modulePrefix(player, "auction", "/auction")))
@@ -328,16 +329,16 @@ object AuctionModule : MatrixModule {
             return
         }
         val deposit = listingFee(safeStart, settings.depositMode, settings.depositValue).takeIf { settings.depositEnabled } ?: 0.0
-        if (deposit > 0 && !EconomyModule.isAvailable(settings.currencyKey)) {
-            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
+        if (deposit > 0 && !EconomyModule.isAvailable(moneyCurrencyKey)) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(moneyCurrencyKey))))
             return
         }
-        if (deposit > 0 && !EconomyModule.has(player, settings.currencyKey, deposit)) {
-            Texts.send(player, EconomyModule.insufficientMessage(player, settings.currencyKey, deposit))
+        if (deposit > 0 && !EconomyModule.has(player, moneyCurrencyKey, deposit)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, moneyCurrencyKey, deposit))
             return
         }
-        if (deposit > 0 && !EconomyModule.withdraw(player, settings.currencyKey, deposit, mapOf("item" to itemDisplayName(hand)))) {
-            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
+        if (deposit > 0 && !EconomyModule.withdraw(player, moneyCurrencyKey, deposit, mapOf("item" to itemDisplayName(hand)))) {
+            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(moneyCurrencyKey))))
             return
         }
         val listingItem = hand.clone()
@@ -361,7 +362,7 @@ object AuctionModule : MatrixModule {
         listings += listing
         AuctionRepository.saveAll(listings)
         player.updateInventory()
-        Texts.sendKey(player, "@auction.success.listed", mapOf("shop" to listing.shopId, "name" to itemDisplayName(listingItem), "price" to EconomyModule.formatAmount(settings.currencyKey, safeStart)))
+        Texts.sendKey(player, "@auction.success.listed", mapOf("shop" to listing.shopId, "name" to itemDisplayName(listingItem), "price" to EconomyModule.formatAmount(moneyCurrencyKey, safeStart)))
         if (settings.recordWriteOnCreate) {
             RecordService.append(
                 module = "auction",
@@ -383,6 +384,7 @@ object AuctionModule : MatrixModule {
         }
         cleanupExpiredListings()
         val resolvedShopId = resolveShopId(shopId)
+        val moneyCurrencyKey = currencyKey(resolvedShopId)
         val listings = AuctionRepository.loadAll().toMutableList()
         val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
         if (listing == null) {
@@ -403,16 +405,16 @@ object AuctionModule : MatrixModule {
             Texts.sendKey(player, "@auction.errors.bid-too-low", mapOf("amount" to trimDouble(minimum)))
             return
         }
-        if (!EconomyModule.isAvailable(settings.currencyKey)) {
-            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
+        if (!EconomyModule.isAvailable(moneyCurrencyKey)) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(moneyCurrencyKey))))
             return
         }
-        if (!EconomyModule.has(player, settings.currencyKey, offered)) {
-            Texts.send(player, EconomyModule.insufficientMessage(player, settings.currencyKey, offered))
+        if (!EconomyModule.has(player, moneyCurrencyKey, offered)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, moneyCurrencyKey, offered))
             return
         }
-        if (!EconomyModule.withdraw(player, settings.currencyKey, offered, mapOf("item" to itemDisplayName(listing.item)))) {
-            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
+        if (!EconomyModule.withdraw(player, moneyCurrencyKey, offered, mapOf("item" to itemDisplayName(listing.item)))) {
+            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(moneyCurrencyKey))))
             return
         }
         refundPreviousBidder(listing)
@@ -422,7 +424,7 @@ object AuctionModule : MatrixModule {
         listing.bidHistory += AuctionBidEntry(player.uniqueId, player.name, offered, System.currentTimeMillis())
         applySnipeProtection(listing)
         AuctionRepository.saveAll(listings)
-        Texts.sendKey(player, "@auction.success.bid-placed", mapOf("amount" to EconomyModule.formatAmount(settings.currencyKey, offered)))
+        Texts.sendKey(player, "@auction.success.bid-placed", mapOf("amount" to EconomyModule.formatAmount(moneyCurrencyKey, offered)))
         Bukkit.getPlayer(listing.ownerId)?.let {
             Texts.sendKey(it, "@auction.notify.bid-received", mapOf("player" to player.name, "listing" to listing.id))
         }
@@ -448,6 +450,7 @@ object AuctionModule : MatrixModule {
         }
         cleanupExpiredListings()
         val resolvedShopId = resolveShopId(shopId)
+        val moneyCurrencyKey = currencyKey(resolvedShopId)
         val listings = AuctionRepository.loadAll().toMutableList()
         val listing = listings.firstOrNull { it.id == listingId && it.shopId.equals(resolvedShopId, true) }
         if (listing == null) {
@@ -465,21 +468,21 @@ object AuctionModule : MatrixModule {
                 return
             }
         }
-        if (!EconomyModule.isAvailable(settings.currencyKey)) {
-            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
+        if (!EconomyModule.isAvailable(moneyCurrencyKey)) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(moneyCurrencyKey))))
             return
         }
-        if (!EconomyModule.has(player, settings.currencyKey, price)) {
-            Texts.send(player, EconomyModule.insufficientMessage(player, settings.currencyKey, price))
+        if (!EconomyModule.has(player, moneyCurrencyKey, price)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, moneyCurrencyKey, price))
             return
         }
-        if (!EconomyModule.withdraw(player, settings.currencyKey, price, mapOf("item" to itemDisplayName(listing.item)))) {
-            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
+        if (!EconomyModule.withdraw(player, moneyCurrencyKey, price, mapOf("item" to itemDisplayName(listing.item)))) {
+            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(moneyCurrencyKey))))
             return
         }
         refundPreviousBidder(listing)
         completeSale(listing, player.uniqueId, player.name, price, listings, if (listing.mode == AuctionMode.DUTCH) "dutch" else "buyout")
-        Texts.sendKey(player, "@auction.success.purchased", mapOf("price" to EconomyModule.formatAmount(settings.currencyKey, price)))
+        Texts.sendKey(player, "@auction.success.purchased", mapOf("price" to EconomyModule.formatAmount(moneyCurrencyKey, price)))
     }
 
     fun remove(player: Player, listingId: String) {
@@ -517,7 +520,7 @@ object AuctionModule : MatrixModule {
             refundPreviousBidder(listing)
         }
         if (settings.depositRefundOnCancel && listing.depositPaid > 0) {
-            deliverMoneyOrQueue(player.uniqueId, player.name, listing.depositPaid, "Cancelled auction deposit refunded for ${listing.id}.")
+            deliverMoneyOrQueue(player.uniqueId, player.name, currencyKey(listing.shopId), listing.depositPaid, Texts.tr("@auction.notify.deposit-refunded", mapOf("listing" to listing.id)))
         }
         Texts.sendKey(player, "@auction.success.removed")
         if (settings.recordWriteOnCancel) {
@@ -543,7 +546,7 @@ object AuctionModule : MatrixModule {
             }
             var delivered = true
             if (entry.money > 0) {
-                if (!EconomyModule.isAvailable(settings.currencyKey) || !EconomyModule.deposit(player, settings.currencyKey, entry.money)) {
+                if (!EconomyModule.isAvailable(entry.currencyKey) || !EconomyModule.deposit(player, entry.currencyKey, entry.money)) {
                     delivered = false
                 }
             }
@@ -691,10 +694,11 @@ object AuctionModule : MatrixModule {
         AuctionRepository.saveAll(listings)
         val tax = taxAmount(finalPrice)
         val sellerIncome = (finalPrice - tax).coerceAtLeast(0.0)
+        val moneyCurrencyKey = currencyKey(listing.shopId)
         if (listing.depositPaid > 0 && settings.depositRefundOnSell) {
-            deliverMoneyOrQueue(listing.ownerId, listing.ownerName, listing.depositPaid, Texts.tr("@auction.notify.deposit-refunded", mapOf("listing" to listing.id)))
+            deliverMoneyOrQueue(listing.ownerId, listing.ownerName, moneyCurrencyKey, listing.depositPaid, Texts.tr("@auction.notify.deposit-refunded", mapOf("listing" to listing.id)))
         }
-        deliverMoneyOrQueue(listing.ownerId, listing.ownerName, sellerIncome, Texts.tr("@auction.notify.sale-delivered", mapOf("listing" to listing.id, "buyer" to buyerName, "price" to EconomyModule.formatAmount(settings.currencyKey, finalPrice))))
+        deliverMoneyOrQueue(listing.ownerId, listing.ownerName, moneyCurrencyKey, sellerIncome, Texts.tr("@auction.notify.sale-delivered", mapOf("listing" to listing.id, "buyer" to buyerName, "price" to EconomyModule.formatAmount(moneyCurrencyKey, finalPrice))))
         deliverItemOrQueue(buyerId, buyerName, listing.item.clone(), Texts.tr("@auction.notify.item-delivered", mapOf("listing" to listing.id)))
         if (settings.recordWriteOnComplete) {
             RecordService.append(
@@ -756,15 +760,15 @@ object AuctionModule : MatrixModule {
         if (listing.currentBid <= 0) {
             return
         }
-        deliverMoneyOrQueue(bidderId, listing.highestBidderName, listing.currentBid, Texts.tr("@auction.notify.bid-refunded", mapOf("listing" to listing.id)))
+        deliverMoneyOrQueue(bidderId, listing.highestBidderName, currencyKey(listing.shopId), listing.currentBid, Texts.tr("@auction.notify.bid-refunded", mapOf("listing" to listing.id)))
     }
 
-    private fun deliverMoneyOrQueue(ownerId: UUID, ownerName: String, amount: Double, message: String) {
+    private fun deliverMoneyOrQueue(ownerId: UUID, ownerName: String, currencyKey: String, amount: Double, message: String) {
         if (amount <= 0) {
             return
         }
         val player = Bukkit.getPlayer(ownerId)
-        if (player != null && player.isOnline && EconomyModule.isAvailable(settings.currencyKey) && EconomyModule.deposit(player, settings.currencyKey, amount)) {
+        if (player != null && player.isOnline && EconomyModule.isAvailable(currencyKey) && EconomyModule.deposit(player, currencyKey, amount)) {
             Texts.send(player, "&a$message")
             return
         }
@@ -773,6 +777,7 @@ object AuctionModule : MatrixModule {
             id = nextDeliveryId(),
             ownerId = ownerId,
             ownerName = ownerName,
+            currencyKey = currencyKey,
             money = amount,
             message = message
         )
@@ -1055,6 +1060,13 @@ object AuctionModule : MatrixModule {
 
     private fun nextDeliveryId(): String {
         return "delivery-${System.currentTimeMillis().toString(36)}-${UUID.randomUUID().toString().take(6)}"
+    }
+
+    private fun currencyKey(shopId: String?): String {
+        return runCatching { ShopMenuLoader.resolve(menus.auctionViews, shopId).currencyKey }
+            .getOrNull()
+            ?.ifBlank { settings.currencyKey }
+            ?: settings.currencyKey
     }
 
     private fun trimDouble(value: Double): String {
