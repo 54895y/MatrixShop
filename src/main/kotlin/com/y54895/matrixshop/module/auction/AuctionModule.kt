@@ -3,7 +3,7 @@ package com.y54895.matrixshop.module.auction
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
-import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
@@ -328,16 +328,16 @@ object AuctionModule : MatrixModule {
             return
         }
         val deposit = listingFee(safeStart, settings.depositMode, settings.depositValue).takeIf { settings.depositEnabled } ?: 0.0
-        if (deposit > 0 && !VaultEconomyBridge.isAvailable()) {
-            Texts.sendKey(player, "@auction.errors.deposit-vault-required")
+        if (deposit > 0 && !EconomyModule.isAvailable(settings.currencyKey)) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
-        if (deposit > 0 && !VaultEconomyBridge.has(player, deposit)) {
-            Texts.sendKey(player, "@auction.errors.deposit-not-enough", mapOf("amount" to trimDouble(deposit)))
+        if (deposit > 0 && !EconomyModule.has(player, settings.currencyKey, deposit)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, settings.currencyKey, deposit))
             return
         }
-        if (deposit > 0 && !VaultEconomyBridge.withdraw(player, deposit)) {
-            Texts.sendKey(player, "@auction.errors.deposit-withdraw-failed")
+        if (deposit > 0 && !EconomyModule.withdraw(player, settings.currencyKey, deposit, mapOf("item" to itemDisplayName(hand)))) {
+            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
         val listingItem = hand.clone()
@@ -361,7 +361,7 @@ object AuctionModule : MatrixModule {
         listings += listing
         AuctionRepository.saveAll(listings)
         player.updateInventory()
-        Texts.sendKey(player, "@auction.success.listed", mapOf("shop" to listing.shopId, "name" to itemDisplayName(listingItem), "price" to trimDouble(safeStart)))
+        Texts.sendKey(player, "@auction.success.listed", mapOf("shop" to listing.shopId, "name" to itemDisplayName(listingItem), "price" to EconomyModule.formatAmount(settings.currencyKey, safeStart)))
         if (settings.recordWriteOnCreate) {
             RecordService.append(
                 module = "auction",
@@ -403,16 +403,16 @@ object AuctionModule : MatrixModule {
             Texts.sendKey(player, "@auction.errors.bid-too-low", mapOf("amount" to trimDouble(minimum)))
             return
         }
-        if (!VaultEconomyBridge.isAvailable()) {
-            Texts.sendKey(player, "@auction.errors.bid-vault-required")
+        if (!EconomyModule.isAvailable(settings.currencyKey)) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
-        if (!VaultEconomyBridge.has(player, offered)) {
-            Texts.sendKey(player, "@auction.errors.bid-balance-not-enough")
+        if (!EconomyModule.has(player, settings.currencyKey, offered)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, settings.currencyKey, offered))
             return
         }
-        if (!VaultEconomyBridge.withdraw(player, offered)) {
-            Texts.sendKey(player, "@auction.errors.bid-withdraw-failed")
+        if (!EconomyModule.withdraw(player, settings.currencyKey, offered, mapOf("item" to itemDisplayName(listing.item)))) {
+            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
         refundPreviousBidder(listing)
@@ -422,7 +422,7 @@ object AuctionModule : MatrixModule {
         listing.bidHistory += AuctionBidEntry(player.uniqueId, player.name, offered, System.currentTimeMillis())
         applySnipeProtection(listing)
         AuctionRepository.saveAll(listings)
-        Texts.sendKey(player, "@auction.success.bid-placed", mapOf("amount" to trimDouble(offered)))
+        Texts.sendKey(player, "@auction.success.bid-placed", mapOf("amount" to EconomyModule.formatAmount(settings.currencyKey, offered)))
         Bukkit.getPlayer(listing.ownerId)?.let {
             Texts.sendKey(it, "@auction.notify.bid-received", mapOf("player" to player.name, "listing" to listing.id))
         }
@@ -465,21 +465,21 @@ object AuctionModule : MatrixModule {
                 return
             }
         }
-        if (!VaultEconomyBridge.isAvailable()) {
-            Texts.sendKey(player, "@auction.errors.buyout-vault-required")
+        if (!EconomyModule.isAvailable(settings.currencyKey)) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
-        if (!VaultEconomyBridge.has(player, price)) {
-            Texts.sendKey(player, "@auction.errors.buyout-balance-not-enough")
+        if (!EconomyModule.has(player, settings.currencyKey, price)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, settings.currencyKey, price))
             return
         }
-        if (!VaultEconomyBridge.withdraw(player, price)) {
-            Texts.sendKey(player, "@auction.errors.buyout-withdraw-failed")
+        if (!EconomyModule.withdraw(player, settings.currencyKey, price, mapOf("item" to itemDisplayName(listing.item)))) {
+            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
         refundPreviousBidder(listing)
         completeSale(listing, player.uniqueId, player.name, price, listings, if (listing.mode == AuctionMode.DUTCH) "dutch" else "buyout")
-        Texts.sendKey(player, "@auction.success.purchased", mapOf("price" to trimDouble(price)))
+        Texts.sendKey(player, "@auction.success.purchased", mapOf("price" to EconomyModule.formatAmount(settings.currencyKey, price)))
     }
 
     fun remove(player: Player, listingId: String) {
@@ -543,7 +543,7 @@ object AuctionModule : MatrixModule {
             }
             var delivered = true
             if (entry.money > 0) {
-                if (!VaultEconomyBridge.isAvailable() || !VaultEconomyBridge.deposit(player, entry.money)) {
+                if (!EconomyModule.isAvailable(settings.currencyKey) || !EconomyModule.deposit(player, settings.currencyKey, entry.money)) {
                     delivered = false
                 }
             }
@@ -694,7 +694,7 @@ object AuctionModule : MatrixModule {
         if (listing.depositPaid > 0 && settings.depositRefundOnSell) {
             deliverMoneyOrQueue(listing.ownerId, listing.ownerName, listing.depositPaid, Texts.tr("@auction.notify.deposit-refunded", mapOf("listing" to listing.id)))
         }
-        deliverMoneyOrQueue(listing.ownerId, listing.ownerName, sellerIncome, Texts.tr("@auction.notify.sale-delivered", mapOf("listing" to listing.id, "buyer" to buyerName, "price" to trimDouble(finalPrice))))
+        deliverMoneyOrQueue(listing.ownerId, listing.ownerName, sellerIncome, Texts.tr("@auction.notify.sale-delivered", mapOf("listing" to listing.id, "buyer" to buyerName, "price" to EconomyModule.formatAmount(settings.currencyKey, finalPrice))))
         deliverItemOrQueue(buyerId, buyerName, listing.item.clone(), Texts.tr("@auction.notify.item-delivered", mapOf("listing" to listing.id)))
         if (settings.recordWriteOnComplete) {
             RecordService.append(
@@ -764,7 +764,7 @@ object AuctionModule : MatrixModule {
             return
         }
         val player = Bukkit.getPlayer(ownerId)
-        if (player != null && player.isOnline && VaultEconomyBridge.isAvailable() && VaultEconomyBridge.deposit(player, amount)) {
+        if (player != null && player.isOnline && EconomyModule.isAvailable(settings.currencyKey) && EconomyModule.deposit(player, settings.currencyKey, amount)) {
             Texts.send(player, "&a$message")
             return
         }
@@ -817,6 +817,7 @@ object AuctionModule : MatrixModule {
     private fun loadSettings(): AuctionSettings {
         val yaml = YamlConfiguration.loadConfiguration(File(ConfigFiles.dataFolder(), "Auction/settings.yml"))
         return AuctionSettings(
+            currencyKey = EconomyModule.configuredKey(yaml, "Options.Currency"),
             maxActive = yaml.getInt("Options.Listing.Max-Active", 20),
             defaultDuration = yaml.getInt("Options.Listing.Duration.Default", 86400),
             minDuration = yaml.getInt("Options.Listing.Duration.Min", 600),

@@ -27,6 +27,7 @@ commands:
     pending: "pending"
     all: "all"
   modules:
+    economy: "economy"
     menu: "menu"
     system-shop: "system shop"
     player-shop: "player shop"
@@ -118,6 +119,7 @@ commands:
     reloaded: "&aConfiguration and modules reloaded."
     sync-success: "&a{message} &7(version {from} -> {to})"
     legacy-import: "&fLegacy import: &7{message}"
+    module-required: "&cModule &f{module} &cis required and cannot be disabled."
     module-list-title: "&fModules:"
     module-list-line: "&7- &f{module}: {state}"
     module-state-changed: "&aModule &f{module} &ahas been set to {state}&a."
@@ -140,6 +142,13 @@ commands:
       last-legacy-import-total: "Last legacy import total"
       backend-reason: "Data backend reason"
       data-tables: "Data tables"
+
+economy:
+  errors:
+    currency-unavailable: "&cCurrency channel &f{currency} &cis not available."
+    balance-not-enough: "&cInsufficient funds. Need &e{need} &7({currency})&c, current balance is &e{balance}"
+    withdraw-failed: "&cFailed to withdraw &f{currency}&c."
+    deposit-failed: "&cFailed to deliver &f{currency}&c."
 
 menu:
   errors:

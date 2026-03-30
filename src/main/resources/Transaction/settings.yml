@@ -9,6 +9,8 @@ Bindings:
     Priority: 18
     Condition: 'perm matrixshop.transaction.use'
 Options:
+  Currency:
+    Money-Key: vault
   Request:
     Timeout-Seconds: 30
     Max-Pending: 5

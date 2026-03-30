@@ -3,7 +3,7 @@ package com.y54895.matrixshop.module.transaction
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
-import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
@@ -219,17 +219,17 @@ object TransactionModule : MatrixModule {
             return
         }
         val safeAmount = (amount ?: 0.0).coerceAtLeast(0.0)
-        if (!VaultEconomyBridge.isAvailable() && safeAmount > 0) {
-            Texts.sendKey(player, "@transaction.errors.vault-required")
+        if (!EconomyModule.isAvailable(settings.moneyCurrencyKey) && safeAmount > 0) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.moneyCurrencyKey))))
             return
         }
-        if (safeAmount > VaultEconomyBridge.balance(player)) {
-            Texts.sendKey(player, "@transaction.errors.money-not-enough")
+        if (!EconomyModule.has(player, settings.moneyCurrencyKey, safeAmount)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, settings.moneyCurrencyKey, safeAmount))
             return
         }
         setMoney(session, sideOf(session, player.uniqueId), safeAmount)
         markDirty(session)
-        Texts.sendKey(player, "@transaction.success.money-updated", mapOf("amount" to trimDouble(safeAmount)))
+        Texts.sendKey(player, "@transaction.success.money-updated", mapOf("amount" to EconomyModule.formatAmount(settings.moneyCurrencyKey, safeAmount)))
     }
 
     fun setExp(player: Player, amount: Int?) {
@@ -671,14 +671,14 @@ object TransactionModule : MatrixModule {
             openTrade(right, session)
             return
         }
-        if (settings.allowMoney && (session.leftMoney > 0 || session.rightMoney > 0) && !VaultEconomyBridge.isAvailable()) {
+        if (settings.allowMoney && (session.leftMoney > 0 || session.rightMoney > 0) && !EconomyModule.isAvailable(settings.moneyCurrencyKey)) {
             markDirty(session)
-            notifyPlayers(session, Texts.tr("@transaction.errors.vault-required"))
+            notifyPlayers(session, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.moneyCurrencyKey))))
             openTrade(left, session)
             openTrade(right, session)
             return
         }
-        if (session.leftMoney > VaultEconomyBridge.balance(left) || session.rightMoney > VaultEconomyBridge.balance(right)) {
+        if (!EconomyModule.has(left, settings.moneyCurrencyKey, session.leftMoney) || !EconomyModule.has(right, settings.moneyCurrencyKey, session.rightMoney)) {
             markDirty(session)
             notifyPlayers(session, Texts.tr("@transaction.notify.balance-invalid"))
             openTrade(left, session)
@@ -699,7 +699,7 @@ object TransactionModule : MatrixModule {
         var depositedLeft = false
         var depositedRight = false
         if (session.leftMoney > 0) {
-            if (!VaultEconomyBridge.withdraw(left, session.leftMoney)) {
+            if (!EconomyModule.withdraw(left, settings.moneyCurrencyKey, session.leftMoney, mapOf("target" to right.name))) {
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.withdraw-failed", mapOf("player" to left.name)))
                 openTrade(left, session)
@@ -709,9 +709,9 @@ object TransactionModule : MatrixModule {
             withdrewLeft = true
         }
         if (session.rightMoney > 0) {
-            if (!VaultEconomyBridge.withdraw(right, session.rightMoney)) {
+            if (!EconomyModule.withdraw(right, settings.moneyCurrencyKey, session.rightMoney, mapOf("target" to left.name))) {
                 if (withdrewLeft) {
-                    VaultEconomyBridge.deposit(left, session.leftMoney)
+                    EconomyModule.deposit(left, settings.moneyCurrencyKey, session.leftMoney)
                 }
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.withdraw-failed", mapOf("player" to right.name)))
@@ -722,7 +722,7 @@ object TransactionModule : MatrixModule {
             withdrewRight = true
         }
         if (session.rightMoney > 0) {
-            if (!VaultEconomyBridge.deposit(left, session.rightMoney)) {
+            if (!EconomyModule.deposit(left, settings.moneyCurrencyKey, session.rightMoney, mapOf("target" to right.name))) {
                 rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeft, depositedRight)
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.deposit-failed", mapOf("player" to right.name)))
@@ -733,7 +733,7 @@ object TransactionModule : MatrixModule {
             depositedLeft = true
         }
         if (session.leftMoney > 0) {
-            if (!VaultEconomyBridge.deposit(right, session.leftMoney)) {
+            if (!EconomyModule.deposit(right, settings.moneyCurrencyKey, session.leftMoney, mapOf("target" to left.name))) {
                 rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeft, depositedRight)
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.deposit-failed", mapOf("player" to left.name)))
@@ -769,16 +769,16 @@ object TransactionModule : MatrixModule {
         depositedRight: Boolean
     ) {
         if (depositedLeft && session.rightMoney > 0) {
-            VaultEconomyBridge.withdraw(left, session.rightMoney)
+            EconomyModule.withdraw(left, settings.moneyCurrencyKey, session.rightMoney)
         }
         if (depositedRight && session.leftMoney > 0) {
-            VaultEconomyBridge.withdraw(right, session.leftMoney)
+            EconomyModule.withdraw(right, settings.moneyCurrencyKey, session.leftMoney)
         }
         if (withdrewLeft && session.leftMoney > 0) {
-            VaultEconomyBridge.deposit(left, session.leftMoney)
+            EconomyModule.deposit(left, settings.moneyCurrencyKey, session.leftMoney)
         }
         if (withdrewRight && session.rightMoney > 0) {
-            VaultEconomyBridge.deposit(right, session.rightMoney)
+            EconomyModule.deposit(right, settings.moneyCurrencyKey, session.rightMoney)
         }
     }
 
@@ -932,6 +932,7 @@ object TransactionModule : MatrixModule {
     private fun loadSettings(): TransactionSettings {
         val yaml = YamlConfiguration.loadConfiguration(File(ConfigFiles.dataFolder(), "Transaction/settings.yml"))
         return TransactionSettings(
+            moneyCurrencyKey = EconomyModule.configuredKey(yaml, "Options.Currency"),
             requestTimeoutSeconds = yaml.getInt("Options.Request.Timeout-Seconds", 30),
             maxPending = yaml.getInt("Options.Request.Max-Pending", 5),
             allowMultiPending = yaml.getBoolean("Options.Request.Allow-Multi-Pending", true),
@@ -960,9 +961,9 @@ object TransactionModule : MatrixModule {
             "hint-exp" to Texts.tr(ModuleBindings.hintKey("transaction", "exp") ?: "@commands.hints.transaction-exp", mapOf("command" to "$command exp")),
             "self" to nameOf(session, selfSide),
             "target" to nameOf(session, targetSide),
-            "self-money" to trimDouble(moneyOf(session, selfSide)),
+            "self-money" to EconomyModule.formatAmount(settings.moneyCurrencyKey, moneyOf(session, selfSide)),
             "self-exp" to expOf(session, selfSide).toString(),
-            "target-money" to trimDouble(moneyOf(session, targetSide)),
+            "target-money" to EconomyModule.formatAmount(settings.moneyCurrencyKey, moneyOf(session, targetSide)),
             "target-exp" to expOf(session, targetSide).toString(),
             "target-ready" to if (readyOf(session, targetSide)) Texts.tr("@transaction.words.ready") else Texts.tr("@transaction.words.not-ready"),
             "shop-id" to session.shopId

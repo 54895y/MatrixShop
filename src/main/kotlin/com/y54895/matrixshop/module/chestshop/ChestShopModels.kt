@@ -50,6 +50,7 @@ data class ChestShopMenus(
 )
 
 data class ChestShopSettings(
+    val currencyKey: String,
     val createTriggers: List<ChestShopInteractionTrigger>,
     val customerTriggers: List<ChestShopInteractionTrigger>,
     val ownerTriggers: List<ChestShopInteractionTrigger>,

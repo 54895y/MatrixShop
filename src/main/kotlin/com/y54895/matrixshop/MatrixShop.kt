@@ -4,7 +4,7 @@ import com.y54895.matrixshop.core.command.MatrixShopCommands
 import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.LegacyDataMigrationService
-import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.ConsoleVisuals
@@ -31,13 +31,12 @@ object MatrixShop : Plugin() {
             RecordService.initialize()
             val schemaResult = DatabaseManager.syncSchema()
             LegacyDataMigrationService.migrateAll()
-            VaultEconomyBridge.reload()
             ModuleRegistry.reload()
             MatrixShopCommands.register()
             info(Texts.tr("@console.logs.enabled", mapOf("modules" to ModuleRegistry.enabledSummary())))
             ConsoleVisuals.renderReady(
                 backend = DatabaseManager.backendName(),
-                economy = VaultEconomyBridge.providerName(),
+                economy = EconomyModule.providerSummary(),
                 schemaMessage = schemaResult.message,
                 modules = ModuleRegistry.enabledSummary()
             )
@@ -58,7 +57,6 @@ object MatrixShop : Plugin() {
         RecordService.initialize()
         DatabaseManager.syncSchema()
         LegacyDataMigrationService.migrateAll()
-        VaultEconomyBridge.reload()
         ModuleRegistry.reload()
     }
 }

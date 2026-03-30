@@ -44,7 +44,6 @@ goods:
     material: 'WOOD_SWORD'
     amount: 1
     price: 25
-    currency: 'vault'
     buy-max: 16
     name: '&f木剑'
     lore:
@@ -53,7 +52,6 @@ goods:
     material: 'IRON_SWORD'
     amount: 1
     price: 120
-    currency: 'vault'
     buy-max: 16
     name: '&f铁剑'
     lore:
@@ -62,7 +60,6 @@ goods:
     material: 'DIAMOND_SWORD'
     amount: 1
     price: 420
-    currency: 'vault'
     buy-max: 8
     name: '&b钻石剑'
     lore:
@@ -71,7 +68,6 @@ goods:
     material: 'BOW'
     amount: 1
     price: 180
-    currency: 'vault'
     buy-max: 8
     name: '&6弓'
     lore:
@@ -80,7 +76,6 @@ goods:
     material: 'ARROW'
     amount: 16
     price: 32
-    currency: 'vault'
     buy-max: 64
     name: '&f箭矢 x16'
     lore:

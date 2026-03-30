@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.cart
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
@@ -528,9 +529,9 @@ object CartModule : MatrixModule {
             "name" to currentEntryName(entry),
             "source-module" to entry.sourceModule,
             "source-id" to entry.sourceId,
-            "snapshot-price" to trimDouble(entry.snapshotPrice),
-            "current-price" to trimDouble(currentPrice),
-            "currency" to entry.currency,
+            "snapshot-price" to EconomyModule.formatAmount(entry.currency, entry.snapshotPrice),
+            "current-price" to EconomyModule.formatAmount(entry.currency, currentPrice),
+            "currency" to EconomyModule.displayName(entry.currency),
             "amount" to entry.amount.toString(),
             "state" to entryStateLabel(entry, validation),
             "limitation" to entryLimitation(entry),
@@ -566,9 +567,9 @@ object CartModule : MatrixModule {
             "name" to currentEntryName(entry),
             "source-module" to entry.sourceModule,
             "source-id" to entry.sourceId,
-            "snapshot-price" to trimDouble(entry.snapshotPrice),
-            "current-price" to trimDouble(validation.currentPrice ?: entry.snapshotPrice),
-            "currency" to entry.currency,
+            "snapshot-price" to EconomyModule.formatAmount(entry.currency, entry.snapshotPrice),
+            "current-price" to EconomyModule.formatAmount(entry.currency, validation.currentPrice ?: entry.snapshotPrice),
+            "currency" to EconomyModule.displayName(entry.currency),
             "amount" to entry.amount.toString(),
             "state" to validation.state,
             "limitation" to entryLimitation(entry),
@@ -588,8 +589,8 @@ object CartModule : MatrixModule {
                 Texts.colorKey("@cart.lore.source", mapOf("source" to sourceLabel(entry.sourceModule))),
                 Texts.colorKey("@cart.lore.conflict", mapOf("type" to validation.conflictType.ifBlank { validation.state })),
                 Texts.colorKey("@cart.lore.reason", mapOf("reason" to ChatColor.stripColor(validation.reason).orEmpty())),
-                Texts.colorKey("@cart.lore.snapshot-price", mapOf("price" to trimDouble(entry.snapshotPrice), "currency" to entry.currency)),
-                Texts.colorKey("@cart.lore.current-price", mapOf("price" to trimDouble(validation.currentPrice ?: entry.snapshotPrice), "currency" to entry.currency))
+                Texts.colorKey("@cart.lore.snapshot-price", mapOf("price" to EconomyModule.formatAmount(entry.currency, entry.snapshotPrice), "currency" to EconomyModule.displayName(entry.currency))),
+                Texts.colorKey("@cart.lore.current-price", mapOf("price" to EconomyModule.formatAmount(entry.currency, validation.currentPrice ?: entry.snapshotPrice), "currency" to EconomyModule.displayName(entry.currency)))
             )
         }
         MenuRenderer.decorate(meta, name, lore)
@@ -602,8 +603,8 @@ object CartModule : MatrixModule {
         val lore = mutableListOf(
             Texts.colorKey("@cart.lore.source", mapOf("source" to sourceLabel(entry.sourceModule))),
             Texts.colorKey("@cart.lore.amount", mapOf("amount" to entry.amount.toString())),
-            Texts.colorKey("@cart.lore.snapshot-price", mapOf("price" to trimDouble(entry.snapshotPrice), "currency" to entry.currency)),
-            Texts.colorKey("@cart.lore.current-price", mapOf("price" to trimDouble(currentPrice), "currency" to entry.currency)),
+            Texts.colorKey("@cart.lore.snapshot-price", mapOf("price" to EconomyModule.formatAmount(entry.currency, entry.snapshotPrice), "currency" to EconomyModule.displayName(entry.currency))),
+            Texts.colorKey("@cart.lore.current-price", mapOf("price" to EconomyModule.formatAmount(entry.currency, currentPrice), "currency" to EconomyModule.displayName(entry.currency))),
             Texts.colorKey("@cart.lore.state", mapOf("state" to entryStateLabel(entry, validation))),
             Texts.colorKey("@cart.lore.slot", mapOf("slot" to slotNumber.toString())),
             Texts.colorKey("@cart.lore.created-at", mapOf("time" to timeFormatter.format(Instant.ofEpochMilli(entry.createdAt))))

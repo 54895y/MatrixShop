@@ -1,7 +1,7 @@
 package com.y54895.matrixshop.module.systemshop
 
 import com.y54895.matrixshop.core.config.ConfigFiles
-import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
@@ -26,6 +26,7 @@ object SystemShopModule : MatrixModule {
     private lateinit var confirmMenu: MenuDefinition
     private val categories = LinkedHashMap<String, SystemShopCategory>()
     private val confirmSessions = HashMap<UUID, ConfirmSession>()
+    private var currencyKey: String = "vault"
 
     override fun isEnabled(): Boolean {
         return ConfigFiles.isModuleEnabled(id, true)
@@ -37,6 +38,8 @@ object SystemShopModule : MatrixModule {
             return
         }
         val dataFolder = ConfigFiles.dataFolder()
+        val settings = YamlConfiguration.loadConfiguration(File(dataFolder, "SystemShop/settings.yml"))
+        currencyKey = EconomyModule.configuredKey(settings)
         rootMenu = MenuLoader.load(File(dataFolder, "SystemShop/ui/shop.yml"))
         confirmMenu = MenuLoader.load(File(dataFolder, "SystemShop/ui/confirm.yml"))
         categories.clear()
@@ -150,18 +153,18 @@ object SystemShopModule : MatrixModule {
         }
         val safeAmount = amount.coerceIn(1, product.buyMax.coerceAtLeast(1))
         val total = product.price * safeAmount
-        if (total > 0 && !VaultEconomyBridge.isAvailable()) {
-            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.vault-required"))
+        if (total > 0 && !EconomyModule.isAvailable(product.currency)) {
+            return ModuleOperationResult(false, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(product.currency))))
         }
-        if (!VaultEconomyBridge.has(player, total)) {
-            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.balance-not-enough", mapOf("price" to trimDouble(total))))
+        if (!EconomyModule.has(player, product.currency, total)) {
+            return ModuleOperationResult(false, EconomyModule.insufficientMessage(player, product.currency, total))
         }
         val purchaseStacks = product.toPurchasedItem(safeAmount)
         if (!canFit(player.inventory.contents.filterNotNull(), purchaseStacks)) {
             return ModuleOperationResult(false, Texts.tr("@system-shop.errors.inventory-no-space"))
         }
-        if (!VaultEconomyBridge.withdraw(player, total)) {
-            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.withdraw-failed"))
+        if (!EconomyModule.withdraw(player, product.currency, total)) {
+            return ModuleOperationResult(false, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(product.currency))))
         }
         purchaseStacks.forEach { player.inventory.addItem(it) }
         if (closeInventoryOnSuccess) {
@@ -173,7 +176,7 @@ object SystemShopModule : MatrixModule {
             mapOf(
                 "name" to product.name,
                 "amount" to safeAmount.toString(),
-                "total" to trimDouble(total)
+                "total" to EconomyModule.formatAmount(product.currency, total)
             )
         )
         RecordService.append(
@@ -199,9 +202,9 @@ object SystemShopModule : MatrixModule {
         val placeholders = playerPlaceholders(player) + mapOf(
             "name" to product.name,
             "amount" to session.amount.toString(),
-            "price" to trimDouble(product.price),
-            "total-price" to trimDouble(total),
-            "currency" to product.currency
+            "price" to EconomyModule.formatAmount(product.currency, product.price),
+            "total-price" to EconomyModule.formatAmount(product.currency, total),
+            "currency" to EconomyModule.displayName(product.currency)
         )
         MenuRenderer.open(
             player = player,
@@ -219,10 +222,10 @@ object SystemShopModule : MatrixModule {
             val slot = goodsSlots[index]
             val placeholders = mapOf(
                 "name" to product.name,
-                "price" to trimDouble(product.price),
-                "currency" to product.currency,
+                "price" to EconomyModule.formatAmount(product.currency, product.price),
+                "currency" to EconomyModule.displayName(product.currency),
                 "limit" to product.buyMax.toString(),
-                "has_currency" to trimDouble(VaultEconomyBridge.balance(player)),
+                "has_currency" to EconomyModule.formatAmount(product.currency, EconomyModule.balance(player, product.currency)),
                 "lore" to ""
             )
             val displayLore = if (category.menu.template.lore.isNotEmpty()) {
@@ -265,7 +268,7 @@ object SystemShopModule : MatrixModule {
             name = section.getString("name", id).orEmpty(),
             lore = section.getStringList("lore"),
             price = section.getDouble("price", 0.0),
-            currency = section.getString("currency", "vault").orEmpty(),
+            currency = currencyKey,
             buyMax = section.getInt("buy-max", 64)
         )
     }
@@ -275,7 +278,7 @@ object SystemShopModule : MatrixModule {
     }
 
     private fun playerPlaceholders(player: Player): Map<String, String> {
-        return mapOf("player" to player.name, "money" to trimDouble(VaultEconomyBridge.balance(player)))
+        return mapOf("player" to player.name, "money" to EconomyModule.formatAmount(currencyKey, EconomyModule.balance(player, currencyKey)))
     }
 
     private fun trimDouble(value: Double): String {

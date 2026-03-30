@@ -11,6 +11,8 @@ Bindings:
     Condition: 'perm matrixshop.auction.use'
 
 Options:
+  Currency:
+    Key: vault
   Listing:
     Max-Active: 20
     Duration:

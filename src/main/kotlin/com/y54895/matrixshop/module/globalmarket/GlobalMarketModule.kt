@@ -3,7 +3,7 @@ package com.y54895.matrixshop.module.globalmarket
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
-import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
@@ -172,7 +172,7 @@ object GlobalMarketModule : MatrixModule {
             ownerId = player.uniqueId,
             ownerName = player.name,
             price = price,
-            currency = "vault",
+            currency = settings.currencyKey,
             item = listingItem,
             createdAt = now,
             expireAt = now + settings.expireHours.coerceAtLeast(1) * 3_600_000L
@@ -239,24 +239,24 @@ object GlobalMarketModule : MatrixModule {
             }
             return ModuleOperationResult(false, "")
         }
-        if (listing.price > 0 && !VaultEconomyBridge.isAvailable()) {
-            return ModuleOperationResult(false, Texts.tr("@global-market.errors.vault-required"))
+        if (listing.price > 0 && !EconomyModule.isAvailable(listing.currency)) {
+            return ModuleOperationResult(false, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(listing.currency))))
         }
         if (!canFit(player.inventory.contents.filterNotNull(), listOf(listing.item))) {
             return ModuleOperationResult(false, Texts.tr("@global-market.errors.inventory-no-space"))
         }
-        if (!VaultEconomyBridge.has(player, listing.price)) {
-            return ModuleOperationResult(false, Texts.tr("@global-market.errors.balance-not-enough", mapOf("price" to trimDouble(listing.price))))
+        if (!EconomyModule.has(player, listing.currency, listing.price)) {
+            return ModuleOperationResult(false, EconomyModule.insufficientMessage(player, listing.currency, listing.price))
         }
-        if (!VaultEconomyBridge.withdraw(player, listing.price)) {
-            return ModuleOperationResult(false, Texts.tr("@global-market.errors.withdraw-failed"))
+        if (!EconomyModule.withdraw(player, listing.currency, listing.price, mapOf("seller" to listing.ownerName, "item" to itemDisplayName(listing.item)))) {
+            return ModuleOperationResult(false, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(listing.currency))))
         }
         val tax = listing.price * settings.taxPercent / 100.0
         val sellerIncome = (listing.price - tax).coerceAtLeast(0.0)
         val seller = Bukkit.getOfflinePlayer(listing.ownerId)
-        if (!VaultEconomyBridge.deposit(seller, sellerIncome)) {
-            VaultEconomyBridge.deposit(player, listing.price)
-            return ModuleOperationResult(false, Texts.tr("@global-market.errors.seller-delivery-failed"))
+        if (!EconomyModule.deposit(seller, listing.currency, sellerIncome, mapOf("buyer" to player.name, "item" to itemDisplayName(listing.item)))) {
+            EconomyModule.deposit(player, listing.currency, listing.price)
+            return ModuleOperationResult(false, Texts.tr("@economy.errors.deposit-failed", mapOf("currency" to EconomyModule.displayName(listing.currency))))
         }
         listings.removeIf { it.id == listing.id }
         GlobalMarketRepository.saveAll(listings)
@@ -269,7 +269,7 @@ object GlobalMarketModule : MatrixModule {
                 "shop" to listing.shopId,
                 "name" to itemDisplayName(listing.item),
                 "amount" to listing.item.amount.toString(),
-                "price" to trimDouble(listing.price)
+                "price" to EconomyModule.formatAmount(listing.currency, listing.price)
             )
         )
         Bukkit.getPlayer(listing.ownerId)?.let {
@@ -329,7 +329,7 @@ object GlobalMarketModule : MatrixModule {
             item.itemMeta = item.itemMeta?.apply {
                 lore = (lore ?: emptyList()) + listOf(
                     Texts.colorKey("@global-market.lore.seller", mapOf("seller" to listing.ownerName)),
-                    Texts.colorKey("@global-market.lore.price", mapOf("price" to trimDouble(listing.price), "currency" to listing.currency)),
+                    Texts.colorKey("@global-market.lore.price", mapOf("price" to EconomyModule.formatAmount(listing.currency, listing.price), "currency" to EconomyModule.displayName(listing.currency))),
                     Texts.colorKey("@global-market.lore.time-left", mapOf("time" to remainingText(listing))),
                     Texts.colorKey("@global-market.lore.left-buy"),
                     Texts.colorKey("@global-market.lore.right-cart")
@@ -355,7 +355,7 @@ object GlobalMarketModule : MatrixModule {
             val item = listing.item.clone()
             item.itemMeta = item.itemMeta?.apply {
                 lore = (lore ?: emptyList()) + listOf(
-                    Texts.colorKey("@global-market.lore.price", mapOf("price" to trimDouble(listing.price), "currency" to listing.currency)),
+                    Texts.colorKey("@global-market.lore.price", mapOf("price" to EconomyModule.formatAmount(listing.currency, listing.price), "currency" to EconomyModule.displayName(listing.currency))),
                     Texts.colorKey("@global-market.lore.time-left", mapOf("time" to remainingText(listing))),
                     Texts.colorKey("@global-market.lore.left-remove")
                 )
@@ -384,7 +384,8 @@ object GlobalMarketModule : MatrixModule {
         val yaml = YamlConfiguration.loadConfiguration(File(ConfigFiles.dataFolder(), "GlobalMarket/settings.yml"))
         return GlobalMarketSettings(
             expireHours = yaml.getInt("Listing.Expire-Hours", 72),
-            taxPercent = yaml.getDouble("Listing.Tax-Percent", 3.0)
+            taxPercent = yaml.getDouble("Listing.Tax-Percent", 3.0),
+            currencyKey = EconomyModule.configuredKey(yaml)
         )
     }
 

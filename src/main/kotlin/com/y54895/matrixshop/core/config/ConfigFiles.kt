@@ -43,6 +43,7 @@ object ConfigFiles {
         resourceFiles.forEach { releaseResourceFile(it, false) }
         releaseResourceFolder("SystemShop", false)
         releaseResourceFolder("Lang", false)
+        releaseResourceFolder("Economy", false)
         releaseResourceFolder("Menu", false)
         releaseResourceFolder("PlayerShop", false)
         releaseResourceFolder("GlobalMarket", false)

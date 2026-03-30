@@ -43,7 +43,6 @@ goods:
     material: 'COAL'
     amount: 16
     price: 48
-    currency: 'vault'
     buy-max: 64
     name: '&8煤炭 x16'
     lore:
@@ -52,7 +51,6 @@ goods:
     material: 'IRON_INGOT'
     amount: 8
     price: 160
-    currency: 'vault'
     buy-max: 64
     name: '&f铁锭 x8'
     lore:
@@ -61,7 +59,6 @@ goods:
     material: 'DIAMOND'
     amount: 2
     price: 300
-    currency: 'vault'
     buy-max: 16
     name: '&b钻石 x2'
     lore:

@@ -44,3 +44,6 @@ Display:
   Floating-Item:
     Enabled: true
     Height: 1.15
+
+Currency:
+  Key: vault

@@ -24,7 +24,8 @@ data class PlayerShopListing(
 
 data class PlayerShopSettings(
     val unlockedBase: Int,
-    val unlockedMax: Int
+    val unlockedMax: Int,
+    val currencyKey: String
 )
 
 data class PlayerShopMenus(

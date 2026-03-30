@@ -25,5 +25,6 @@ data class GlobalMarketMenus(
 
 data class GlobalMarketSettings(
     val expireHours: Int,
-    val taxPercent: Double
+    val taxPercent: Double,
+    val currencyKey: String
 )

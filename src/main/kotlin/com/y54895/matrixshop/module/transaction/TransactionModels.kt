@@ -43,6 +43,7 @@ data class TransactionSession(
 )
 
 data class TransactionSettings(
+    val moneyCurrencyKey: String,
     val requestTimeoutSeconds: Int,
     val maxPending: Int,
     val allowMultiPending: Boolean,

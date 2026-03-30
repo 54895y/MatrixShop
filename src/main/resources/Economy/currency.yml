@@ -1,0 +1,24 @@
+vault:
+  Mode: vault
+  Display-Name: "金币"
+  Symbol: "$"
+  Decimal: true
+
+playerpoints:
+  Mode: playerpoints
+  Display-Name: "点券"
+  Symbol: "点"
+  Decimal: false
+
+custom_points:
+  Mode: "%custom_points%"
+  Display-Name: "自定义积分"
+  Symbol: ""
+  Decimal: false
+  Actions:
+    Take:
+      - "console: custompoints take {player} {amount}"
+    Give:
+      - "console: custompoints give {player} {amount}"
+    Deny:
+      - "tell:&c货币不足，需要 &e{need} &c，当前为 &e{balance}"

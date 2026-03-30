@@ -42,6 +42,7 @@ data class AuctionMenus(
 )
 
 data class AuctionSettings(
+    val currencyKey: String,
     val maxActive: Int,
     val defaultDuration: Int,
     val minDuration: Int,

@@ -27,6 +27,7 @@ commands:
     pending: "待同步"
     all: "全部"
   modules:
+    economy: "经济"
     menu: "菜单"
     system-shop: "系统商店"
     player-shop: "玩家商店"
@@ -118,6 +119,7 @@ commands:
     reloaded: "&a配置与模块已重载。"
     sync-success: "&a{message} &7(版本 {from} -> {to})"
     legacy-import: "&f旧数据导入: &7{message}"
+    module-required: "&c模块 &f{module} &c为核心模块，不能被关闭。"
     module-list-title: "&f模块列表:"
     module-list-line: "&7- &f{module}: {state}"
     module-state-changed: "&a模块 &f{module} &a已切换为 {state}&a。"
@@ -140,6 +142,13 @@ commands:
       last-legacy-import-total: "最近旧数据导入总数"
       backend-reason: "数据后端原因"
       data-tables: "数据表统计"
+
+economy:
+  errors:
+    currency-unavailable: "&c货币通道 &f{currency} &c当前不可用。"
+    balance-not-enough: "&c货币不足。需要 &e{need} &7({currency})&c，当前为 &e{balance}"
+    withdraw-failed: "&c扣除 &f{currency} &c失败。"
+    deposit-failed: "&c发放 &f{currency} &c失败。"
 
 menu:
   errors:

@@ -15,3 +15,6 @@ Bindings:
 Listing:
   Expire-Hours: 72
   Tax-Percent: 3.0
+
+Currency:
+  Key: vault

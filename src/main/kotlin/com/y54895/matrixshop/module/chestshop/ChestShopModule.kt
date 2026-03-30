@@ -3,7 +3,7 @@ package com.y54895.matrixshop.module.chestshop
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
-import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
@@ -715,26 +715,30 @@ object ChestShopModule : MatrixModule {
             Texts.sendKey(player, "@chestshop.errors.inventory-no-space")
             return
         }
-        if (totalPrice > 0 && (!VaultEconomyBridge.isAvailable() || !VaultEconomyBridge.has(player, totalPrice))) {
-            Texts.sendKey(player, "@chestshop.errors.balance-not-enough")
+        if (totalPrice > 0 && !EconomyModule.isAvailable(settings.currencyKey)) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
-        if (totalPrice > 0 && !VaultEconomyBridge.withdraw(player, totalPrice)) {
-            Texts.sendKey(player, "@chestshop.errors.charge-failed")
+        if (totalPrice > 0 && !EconomyModule.has(player, settings.currencyKey, totalPrice)) {
+            Texts.send(player, EconomyModule.insufficientMessage(player, settings.currencyKey, totalPrice))
+            return
+        }
+        if (totalPrice > 0 && !EconomyModule.withdraw(player, settings.currencyKey, totalPrice, mapOf("seller" to shop.ownerName, "item" to itemDisplayName(shop.item)))) {
+            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
         if (!removeFromStock(shop, totalAmount)) {
             if (totalPrice > 0) {
-                VaultEconomyBridge.deposit(player, totalPrice)
+                EconomyModule.deposit(player, settings.currencyKey, totalPrice)
             }
             Texts.sendKey(player, "@chestshop.errors.stock-remove-failed")
             return
         }
         val owner = Bukkit.getOfflinePlayer(shop.ownerId)
-        if (totalPrice > 0 && !VaultEconomyBridge.deposit(owner, totalPrice)) {
+        if (totalPrice > 0 && !EconomyModule.deposit(owner, settings.currencyKey, totalPrice, mapOf("buyer" to player.name, "item" to itemDisplayName(shop.item)))) {
             addToStock(shop, purchaseStacks)
-            VaultEconomyBridge.deposit(player, totalPrice)
-            Texts.sendKey(player, "@chestshop.errors.owner-pay-failed")
+            EconomyModule.deposit(player, settings.currencyKey, totalPrice)
+            Texts.send(player, Texts.tr("@economy.errors.deposit-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
         purchaseStacks.forEach { player.inventory.addItem(it) }
@@ -743,9 +747,9 @@ object ChestShopModule : MatrixModule {
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)
         if (ownerPlayer != null && ownerPlayer.isOnline) {
-            Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-purchase", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to trimDouble(totalPrice)))
+            Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-purchase", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, totalPrice)))
         }
-        Texts.sendKey(player, "@chestshop.success.purchase", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to trimDouble(totalPrice)))
+        Texts.sendKey(player, "@chestshop.success.purchase", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, totalPrice)))
         RecordService.append(
             module = "chestshop",
             type = "purchase",
@@ -782,17 +786,21 @@ object ChestShopModule : MatrixModule {
             return
         }
         val owner = Bukkit.getOfflinePlayer(shop.ownerId)
-        if (totalPrice > 0 && (!VaultEconomyBridge.isAvailable() || !VaultEconomyBridge.has(owner, totalPrice))) {
+        if (totalPrice > 0 && !EconomyModule.isAvailable(settings.currencyKey)) {
+            Texts.send(player, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
+            return
+        }
+        if (totalPrice > 0 && !EconomyModule.has(owner, settings.currencyKey, totalPrice)) {
             Texts.sendKey(player, "@chestshop.errors.owner-balance-not-enough")
             return
         }
-        if (totalPrice > 0 && !VaultEconomyBridge.withdraw(owner, totalPrice)) {
-            Texts.sendKey(player, "@chestshop.errors.owner-withdraw-failed")
+        if (totalPrice > 0 && !EconomyModule.withdraw(owner, settings.currencyKey, totalPrice, mapOf("buyer" to player.name, "item" to itemDisplayName(shop.item)))) {
+            Texts.send(player, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
         if (!removeFromPlayer(player, shop.item, totalAmount)) {
             if (totalPrice > 0) {
-                VaultEconomyBridge.deposit(owner, totalPrice)
+                EconomyModule.deposit(owner, settings.currencyKey, totalPrice)
             }
             Texts.sendKey(player, "@chestshop.errors.player-remove-failed")
             return
@@ -800,16 +808,16 @@ object ChestShopModule : MatrixModule {
         if (!addToStock(shop, incomingStacks)) {
             player.inventory.addItem(*incomingStacks.toTypedArray())
             if (totalPrice > 0) {
-                VaultEconomyBridge.deposit(owner, totalPrice)
+                EconomyModule.deposit(owner, settings.currencyKey, totalPrice)
             }
             Texts.sendKey(player, "@chestshop.errors.stock-add-failed")
             return
         }
-        if (totalPrice > 0 && !VaultEconomyBridge.deposit(player, totalPrice)) {
+        if (totalPrice > 0 && !EconomyModule.deposit(player, settings.currencyKey, totalPrice, mapOf("seller" to shop.ownerName, "item" to itemDisplayName(shop.item)))) {
             removeFromStock(shop, totalAmount)
             player.inventory.addItem(*incomingStacks.toTypedArray())
-            VaultEconomyBridge.deposit(owner, totalPrice)
-            Texts.sendKey(player, "@chestshop.errors.player-pay-failed")
+            EconomyModule.deposit(owner, settings.currencyKey, totalPrice)
+            Texts.send(player, Texts.tr("@economy.errors.deposit-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
         player.updateInventory()
@@ -817,9 +825,9 @@ object ChestShopModule : MatrixModule {
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)
         if (ownerPlayer != null && ownerPlayer.isOnline) {
-            Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-sell", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to trimDouble(totalPrice)))
+            Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-sell", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, totalPrice)))
         }
-        Texts.sendKey(player, "@chestshop.success.sell", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to trimDouble(totalPrice)))
+        Texts.sendKey(player, "@chestshop.success.sell", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, totalPrice)))
         RecordService.append(
             module = "chestshop",
             type = "expense",
@@ -904,6 +912,7 @@ object ChestShopModule : MatrixModule {
             ChestShopInteractionTrigger(ChestShopInteractionTarget.SIGN, ChestShopInteractionKind.SHIFT_RIGHT)
         )
         return ChestShopSettings(
+            currencyKey = EconomyModule.configuredKey(yaml),
             createTriggers = parseTriggers(yaml.getStringList("Interaction.Create-Shop"), defaultCreate),
             customerTriggers = parseTriggers(
                 yaml.getStringList("Interaction.Customer-Open").ifEmpty {

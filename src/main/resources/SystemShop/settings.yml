@@ -15,4 +15,4 @@ Entry:
   Open-Main-On-Command: true
 
 Currency:
-  Default: vault
+  Key: vault

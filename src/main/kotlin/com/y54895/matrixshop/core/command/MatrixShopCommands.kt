@@ -5,7 +5,7 @@ import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.LegacyDataMigrationService
-import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
@@ -702,7 +702,7 @@ object MatrixShopCommands {
                 }
                 val diagnostics = DatabaseManager.diagnostics()
                 Texts.sendRaw(commandSender, statusLine("@commands.admin.status.data-folder", ConfigFiles.dataFolder().absolutePath))
-                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.economy-provider", VaultEconomyBridge.providerName()))
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.economy-provider", EconomyModule.providerSummary()))
                 Texts.sendRaw(commandSender, statusLine("@commands.admin.status.configured-backend", diagnostics.configuredBackend))
                 Texts.sendRaw(commandSender, statusLine("@commands.admin.status.active-backend", diagnostics.activeBackend))
                 Texts.sendRaw(commandSender, statusLine("@commands.admin.status.data-target", diagnostics.target))
@@ -882,10 +882,14 @@ object MatrixShopCommands {
             sendUsage(sender, adminUsage("module <enable|disable|toggle> <id>"))
             return
         }
+        if (moduleId == "economy" && action in setOf("disable", "off", "toggle")) {
+            Texts.sendKey(sender, "@commands.admin.module-required", mapOf("module" to moduleId))
+            return
+        }
         val enabled = when (action) {
             "enable", "on" -> true
             "disable", "off" -> false
-            "toggle" -> !ConfigFiles.isModuleEnabled(moduleId, true)
+            "toggle" -> if (moduleId == "economy") true else !ConfigFiles.isModuleEnabled(moduleId, true)
             else -> {
                 sendUsage(sender, adminUsage("module <enable|disable|toggle> <id>"))
                 return
@@ -906,6 +910,7 @@ object MatrixShopCommands {
     private fun resolveModuleId(raw: String?): String? {
         return when (raw?.lowercase()) {
             "menu", "menus" -> "menu"
+            "economy" -> "economy"
             "system", "systemshop", "system-shop" -> "system-shop"
             "playershop", "player_shop", "player-shop" -> "player-shop"
             "globalmarket", "global_market", "global-market", "market" -> "global-market"
@@ -967,6 +972,7 @@ object MatrixShopCommands {
     private fun moduleDisplayName(moduleId: String): String {
         val key = when (moduleId) {
             "menu" -> "@commands.modules.menu"
+            "economy" -> "@commands.modules.economy"
             "system-shop" -> "@commands.modules.system-shop"
             "player-shop" -> "@commands.modules.player-shop"
             "global-market" -> "@commands.modules.global-market"
@@ -1135,7 +1141,7 @@ object MatrixShopCommands {
             1 -> filterSuggestions(listOf("help", "reload", "sync", "status", "module"), args[0])
             2 -> if (args[0].equals("module", true)) filterSuggestions(listOf("list", "enable", "disable", "toggle"), args[1]) else emptyList()
             3 -> if (args[0].equals("module", true) && args[1].lowercase() in setOf("enable", "disable", "toggle")) {
-                filterSuggestions(listOf("menu", "system-shop", "player-shop", "global-market", "auction", "transaction", "chestshop", "cart", "record"), args[2])
+                filterSuggestions(listOf("economy", "menu", "system-shop", "player-shop", "global-market", "auction", "transaction", "chestshop", "cart", "record"), args[2])
             } else emptyList()
             else -> emptyList()
         }

@@ -2,7 +2,7 @@ package com.y54895.matrixshop.module.playershop
 
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ConfigFiles
-import com.y54895.matrixshop.core.economy.VaultEconomyBridge
+import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
@@ -157,7 +157,7 @@ object PlayerShopModule : MatrixModule {
             id = "ps-${System.currentTimeMillis().toString(36)}-$slotIndex",
             slotIndex = slotIndex,
             price = price,
-            currency = "vault",
+            currency = settings.currencyKey,
             item = listed,
             createdAt = System.currentTimeMillis()
         )
@@ -234,22 +234,22 @@ object PlayerShopModule : MatrixModule {
         val refreshed = loadStore(store.ownerId, store.ownerName, store.shopId)
         val target = refreshed.listings.firstOrNull { it.id == listing.id }
             ?: return ModuleOperationResult(false, Texts.tr("@player-shop.errors.listing-unavailable"))
-        if (target.price > 0 && !VaultEconomyBridge.isAvailable()) {
-            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.vault-required"))
+        if (target.price > 0 && !EconomyModule.isAvailable(target.currency)) {
+            return ModuleOperationResult(false, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(target.currency))))
         }
         if (!canFit(viewer.inventory.contents.filterNotNull(), listOf(target.item))) {
             return ModuleOperationResult(false, Texts.tr("@player-shop.errors.inventory-no-space"))
         }
-        if (!VaultEconomyBridge.has(viewer, target.price)) {
-            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.balance-not-enough", mapOf("price" to trimDouble(target.price))))
+        if (!EconomyModule.has(viewer, target.currency, target.price)) {
+            return ModuleOperationResult(false, EconomyModule.insufficientMessage(viewer, target.currency, target.price))
         }
-        if (!VaultEconomyBridge.withdraw(viewer, target.price)) {
-            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.withdraw-failed"))
+        if (!EconomyModule.withdraw(viewer, target.currency, target.price, mapOf("seller" to store.ownerName, "item" to itemDisplayName(target.item)))) {
+            return ModuleOperationResult(false, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(target.currency))))
         }
         val seller = Bukkit.getOfflinePlayer(store.ownerId)
-        if (!VaultEconomyBridge.deposit(seller, target.price)) {
-            VaultEconomyBridge.deposit(viewer, target.price)
-            return ModuleOperationResult(false, Texts.tr("@player-shop.errors.seller-delivery-failed"))
+        if (!EconomyModule.deposit(seller, target.currency, target.price, mapOf("buyer" to viewer.name, "item" to itemDisplayName(target.item)))) {
+            EconomyModule.deposit(viewer, target.currency, target.price)
+            return ModuleOperationResult(false, Texts.tr("@economy.errors.deposit-failed", mapOf("currency" to EconomyModule.displayName(target.currency))))
         }
         refreshed.listings.remove(target)
         PlayerShopRepository.save(refreshed)
@@ -262,14 +262,14 @@ object PlayerShopModule : MatrixModule {
                 "shop" to store.shopId,
                 "name" to itemDisplayName(target.item),
                 "amount" to target.item.amount.toString(),
-                "price" to trimDouble(target.price)
+                "price" to EconomyModule.formatAmount(target.currency, target.price)
             )
         )
         Bukkit.getPlayer(store.ownerId)?.let {
             Texts.sendKey(
                 it,
                 "@player-shop.success.sold",
-                mapOf("shop" to store.shopId, "price" to trimDouble(target.price))
+                mapOf("shop" to store.shopId, "price" to EconomyModule.formatAmount(target.currency, target.price))
             )
         }
         RecordService.append(
@@ -326,13 +326,13 @@ object PlayerShopModule : MatrixModule {
         }
         entries.forEachIndexed { index, listing ->
             val slot = slots[index]
-            val item = listing.item.clone()
-            item.itemMeta = item.itemMeta?.apply {
-                lore = (lore ?: emptyList()) + listOf(
-                    Texts.colorKey("@player-shop.lore.price", mapOf("price" to trimDouble(listing.price), "currency" to listing.currency)),
-                    Texts.colorKey("@player-shop.lore.owner", mapOf("owner" to store.ownerName)),
-                    Texts.colorKey(if (ownerView) "@player-shop.lore.left-edit" else "@player-shop.lore.left-buy"),
-                    Texts.colorKey(if (ownerView) "@player-shop.lore.owner-view" else "@player-shop.lore.right-cart")
+                val item = listing.item.clone()
+                item.itemMeta = item.itemMeta?.apply {
+                    lore = (lore ?: emptyList()) + listOf(
+                    Texts.colorKey("@player-shop.lore.price", mapOf("price" to EconomyModule.formatAmount(listing.currency, listing.price), "currency" to EconomyModule.displayName(listing.currency))),
+                        Texts.colorKey("@player-shop.lore.owner", mapOf("owner" to store.ownerName)),
+                        Texts.colorKey(if (ownerView) "@player-shop.lore.left-edit" else "@player-shop.lore.left-buy"),
+                        Texts.colorKey(if (ownerView) "@player-shop.lore.owner-view" else "@player-shop.lore.right-cart")
                 )
             }
             holder.backingInventory.setItem(slot, item)
@@ -362,7 +362,7 @@ object PlayerShopModule : MatrixModule {
                 val item = listing.item.clone()
                 item.itemMeta = item.itemMeta?.apply {
                     lore = (lore ?: emptyList()) + listOf(
-                        Texts.colorKey("@player-shop.lore.price", mapOf("price" to trimDouble(listing.price), "currency" to listing.currency)),
+                        Texts.colorKey("@player-shop.lore.price", mapOf("price" to EconomyModule.formatAmount(listing.currency, listing.price), "currency" to EconomyModule.displayName(listing.currency))),
                         Texts.colorKey("@player-shop.lore.slot", mapOf("slot" to (listing.slotIndex + 1).toString(), "max" to store.unlockedSlots.toString())),
                         Texts.colorKey("@player-shop.lore.left-remove")
                     )
@@ -423,7 +423,7 @@ object PlayerShopModule : MatrixModule {
             "owner" to store.ownerName,
             "page" to page.toString(),
             "max-page" to maxPage.toString(),
-            "money" to trimDouble(VaultEconomyBridge.balance(viewer)),
+            "money" to EconomyModule.formatAmount(settings.currencyKey, EconomyModule.balance(viewer, settings.currencyKey)),
             "listed" to store.listings.size.toString(),
             "unlocked" to store.unlockedSlots.toString(),
             "shop-id" to store.shopId
@@ -470,7 +470,8 @@ object PlayerShopModule : MatrixModule {
         val yaml = YamlConfiguration.loadConfiguration(File(ConfigFiles.dataFolder(), "PlayerShop/settings.yml"))
         return PlayerShopSettings(
             unlockedBase = yaml.getInt("Unlock.Base", 21),
-            unlockedMax = yaml.getInt("Unlock.Max", 100)
+            unlockedMax = yaml.getInt("Unlock.Max", 100),
+            currencyKey = EconomyModule.configuredKey(yaml)
         )
     }
 
