@@ -177,7 +177,7 @@ object EconomyModule : MatrixModule {
         val resolved = resolve(key)
         val definition = definition(resolved)
         return if (definition != null && !definition.decimal) {
-            ceil(amount).toDouble()
+            ceil(amount)
         } else {
             amount
         }
@@ -402,7 +402,7 @@ private object PlayerPointsBridge {
                 else -> return@forEach
             }
             val second = when (method.parameterTypes[1]) {
-                Integer::class.java, java.lang.Integer.TYPE -> amount
+                Int::class.java, Integer.TYPE -> amount
                 Double::class.java, java.lang.Double.TYPE -> amount.toDouble()
                 else -> return@forEach
             }
