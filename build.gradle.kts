@@ -1,8 +1,12 @@
 import io.izzel.taboolib.gradle.*
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     java
+    id("com.gradleup.shadow") version "9.3.1"
     id("io.izzel.taboolib") version "2.0.36"
     kotlin("jvm") version "2.3.0"
 }
@@ -38,6 +42,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.bstats:bstats-bukkit:3.2.1")
     compileOnly("org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT")
     compileOnly(kotlin("stdlib"))
     compileOnly("com.y54895.matrixlib:matrixlib-api:$matrixLibApiVersion")
@@ -56,4 +61,25 @@ kotlin {
 configure<JavaPluginExtension> {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+tasks.named<ShadowJar>("shadowJar") {
+    val runtimeJar = tasks.named<Jar>("jar").get()
+    dependsOn(runtimeJar)
+    archiveClassifier.set("all")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(zipTree(runtimeJar.archiveFile))
+    configurations = listOf(project.configurations.runtimeClasspath.get())
+
+    dependencies {
+        exclude { dependency ->
+            dependency.moduleGroup != "org.bstats"
+        }
+    }
+
+    relocate("org.bstats", "${project.group}.libs.bstats")
+}
+
+tasks.named("build") {
+    dependsOn(tasks.named("shadowJar"))
 }

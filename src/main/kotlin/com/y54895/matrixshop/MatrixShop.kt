@@ -10,11 +10,16 @@ import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.ConsoleVisuals
 import com.y54895.matrixshop.core.text.MatrixI18n
 import com.y54895.matrixshop.core.text.Texts
+import org.bstats.bukkit.Metrics
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.info
 import taboolib.common.platform.function.severe
+import taboolib.common.platform.function.warning
+import taboolib.platform.BukkitPlugin
 
 object MatrixShop : Plugin() {
+
+    private const val BSTATS_PLUGIN_ID = 30502
 
     override fun onLoad() {
         ConfigFiles.ensureDefaults()
@@ -33,6 +38,10 @@ object MatrixShop : Plugin() {
             LegacyDataMigrationService.migrateAll()
             ModuleRegistry.reload()
             MatrixShopCommands.register()
+            runCatching { Metrics(BukkitPlugin.getInstance(), BSTATS_PLUGIN_ID) }
+                .onFailure {
+                    warning("Failed to initialize bStats metrics: ${it.message ?: it.javaClass.simpleName}")
+                }
             info(Texts.tr("@console.logs.enabled", mapOf("modules" to ModuleRegistry.enabledSummary())))
             ConsoleVisuals.renderReady(
                 backend = DatabaseManager.backendName(),
