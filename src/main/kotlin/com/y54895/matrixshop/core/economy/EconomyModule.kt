@@ -69,6 +69,17 @@ object EconomyModule : MatrixModule {
         }
     }
 
+    fun configuredCurrencyCount(): Int {
+        return currencies.size
+    }
+
+    fun currencyModeDistribution(): Map<String, Int> {
+        return currencies.values
+            .groupingBy { definition -> definition.mode.name.lowercase() }
+            .eachCount()
+            .toSortedMap()
+    }
+
     fun formatAmount(key: String?, amount: Double): String {
         val definition = definition(resolve(key))
         return if (definition != null && !definition.decimal) {

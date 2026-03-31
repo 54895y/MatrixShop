@@ -65,9 +65,32 @@ This means you can keep one unified currency registry and let business modules o
 ./gradlew.bat build
 ```
 
+The deployable runtime artifact is:
+
+```text
+build/libs/MatrixShop-1.2.0-all.jar
+```
+
 Current source dependency:
 
 - `com.y54895.matrixlib:matrixlib-api:1.0.1`
+
+## Telemetry
+
+MatrixShop now includes [bStats](https://bstats.org/) telemetry support with plugin id `30502`.
+
+Collected charts are configuration and module level only:
+
+- active database backend
+- configured database backend
+- enabled module count
+- enabled module distribution
+- SystemShop category count
+- SystemShop goods count
+- configured economy currency count
+- configured economy currency mode distribution
+
+It does not submit player names, transaction records, item contents, chat messages, or database credentials.
 
 ## Links
 
