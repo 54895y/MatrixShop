@@ -4,6 +4,32 @@ All notable changes to MatrixShop will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning for release tags.
 
+## [1.2.0] - 2026-03-31
+
+### Added
+
+- Added admin quick listing for `SystemShop` categories through `/matrixshopadmin goods add <category> <price> [buy-max] [product-id]`.
+- Added admin quick editing for `SystemShop` products through:
+  - `/matrixshopadmin goods select <category> <product-id>`
+  - `/matrixshopadmin goods edit <price|buy-max|currency|name|item|remove> ...`
+- Added in-menu admin selection for `SystemShop` products with `Shift + Right Click`.
+
+### Changed
+
+- `SystemShop` product definitions can now preserve the full configured item stack for admin-added goods instead of rebuilding only from material data.
+- Updated release documentation for the new admin product maintenance flow.
+
+### Validated
+
+- Verified the full admin flow with a real client on `paper-1.12.2`:
+  - `/give`
+  - `goods add`
+  - `goods select`
+  - `goods edit price`
+  - `goods edit buy-max`
+  - `goods edit name`
+  - `goods edit remove`
+
 ## [1.1.1] - 2026-03-31
 
 ### Added

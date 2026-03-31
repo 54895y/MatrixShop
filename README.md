@@ -74,7 +74,7 @@ Current source dependency:
 - GitHub Repo: [https://github.com/54895y/MatrixShop](https://github.com/54895y/MatrixShop)
 - Docs: [https://54895y.github.io/docs/matrixshop](https://54895y.github.io/docs/matrixshop)
 - Changelog: [CHANGELOG.md](./CHANGELOG.md)
-- Release Notes 1.1.1: [https://54895y.github.io/docs/matrixshop/release-notes-1-1-1](https://54895y.github.io/docs/matrixshop/release-notes-1-1-1)
+- Release Notes 1.2.0: [https://54895y.github.io/docs/matrixshop/release-notes-1-2-0](https://54895y.github.io/docs/matrixshop/release-notes-1-2-0)
 - Issues: [https://github.com/54895y/MatrixShop/issues](https://github.com/54895y/MatrixShop/issues)
 - Releases: [https://github.com/54895y/MatrixShop/releases](https://github.com/54895y/MatrixShop/releases)
 - Required dependency: [MatrixLib](https://github.com/54895y/MatrixLib)
