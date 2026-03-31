@@ -1,0 +1,57 @@
+Title:
+  - '&8编辑 Goods &7{product-id}'
+
+layout:
+  - '#########'
+  - '###ggg###'
+  - '#P#L#S#B#'
+  - '#I#######'
+  - '#########'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'P':
+    material: 'GOLD_INGOT'
+    name: '&e价格调整'
+    lore:
+      - '&7当前价格: &e{price}'
+      - '&7左键: &a+1'
+      - '&7右键: &c-1'
+      - '&7Shift+左键: &a+10'
+      - '&7Shift+右键: &c-10'
+  'L':
+    material: 'HOPPER'
+    name: '&b限购调整'
+    lore:
+      - '&7当前限购: &f{limit}'
+      - '&7左键: &a+1'
+      - '&7右键: &c-1'
+      - '&7Shift+左键: &a+8'
+      - '&7Shift+右键: &c-8'
+  'S':
+    material: 'CHEST'
+    name: '&d选择上架商店'
+    lore:
+      - '&7当前上架数量: &f{shop-count}'
+      - '&7已上架分类: &f{shops}'
+      - ''
+      - '&e左键打开选择界面'
+  'I':
+    material: 'ANVIL'
+    name: '&f同步主手物品'
+    lore:
+      - '&7使用当前主手物品覆盖显示与掉落物'
+      - '&7保留当前价格、限购和上架状态'
+      - ''
+      - '&e左键立即同步'
+  'B':
+    material: 'BARRIER'
+    name: '&c返回'
+    actions:
+      left:
+        - 'back'

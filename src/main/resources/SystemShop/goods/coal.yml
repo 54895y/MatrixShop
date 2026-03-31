@@ -1,0 +1,8 @@
+id: coal
+material: 'COAL'
+amount: 16
+price: 48
+buy-max: 64
+name: '&8煤炭 x16'
+lore:
+  - '&7基础燃料与材料'

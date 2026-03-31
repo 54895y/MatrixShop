@@ -1,0 +1,8 @@
+id: wooden_sword
+material: 'WOOD_SWORD'
+amount: 1
+price: 25
+buy-max: 16
+name: '&f木剑'
+lore:
+  - '&7入门级近战武器'

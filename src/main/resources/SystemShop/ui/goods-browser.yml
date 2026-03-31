@@ -1,0 +1,43 @@
+Title:
+  - '&8Goods 仓库 &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#P#I#N#R#'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'P':
+    material: 'ARROW'
+    name: '&e上一页'
+    lore:
+      - '&7当前页: &f{page}/{max-page}'
+      - '&7左键翻到上一页'
+  'I':
+    material: 'BOOK'
+    name: '&fGoods 仓库'
+    lore:
+      - '&7商品总数: &f{total-goods}'
+      - '&7当前页: &f{page}/{max-page}'
+      - ''
+      - '&e左键点击商品进入编辑'
+  'N':
+    material: 'ARROW'
+    name: '&e下一页'
+    lore:
+      - '&7当前页: &f{page}/{max-page}'
+      - '&7左键翻到下一页'
+  'R':
+    material: 'BARRIER'
+    name: '&c关闭'
+    actions:
+      left:
+        - 'close'

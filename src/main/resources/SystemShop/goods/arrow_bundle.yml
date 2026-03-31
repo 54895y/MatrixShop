@@ -1,0 +1,8 @@
+id: arrow_bundle
+material: 'ARROW'
+amount: 16
+price: 32
+buy-max: 64
+name: '&f箭矢 x16'
+lore:
+  - '&7远程消耗品补给'

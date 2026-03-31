@@ -1,0 +1,8 @@
+id: iron_ingot
+material: 'IRON_INGOT'
+amount: 8
+price: 160
+buy-max: 64
+name: '&f铁锭 x8'
+lore:
+  - '&7常用进阶材料'

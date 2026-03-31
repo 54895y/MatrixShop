@@ -1,0 +1,8 @@
+id: bow
+material: 'BOW'
+amount: 1
+price: 180
+buy-max: 8
+name: '&6弓'
+lore:
+  - '&7远程作战基础装备'

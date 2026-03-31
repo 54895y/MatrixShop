@@ -1,0 +1,8 @@
+id: steak
+material: 'COOKED_BEEF'
+amount: 8
+price: 64
+buy-max: 64
+name: '&6熟牛排 x8'
+lore:
+  - '&7稳定的食物来源'

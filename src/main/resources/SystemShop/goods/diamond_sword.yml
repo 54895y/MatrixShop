@@ -1,0 +1,8 @@
+id: diamond_sword
+material: 'DIAMOND_SWORD'
+amount: 1
+price: 420
+buy-max: 8
+name: '&b钻石剑'
+lore:
+  - '&7高品质近战武器'

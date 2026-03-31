@@ -1,0 +1,8 @@
+id: iron_sword
+material: 'IRON_SWORD'
+amount: 1
+price: 120
+buy-max: 16
+name: '&f铁剑'
+lore:
+  - '&7稳定的主力武器'

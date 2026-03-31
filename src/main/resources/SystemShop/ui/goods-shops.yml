@@ -1,0 +1,43 @@
+Title:
+  - '&8选择上架商店 &7{page}/{max-page}'
+
+layout:
+  - '#########'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#ggggggg#'
+  - '#P#I#N#B#'
+
+icons:
+  '#':
+    material: 'STAINED_GLASS_PANE'
+    name: ' '
+  'g':
+    material: 'AIR'
+    mode: 'goods'
+  'P':
+    material: 'ARROW'
+    name: '&e上一页'
+    lore:
+      - '&7当前页: &f{page}/{max-page}'
+      - '&7左键翻到上一页'
+  'I':
+    material: 'BOOK'
+    name: '&f上架分类选择'
+    lore:
+      - '&7商品ID: &f{product-id}'
+      - '&7当前上架数量: &f{shop-count}'
+      - ''
+      - '&e左键切换某个分类是否上架'
+  'N':
+    material: 'ARROW'
+    name: '&e下一页'
+    lore:
+      - '&7当前页: &f{page}/{max-page}'
+      - '&7左键翻到下一页'
+  'B':
+    material: 'BARRIER'
+    name: '&c返回'
+    actions:
+      left:
+        - 'back'

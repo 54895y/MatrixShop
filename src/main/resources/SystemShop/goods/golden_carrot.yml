@@ -1,0 +1,8 @@
+id: golden_carrot
+material: 'GOLDEN_CARROT'
+amount: 8
+price: 120
+buy-max: 32
+name: '&e金胡萝卜 x8'
+lore:
+  - '&7优秀的饱食与饱和'

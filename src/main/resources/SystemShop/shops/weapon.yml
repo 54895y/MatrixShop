@@ -43,43 +43,8 @@ Currency:
   Key: vault
 
 goods:
-  wooden_sword:
-    material: 'WOOD_SWORD'
-    amount: 1
-    price: 25
-    buy-max: 16
-    name: '&f木剑'
-    lore:
-      - '&7入门级近战武器'
-  iron_sword:
-    material: 'IRON_SWORD'
-    amount: 1
-    price: 120
-    buy-max: 16
-    name: '&f铁剑'
-    lore:
-      - '&7稳定的主力武器'
-  diamond_sword:
-    material: 'DIAMOND_SWORD'
-    amount: 1
-    price: 420
-    buy-max: 8
-    name: '&b钻石剑'
-    lore:
-      - '&7高品质近战武器'
-  bow:
-    material: 'BOW'
-    amount: 1
-    price: 180
-    buy-max: 8
-    name: '&6弓'
-    lore:
-      - '&7远程作战基础装备'
-  arrow_bundle:
-    material: 'ARROW'
-    amount: 16
-    price: 32
-    buy-max: 64
-    name: '&f箭矢 x16'
-    lore:
-      - '&7远程消耗品补给'
+  - wooden_sword
+  - iron_sword
+  - diamond_sword
+  - bow
+  - arrow_bundle

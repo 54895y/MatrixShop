@@ -42,27 +42,6 @@ Currency:
   Key: vault
 
 goods:
-  coal:
-    material: 'COAL'
-    amount: 16
-    price: 48
-    buy-max: 64
-    name: '&8煤炭 x16'
-    lore:
-      - '&7基础燃料与材料'
-  iron_ingot:
-    material: 'IRON_INGOT'
-    amount: 8
-    price: 160
-    buy-max: 64
-    name: '&f铁锭 x8'
-    lore:
-      - '&7常用进阶材料'
-  diamond:
-    material: 'DIAMOND'
-    amount: 2
-    price: 300
-    buy-max: 16
-    name: '&b钻石 x2'
-    lore:
-      - '&7稀有矿物材料'
+  - coal
+  - iron_ingot
+  - diamond
