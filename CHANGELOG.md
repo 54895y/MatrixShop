@@ -4,6 +4,23 @@ All notable changes to MatrixShop will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning for release tags.
 
+## [1.1.1] - 2026-03-31
+
+### Added
+
+- Added a formal `CHANGELOG.md` to the repository.
+- Added a dedicated `1.1.1` release note entry to the documentation site.
+
+### Changed
+
+- Updated the repository README and docs entry points so the current release notes are easier to find.
+
+### Fixed
+
+- Replaced deprecated skull owner assignment in the transaction request preview with a compatibility wrapper.
+- Reworked PlayerShop owner lookup by player name to avoid deprecated direct name-based offline lookup and to resolve from online players, cached offline profiles, and existing shop data.
+- Finalized the documentation and release materials for the 1.1.x line.
+
 ## [1.1.0] - 2026-03-31
 
 ### Added
