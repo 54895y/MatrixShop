@@ -106,7 +106,8 @@ object ShopMenuLoader {
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", false),
             priority = yaml.getInt("Bindings.Commands.Priority", 0),
             helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null },
-            hintKeys = loadHintKeys(yaml, "Bindings.Commands.Hint-Keys")
+            hintKeys = loadHintKeys(yaml, "Bindings.Commands.Hint-Keys"),
+            helpLines = loadHelpLines(yaml, "Bindings.Commands.Help")
         )
     }
 
@@ -115,6 +116,14 @@ object ShopMenuLoader {
         return section.getKeys(false).associate { key ->
             key.lowercase() to (section.getString(key)?.trim()?.ifBlank { "" } ?: "")
         }.filterValues { it.isNotBlank() }
+    }
+
+    private fun loadHelpLines(yaml: YamlConfiguration, path: String): List<String> {
+        if (yaml.isList(path)) {
+            return yaml.getStringList(path)
+        }
+        val text = yaml.getString(path) ?: return emptyList()
+        return text.replace("\r\n", "\n").replace('\r', '\n').split('\n')
     }
 
     private fun normalizeShopId(value: String?): String? {

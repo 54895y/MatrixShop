@@ -12,6 +12,12 @@ Bindings:
       bid: '@commands.hints.auction-bid'
       upload-english: '@commands.hints.auction-upload-english'
       upload-dutch: '@commands.hints.auction-upload-dutch'
+    Help:
+      - '&7拍卖模块支持英式拍卖与荷兰式拍卖。'
+      - '&7打开大厅: &f{command} open'
+      - '&7上架物品: &f{command} upload <english|dutch> <起拍价> [一口价|结束价] [时长]'
+      - '&7出价: &f{command} bid <id> [价格]'
+      - '&7管理自己的拍卖: &f{command} manage'
 
 Currency:
   Key: vault

@@ -9,6 +9,11 @@ Bindings:
     Show-In-Help: true
     Priority: 100
     Help-Key: '@commands.bindings.system-shop'
+    Help:
+      - '&7系统商店使用静态商品配置。'
+      - '&7常用入口: &f{command} open <分类>'
+      - '&7默认分类由 config.yml 中的 system-shop.default-category 控制。'
+      - '&7支持在商品级、商店级或模块级配置货币。'
     Condition: 'perm matrixshop.systemshop.use'
 
 Entry:

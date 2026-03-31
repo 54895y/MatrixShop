@@ -11,7 +11,8 @@ data class ModuleCommandBinding(
     val showInHelp: Boolean,
     val priority: Int,
     val helpKey: String? = null,
-    val hintKeys: Map<String, String> = emptyMap()
+    val hintKeys: Map<String, String> = emptyMap(),
+    val helpLines: List<String> = emptyList()
 )
 
 object ModuleBindings {
@@ -69,6 +70,10 @@ object ModuleBindings {
         return load(moduleId).hintKeys[key.lowercase()]
     }
 
+    fun helpLines(moduleId: String): List<String> {
+        return load(moduleId).helpLines
+    }
+
     fun matches(moduleId: String, token: String): Boolean {
         return load(moduleId).keys.contains(token.trim().lowercase())
     }
@@ -102,7 +107,8 @@ object ModuleBindings {
             showInHelp = yaml.getBoolean("Bindings.Commands.Show-In-Help", fallback.showInHelp),
             priority = yaml.getInt("Bindings.Commands.Priority", fallback.priority),
             helpKey = yaml.getString("Bindings.Commands.Help-Key")?.trim()?.ifBlank { null } ?: fallback.helpKey,
-            hintKeys = loadHintKeys(yaml, "Bindings.Commands.Hint-Keys") + fallback.hintKeys
+            hintKeys = loadHintKeys(yaml, "Bindings.Commands.Hint-Keys") + fallback.hintKeys,
+            helpLines = loadHelpLines(yaml, "Bindings.Commands.Help")
         ).also { cache[moduleId] = it }
     }
 
@@ -111,6 +117,14 @@ object ModuleBindings {
         return section.getKeys(false).associateNotNull { key ->
             section.getString(key)?.trim()?.takeIf(String::isNotBlank)?.let { key.lowercase() to it }
         }
+    }
+
+    private fun loadHelpLines(yaml: YamlConfiguration, path: String): List<String> {
+        if (yaml.isList(path)) {
+            return yaml.getStringList(path)
+        }
+        val text = yaml.getString(path) ?: return emptyList()
+        return text.replace("\r\n", "\n").replace('\r', '\n').split('\n')
     }
 }
 

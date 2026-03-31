@@ -11,6 +11,11 @@ Bindings:
     Hint-Keys:
       open: '@commands.bindings.player-shop'
       upload: '@player-shop.hints.upload-command'
+    Help:
+      - '&7玩家商店使用当前商店入口对应的 shop 文件。'
+      - '&7打开自己的店铺: &f{command} open'
+      - '&7查看其他玩家: &f{command} open <玩家>'
+      - '&7上架主手物品: &f{command} upload <价格> [数量]'
 
 Currency:
   Key: vault

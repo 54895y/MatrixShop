@@ -14,6 +14,12 @@ Bindings:
       create: '@commands.hints.chestshop-create'
       price: '@commands.hints.chestshop-price'
       remove: '@commands.hints.chestshop-remove'
+    Help:
+      - '&7箱子商店依赖箱子、告示牌和库存。'
+      - '&7打开当前箱店: &f{command} open'
+      - '&7创建箱店: &f{command} create <buy|sell|dual> <价格> [sell-price] [数量]'
+      - '&7管理箱店: &f{command} edit | remove | price | amount | mode'
+      - '&7查看库存或历史: &f{command} stock | history'
     Condition: 'perm matrixshop.chestshop.use'
 
 # 交互触发支持:

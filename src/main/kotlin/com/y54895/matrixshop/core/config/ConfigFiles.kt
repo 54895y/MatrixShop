@@ -11,6 +11,16 @@ import java.nio.charset.StandardCharsets
 object ConfigFiles {
 
     private val resourceFiles = listOf("config.yml", "module.yml", "database.yml")
+    private val mergeableYamlResources = listOf(
+        "SystemShop/settings.yml",
+        "ChestShop/settings.yml",
+        "Cart/settings.yml",
+        "Record/settings.yml",
+        "PlayerShop/shops/default.yml",
+        "GlobalMarket/shops/default.yml",
+        "Auction/shops/default.yml",
+        "Transaction/shops/default.yml"
+    )
     private val bindingMigrations = listOf(
         BindingMigration(
             path = "Cart/settings.yml",
@@ -52,6 +62,7 @@ object ConfigFiles {
         releaseResourceFolder("Transaction", false)
         releaseResourceFolder("Cart", false)
         releaseResourceFolder("Record", false)
+        mergeableYamlResources.forEach(::mergeBundledYamlDefaults)
         mergeBundledYamlDefaults("Lang/zh_CN.yml")
         mergeBundledYamlDefaults("Lang/en_US.yml")
         migrateLegacyBindingConfigs()
@@ -98,10 +109,6 @@ object ConfigFiles {
             val yaml = YamlConfiguration.loadConfiguration(file)
             val legacyHelpBlock = yaml.contains("Bindings.Commands.Help") && !yaml.contains("Bindings.Commands.Help-Key")
             var changed = false
-            if (legacyHelpBlock) {
-                yaml.set("Bindings.Commands.Help", null)
-                changed = true
-            }
             if (!yaml.contains("Bindings.Commands.Help-Key")) {
                 yaml.set("Bindings.Commands.Help-Key", migration.helpKey)
                 changed = true

@@ -11,6 +11,12 @@ Bindings:
     Hint-Keys:
       open: '@commands.bindings.cart'
       amount: '@commands.hints.cart-amount'
+    Help:
+      - '&7购物车会汇总可结算的条目。'
+      - '&7打开购物车: &f{command} open'
+      - '&7打开结算预览: &f{command} checkout [valid_only]'
+      - '&7确认结算: &f{command} checkout confirm [valid_only]'
+      - '&7调整数量: &f{command} amount <槽位> <数量>'
     Condition: 'perm matrixshop.cart.use'
 
 Sources:

@@ -11,6 +11,12 @@ Bindings:
     Help-Key: '@commands.bindings.record'
     Hint-Keys:
       open: '@commands.bindings.record'
+    Help:
+      - '&7交易记录用于查看成交、退款和统计信息。'
+      - '&7打开记录页: &f{command} open [关键字]'
+      - '&7查看详情: &f{command} detail <记录ID>'
+      - '&7切换模块过滤: &f{command} filter [module|all]'
+      - '&7查看统计: &f{command} income | expense | stats'
     Condition: 'perm matrixshop.record.use'
 
 View:

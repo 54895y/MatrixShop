@@ -12,6 +12,12 @@ Bindings:
       request: '@commands.hints.transaction-request'
       money: '@commands.hints.transaction-money'
       exp: '@commands.hints.transaction-exp'
+    Help:
+      - '&7交易模块用于玩家之间的面对面交换。'
+      - '&7打开交易入口: &f{command} open'
+      - '&7发起请求: &f{command} request <玩家>'
+      - '&7设置金币报价: &f{command} money <数值>'
+      - '&7设置经验报价: &f{command} exp <数值>'
 
 Currency:
   Key: vault

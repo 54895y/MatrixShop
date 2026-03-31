@@ -10,6 +10,11 @@ Bindings:
     Hint-Keys:
       open: '@commands.bindings.global-market'
       upload: '@commands.hints.global-market-upload'
+    Help:
+      - '&7全球市场用于跨玩家公开上架。'
+      - '&7打开市场: &f{command} open'
+      - '&7上架主手物品: &f{command} upload <价格> [数量]'
+      - '&7管理你的上架: &f{command} manage'
 
 Currency:
   Key: vault
