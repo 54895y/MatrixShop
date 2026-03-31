@@ -77,7 +77,7 @@ Current source dependency:
 
 ## Telemetry
 
-[![bStats](https://img.shields.io/badge/%20-1f2937?style=flat-square&logo=googleanalytics&logoColor=white)](https://bstats.org/plugin/bukkit/30502)
+[![bStats](https://bstats.org/signatures/bukkit/MatrixShop.svg)](https://bstats.org/plugin/bukkit/MatrixShop)
 
 ## Links
 
