@@ -1,6 +1,3 @@
-> [!CAUTION]
-> 本项目由 Codex 协作维护，如发现问题请直接提交 Issue。
-
 # MatrixShop
 
 **Keywords:** Minecraft shop plugin, GUI shop plugin, auction plugin, player market plugin, trade plugin, Vault economy plugin, Paper plugin, Folia plugin, Bukkit plugin,  Minecraft plugin
@@ -16,6 +13,7 @@ MatrixShop is a Chinese-first Minecraft GUI economy and commerce plugin for Pape
 
 ## Core Modules
 
+- Economy
 - System Shop
 - Player Shop
 - Global Market
@@ -31,7 +29,7 @@ MatrixShop is a Chinese-first Minecraft GUI economy and commerce plugin for Pape
 - Recommended server: `Paper` / `Folia`
 - Build target: `Bukkit API 1.12.2`
 - Required dependency: [MatrixLib](https://github.com/54895y/MatrixLib)
-- Economy dependency: `Vault`
+- Supported economy backends: `Vault` / `PlayerPoints` / Placeholder-based custom currencies
 - Database: `SQLite` / `MySQL`
 - Optional sync layer: `Redis`
 
@@ -41,6 +39,25 @@ MatrixShop is a Chinese-first Minecraft GUI economy and commerce plugin for Pape
 - Unified command and menu structure for multiple commerce modules
 - Built for Chinese communities that want one plugin to cover shop, market, auction and trade workflows
 - Default configs are Chinese-oriented and ready for further customization
+
+## Economy Model
+
+MatrixShop now uses a dedicated `Economy` module for currency definitions.
+
+Priority order:
+
+1. Product-level currency
+2. Shop-level currency
+3. Module-level currency
+4. Fallback to `vault`
+
+Default currency config path:
+
+```text
+plugins/MatrixShop/Economy/currency.yml
+```
+
+This means you can keep one unified currency registry and let business modules only reference a currency key.
 
 ## Source Build
 
@@ -55,6 +72,7 @@ Current source dependency:
 ## Links
 
 - GitHub Repo: [https://github.com/54895y/MatrixShop](https://github.com/54895y/MatrixShop)
+- Docs: [https://54895y.github.io/docs/matrixshop](https://54895y.github.io/docs/matrixshop)
 - Issues: [https://github.com/54895y/MatrixShop/issues](https://github.com/54895y/MatrixShop/issues)
 - Releases: [https://github.com/54895y/MatrixShop/releases](https://github.com/54895y/MatrixShop/releases)
 - Required dependency: [MatrixLib](https://github.com/54895y/MatrixLib)
