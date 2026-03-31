@@ -7,6 +7,8 @@ import com.y54895.matrixshop.core.menu.MenuLoader
 import com.y54895.matrixshop.core.menu.MenuRenderer
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.module.MatrixModule
+import com.y54895.matrixshop.core.permission.PermissionNodes
+import com.y54895.matrixshop.core.permission.Permissions
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
 import org.bukkit.configuration.ConfigurationSection
@@ -27,6 +29,7 @@ object SystemShopModule : MatrixModule {
     private lateinit var confirmMenu: MenuDefinition
     private val categories = LinkedHashMap<String, SystemShopCategory>()
     private val confirmSessions = HashMap<UUID, ConfirmSession>()
+    private val adminSelections = HashMap<UUID, AdminGoodsSelection>()
     private var currencyKey: String = "vault"
 
     override fun isEnabled(): Boolean {
@@ -36,6 +39,7 @@ object SystemShopModule : MatrixModule {
     override fun reload() {
         if (!isEnabled()) {
             categories.clear()
+            adminSelections.clear()
             return
         }
         val dataFolder = ConfigFiles.dataFolder()
@@ -44,6 +48,7 @@ object SystemShopModule : MatrixModule {
         rootMenu = MenuLoader.load(File(dataFolder, "SystemShop/ui/shop.yml"))
         confirmMenu = MenuLoader.load(File(dataFolder, "SystemShop/ui/confirm.yml"))
         categories.clear()
+        adminSelections.clear()
         val shopFolder = File(dataFolder, "SystemShop/shops")
         shopFolder.mkdirs()
         shopFolder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
@@ -87,6 +92,18 @@ object SystemShopModule : MatrixModule {
             ?.map { it.nameWithoutExtension }
             ?.sorted()
             .orEmpty()
+    }
+
+    fun productIds(categoryId: String?): List<String> {
+        val normalizedCategoryId = categoryId?.trim().orEmpty()
+        if (normalizedCategoryId.isBlank()) {
+            return emptyList()
+        }
+        return categories[normalizedCategoryId]?.products?.map { it.id }?.sorted().orEmpty()
+    }
+
+    fun currentAdminSelection(player: Player): AdminGoodsSelection? {
+        return adminSelections[player.uniqueId]
     }
 
     fun quickAddFromHand(player: Player, categoryId: String?, price: Double?, buyMax: Int?, productId: String?): ModuleOperationResult {
@@ -136,6 +153,128 @@ object SystemShopModule : MatrixModule {
                 )
             )
         )
+    }
+
+    fun selectAdminProduct(player: Player, categoryId: String?, productId: String?): ModuleOperationResult {
+        val normalizedCategoryId = categoryId?.trim().orEmpty()
+        val normalizedProductId = productId?.trim().orEmpty()
+        if (normalizedCategoryId.isBlank() || normalizedProductId.isBlank()) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-select-usage"))
+        }
+        val product = findProduct(normalizedCategoryId, normalizedProductId)
+            ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-product-not-found", mapOf("category" to normalizedCategoryId, "product" to normalizedProductId)))
+        adminSelections[player.uniqueId] = AdminGoodsSelection(normalizedCategoryId, normalizedProductId)
+        return ModuleOperationResult(
+            true,
+            Texts.tr(
+                "@system-shop.success.admin-selected",
+                mapOf(
+                    "category" to normalizedCategoryId,
+                    "product" to normalizedProductId,
+                    "name" to product.name
+                )
+            )
+        )
+    }
+
+    fun quickEditSelected(
+        player: Player,
+        fieldRaw: String?,
+        values: List<String>
+    ): ModuleOperationResult {
+        val selection = adminSelections[player.uniqueId]
+            ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-selection-required"))
+        val field = fieldRaw?.trim()?.lowercase().orEmpty()
+        if (field.isBlank()) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-usage"))
+        }
+        val categoryFile = File(ConfigFiles.dataFolder(), "SystemShop/shops/${selection.categoryId}.yml")
+        if (!categoryFile.exists()) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.category-not-found", mapOf("category" to selection.categoryId)))
+        }
+        val yaml = YamlConfiguration.loadConfiguration(categoryFile)
+        val basePath = "goods.${selection.productId}"
+        if (!yaml.contains(basePath)) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-product-not-found", mapOf("category" to selection.categoryId, "product" to selection.productId)))
+        }
+        val section = yaml.getConfigurationSection(basePath)
+            ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-product-not-found", mapOf("category" to selection.categoryId, "product" to selection.productId)))
+        when (field) {
+            "price" -> {
+                val price = values.firstOrNull()?.toDoubleOrNull()
+                    ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-usage"))
+                if (price < 0.0) {
+                    return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-usage"))
+                }
+                yaml.set("$basePath.price", price)
+                saveCategoryYaml(categoryFile, yaml)?.let { return saveFailedResult(it) }
+                reload()
+                adminSelections[player.uniqueId] = selection
+                return ModuleOperationResult(true, Texts.tr("@system-shop.success.admin-updated", mapOf("field" to Texts.tr("@system-shop.words.field-price"), "product" to selection.productId)))
+            }
+            "buy-max", "limit" -> {
+                val buyMax = values.firstOrNull()?.toIntOrNull()
+                    ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-usage"))
+                if (buyMax <= 0) {
+                    return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-usage"))
+                }
+                yaml.set("$basePath.buy-max", buyMax)
+                saveCategoryYaml(categoryFile, yaml)?.let { return saveFailedResult(it) }
+                reload()
+                adminSelections[player.uniqueId] = selection
+                return ModuleOperationResult(true, Texts.tr("@system-shop.success.admin-updated", mapOf("field" to Texts.tr("@system-shop.words.field-buy-max"), "product" to selection.productId)))
+            }
+            "currency" -> {
+                val currency = values.firstOrNull()?.trim().orEmpty()
+                if (currency.isBlank()) {
+                    return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-usage"))
+                }
+                if (currency.equals("default", true) || currency.equals("inherit", true) || currency.equals("reset", true)) {
+                    yaml.set("$basePath.currency", null)
+                } else {
+                    yaml.set("$basePath.currency", currency)
+                }
+                saveCategoryYaml(categoryFile, yaml)?.let { return saveFailedResult(it) }
+                reload()
+                adminSelections[player.uniqueId] = selection
+                return ModuleOperationResult(true, Texts.tr("@system-shop.success.admin-updated", mapOf("field" to Texts.tr("@system-shop.words.field-currency"), "product" to selection.productId)))
+            }
+            "name" -> {
+                val name = values.joinToString(" ").trim()
+                if (name.isBlank()) {
+                    return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-usage"))
+                }
+                yaml.set("$basePath.name", name)
+                saveCategoryYaml(categoryFile, yaml)?.let { return saveFailedResult(it) }
+                reload()
+                adminSelections[player.uniqueId] = selection
+                return ModuleOperationResult(true, Texts.tr("@system-shop.success.admin-updated", mapOf("field" to Texts.tr("@system-shop.words.field-name"), "product" to selection.productId)))
+            }
+            "item", "sync-hand", "hand" -> {
+                val inHand = player.inventory.itemInMainHand?.clone() ?: ItemStack(Material.AIR)
+                if (inHand.type == Material.AIR || inHand.amount <= 0) {
+                    return ModuleOperationResult(false, Texts.tr("@system-shop.errors.hold-item"))
+                }
+                val meta = inHand.itemMeta
+                yaml.set("$basePath.item", inHand.clone())
+                yaml.set("$basePath.material", inHand.type.name)
+                yaml.set("$basePath.amount", inHand.amount)
+                yaml.set("$basePath.name", meta?.displayName?.takeIf(String::isNotBlank) ?: defaultProductName(inHand))
+                yaml.set("$basePath.lore", meta?.lore ?: emptyList<String>())
+                saveCategoryYaml(categoryFile, yaml)?.let { return saveFailedResult(it) }
+                reload()
+                adminSelections[player.uniqueId] = selection
+                return ModuleOperationResult(true, Texts.tr("@system-shop.success.admin-updated", mapOf("field" to Texts.tr("@system-shop.words.field-item"), "product" to selection.productId)))
+            }
+            "remove", "delete" -> {
+                yaml.set(basePath, null)
+                saveCategoryYaml(categoryFile, yaml)?.let { return saveFailedResult(it) }
+                adminSelections.remove(player.uniqueId)
+                reload()
+                return ModuleOperationResult(true, Texts.tr("@system-shop.success.admin-removed", mapOf("category" to selection.categoryId, "product" to selection.productId)))
+            }
+            else -> return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-unknown-field", mapOf("field" to field)))
+        }
     }
 
     fun adjustConfirmAmount(player: Player, delta: Int) {
@@ -293,11 +432,26 @@ object SystemShopModule : MatrixModule {
                 Texts.apply(category.menu.template.lore + product.lore, placeholders)
             } else {
                 Texts.apply(product.lore, placeholders)
+            }.toMutableList()
+            if (Permissions.has(player, PermissionNodes.ADMIN_GOODS)) {
+                displayLore += Texts.colorKey("@system-shop.lore.admin-edit", mapOf("category" to category.id, "product" to product.id))
             }
             val item = product.toItemStack(Texts.apply(category.menu.template.name, placeholders), displayLore)
             holder.inventory.setItem(slot, item)
-            holder.handlers[slot] = {
-                openConfirm(player, category.id, product.id)
+            holder.handlers[slot] = { event ->
+                if (Permissions.has(player, PermissionNodes.ADMIN_GOODS) && event.isShiftClick && event.isRightClick) {
+                    adminSelections[player.uniqueId] = AdminGoodsSelection(category.id, product.id)
+                    Texts.sendKey(
+                        player,
+                        "@system-shop.success.admin-selected",
+                        mapOf("category" to category.id, "product" to product.id, "name" to product.name)
+                    )
+                    Texts.sendKey(player, "@system-shop.hints.admin-edit-price")
+                    Texts.sendKey(player, "@system-shop.hints.admin-edit-limit")
+                    Texts.sendKey(player, "@system-shop.hints.admin-edit-item")
+                } else {
+                    openConfirm(player, category.id, product.id)
+                }
             }
         }
     }
@@ -428,4 +582,17 @@ object SystemShopModule : MatrixModule {
             .filter { it.isNotBlank() }
             .joinToString(" ") { part -> part.replaceFirstChar { it.uppercase() } }
     }
+
+    private fun saveCategoryYaml(file: File, yaml: YamlConfiguration): Throwable? {
+        return runCatching { yaml.save(file) }.exceptionOrNull()
+    }
+
+    private fun saveFailedResult(throwable: Throwable): ModuleOperationResult {
+        return ModuleOperationResult(false, Texts.tr("@system-shop.errors.save-failed", mapOf("reason" to (throwable.message ?: throwable.javaClass.simpleName))))
+    }
 }
+
+data class AdminGoodsSelection(
+    val categoryId: String,
+    val productId: String
+)

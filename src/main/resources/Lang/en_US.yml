@@ -116,6 +116,8 @@ commands:
       admin-module-list: "Show module states"
       admin-module-change: "Change one module state"
       admin-goods-add: "Quick-list the main-hand item into a SystemShop category"
+      admin-goods-select: "Select a SystemShop product as the admin edit target"
+      admin-goods-edit: "Quick-edit the selected SystemShop product"
   admin:
     reloaded: "&aConfiguration and modules reloaded."
     sync-success: "&a{message} &7(version {from} -> {to})"
@@ -161,6 +163,11 @@ system-shop:
   errors:
     category-not-found: "&cSystemShop category not found: &f{category}"
     admin-add-usage: "&cUsage: &f/matrixshopadmin goods add <category> <price> [buy-max] [product-id]"
+    admin-select-usage: "&cUsage: &f/matrixshopadmin goods select <category> <product-id>"
+    admin-edit-usage: "&cUsage: &f/matrixshopadmin goods edit <price|buy-max|currency|name|item|remove> ..."
+    admin-selection-required: "&cSelect a product first with Shift+Right Click in SystemShop, or use the select command."
+    admin-product-not-found: "&cSystemShop product not found: &f{category}/{product}"
+    admin-edit-unknown-field: "&cUnsupported edit field: &f{field}"
     hold-item: "&cHold the item you want to list in your main hand."
     save-failed: "&cFailed to save the SystemShop category file: &f{reason}"
     no-confirm-purchase: "&cThere is no pending purchase to confirm."
@@ -173,6 +180,21 @@ system-shop:
   success:
     purchase: "&aPurchase complete: &f{name} &7x&f{amount} &7- &e{total}"
     admin-added: "&aThe main-hand item has been listed in &f{category}&a. Product ID: &f{product}&a, price: &e{price}"
+    admin-selected: "&aSelected SystemShop product: &f{category}/{product} &7(&f{name}&7)"
+    admin-updated: "&aUpdated {field} for product &f{product}&a."
+    admin-removed: "&aRemoved product &f{product} &afrom category &f{category}&a."
+  hints:
+    admin-edit-price: "&7Example: &f/matrixshopadmin goods edit price 128"
+    admin-edit-limit: "&7Example: &f/matrixshopadmin goods edit buy-max 32"
+    admin-edit-item: "&7Example: &f/matrixshopadmin goods edit item &7(use the main-hand item as the new product item)"
+  lore:
+    admin-edit: "&cShift+Right Click to select this product for admin quick editing"
+  words:
+    field-price: "price"
+    field-buy-max: "purchase limit"
+    field-currency: "currency"
+    field-name: "display name"
+    field-item: "product item"
 
 auction:
   errors:

@@ -916,6 +916,8 @@ object MatrixShopCommands {
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), helpLine("$root module list", "@commands.help.desc.admin-module-list"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), helpLine("$root module <enable|disable|toggle> <id>", "@commands.help.desc.admin-module-change"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_GOODS), helpLine("$root goods add <category> <price> [buy-max] [product-id]", "@commands.help.desc.admin-goods-add"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_GOODS), helpLine("$root goods select <category> <product-id>", "@commands.help.desc.admin-goods-select"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_GOODS), helpLine("$root goods edit <price|buy-max|currency|name|item|remove> ...", "@commands.help.desc.admin-goods-edit"))
         lines += Texts.tr("@commands.help.admin-alias", mapOf("command" to root))
         Texts.sendRaw(sender, lines.joinToString("\n"))
     }
@@ -936,6 +938,18 @@ object MatrixShopCommands {
                 val buyMax = args.getOrNull(3)?.toIntOrNull()
                 val productId = args.getOrNull(4)
                 val result = ModuleRegistry.systemShop.quickAddFromHand(player, categoryId, price, buyMax, productId)
+                if (result.message.isNotBlank()) {
+                    Texts.send(player, result.message)
+                }
+            }
+            "select" -> {
+                val result = ModuleRegistry.systemShop.selectAdminProduct(player, args.getOrNull(1), args.getOrNull(2))
+                if (result.message.isNotBlank()) {
+                    Texts.send(player, result.message)
+                }
+            }
+            "edit" -> {
+                val result = ModuleRegistry.systemShop.quickEditSelected(player, args.getOrNull(1), args.drop(2))
                 if (result.message.isNotBlank()) {
                     Texts.send(player, result.message)
                 }
@@ -1234,13 +1248,20 @@ object MatrixShopCommands {
             1 -> filterSuggestions(listOf("help", "reload", "sync", "status", "module", "goods"), args[0])
             2 -> when {
                 args[0].equals("module", true) -> filterSuggestions(listOf("list", "enable", "disable", "toggle"), args[1])
-                args[0].equals("goods", true) -> filterSuggestions(listOf("add"), args[1])
+                args[0].equals("goods", true) -> filterSuggestions(listOf("add", "select", "edit"), args[1])
                 else -> emptyList()
             }
             3 -> if (args[0].equals("module", true) && args[1].lowercase() in setOf("enable", "disable", "toggle")) {
                 filterSuggestions(listOf("economy", "menu", "system-shop", "player-shop", "global-market", "auction", "transaction", "chestshop", "cart", "record"), args[2])
             } else if (args[0].equals("goods", true) && args[1].equals("add", true)) {
                 filterSuggestions(ModuleRegistry.systemShop.categoryIds(), args[2])
+            } else if (args[0].equals("goods", true) && args[1].equals("select", true)) {
+                filterSuggestions(ModuleRegistry.systemShop.categoryIds(), args[2])
+            } else if (args[0].equals("goods", true) && args[1].equals("edit", true)) {
+                filterSuggestions(listOf("price", "buy-max", "limit", "currency", "name", "item", "sync-hand", "remove"), args[2])
+            } else emptyList()
+            4 -> if (args[0].equals("goods", true) && args[1].equals("select", true)) {
+                filterSuggestions(ModuleRegistry.systemShop.productIds(args[2]), args[3])
             } else emptyList()
             else -> emptyList()
         }
