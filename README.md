@@ -77,20 +77,7 @@ Current source dependency:
 
 ## Telemetry
 
-MatrixShop now includes [bStats](https://bstats.org/) telemetry support with plugin id `30502`.
-
-Collected charts are configuration and module level only:
-
-- active database backend
-- configured database backend
-- enabled module count
-- enabled module distribution
-- SystemShop category count
-- SystemShop goods count
-- configured economy currency count
-- configured economy currency mode distribution
-
-It does not submit player names, transaction records, item contents, chat messages, or database credentials.
+[![bStats](https://img.shields.io/badge/%20-1f2937?style=flat-square&logo=googleanalytics&logoColor=white)](https://bstats.org/plugin/bukkit/30502)
 
 ## Links
 
