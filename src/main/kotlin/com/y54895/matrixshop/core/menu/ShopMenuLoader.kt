@@ -11,7 +11,7 @@ data class ConfiguredShopMenu(
     val id: String,
     val definition: MenuDefinition,
     val bindings: ModuleCommandBinding = ModuleCommandBinding(emptyList(), false, false, 0),
-    val currencyKey: String = "vault"
+    val currencyKey: String = ""
 )
 
 data class ShopMenuSelection(
@@ -36,7 +36,7 @@ object ShopMenuLoader {
                     id = id,
                     definition = MenuLoader.load(file),
                     bindings = loadBindings(yaml),
-                    currencyKey = EconomyModule.configuredKey(yaml)
+                    currencyKey = EconomyModule.configuredKeyOrNull(yaml).orEmpty()
                 )
             }
         if (result.isEmpty()) {
@@ -44,7 +44,7 @@ object ShopMenuLoader {
             result["default"] = ConfiguredShopMenu(
                 id = "default",
                 definition = MenuLoader.load(legacy),
-                currencyKey = "vault"
+                currencyKey = ""
             )
         }
         return result

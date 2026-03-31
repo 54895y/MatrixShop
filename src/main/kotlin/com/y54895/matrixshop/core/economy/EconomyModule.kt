@@ -46,13 +46,16 @@ object EconomyModule : MatrixModule {
     }
 
     fun configuredKey(yaml: YamlConfiguration, path: String = "Currency", fallback: String = "vault"): String {
+        return configuredKeyOrNull(yaml, path) ?: fallback
+    }
+
+    fun configuredKeyOrNull(yaml: YamlConfiguration, path: String = "Currency"): String? {
         return yaml.getString("$path.Key")
             ?.trim()
             ?.takeIf(String::isNotBlank)
             ?: yaml.getString("$path.Default")
                 ?.trim()
                 ?.takeIf(String::isNotBlank)
-            ?: fallback
     }
 
     fun displayName(key: String?): String {
