@@ -782,6 +782,7 @@ object MatrixShopCommands {
                 ModuleRegistry.moduleStates().forEach { Texts.sendRaw(commandSender, it) }
             }
             "module" -> handleAdminModule(commandSender, args.drop(1))
+            "goods" -> handleAdminGoods(commandSender, args.drop(1))
             else -> sendAdminHelp(commandSender, label)
         }
         return true
@@ -914,8 +915,33 @@ object MatrixShopCommands {
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), helpLine("$root status", "@commands.help.desc.admin-status"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), helpLine("$root module list", "@commands.help.desc.admin-module-list"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), helpLine("$root module <enable|disable|toggle> <id>", "@commands.help.desc.admin-module-change"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_GOODS), helpLine("$root goods add <category> <price> [buy-max] [product-id]", "@commands.help.desc.admin-goods-add"))
         lines += Texts.tr("@commands.help.admin-alias", mapOf("command" to root))
         Texts.sendRaw(sender, lines.joinToString("\n"))
+    }
+
+    private fun handleAdminGoods(sender: CommandSender, args: List<String>) {
+        if (!Permissions.require(sender, PermissionNodes.ADMIN_GOODS)) {
+            return
+        }
+        val player = requirePlayer(sender) ?: return
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            sendUsage(player, adminUsage("goods add <category> <price> [buy-max] [product-id]"))
+            return
+        }
+        when (args[0].lowercase()) {
+            "add" -> {
+                val categoryId = args.getOrNull(1)
+                val price = args.getOrNull(2)?.toDoubleOrNull()
+                val buyMax = args.getOrNull(3)?.toIntOrNull()
+                val productId = args.getOrNull(4)
+                val result = ModuleRegistry.systemShop.quickAddFromHand(player, categoryId, price, buyMax, productId)
+                if (result.message.isNotBlank()) {
+                    Texts.send(player, result.message)
+                }
+            }
+            else -> sendUsage(player, adminUsage("goods add <category> <price> [buy-max] [product-id]"))
+        }
     }
 
     private fun handleAdminModule(sender: CommandSender, args: List<String>) {
@@ -1168,7 +1194,12 @@ object MatrixShopCommands {
         }
         if (args.size == 1) {
             val suggestions = linkedSetOf("help", "open")
-            if (Permissions.has(sender, PermissionNodes.ADMIN_RELOAD) || Permissions.has(sender, PermissionNodes.ADMIN_STATUS) || Permissions.has(sender, PermissionNodes.ADMIN_MODULE)) {
+            if (
+                Permissions.has(sender, PermissionNodes.ADMIN_RELOAD) ||
+                Permissions.has(sender, PermissionNodes.ADMIN_STATUS) ||
+                Permissions.has(sender, PermissionNodes.ADMIN_MODULE) ||
+                Permissions.has(sender, PermissionNodes.ADMIN_GOODS)
+            ) {
                 suggestions += "admin"
             }
             listOf("system-shop", "menu", "player-shop", "global-market", "auction", "transaction", "chestshop", "cart", "record")
@@ -1200,10 +1231,16 @@ object MatrixShopCommands {
             return emptyList()
         }
         return when (args.size) {
-            1 -> filterSuggestions(listOf("help", "reload", "sync", "status", "module"), args[0])
-            2 -> if (args[0].equals("module", true)) filterSuggestions(listOf("list", "enable", "disable", "toggle"), args[1]) else emptyList()
+            1 -> filterSuggestions(listOf("help", "reload", "sync", "status", "module", "goods"), args[0])
+            2 -> when {
+                args[0].equals("module", true) -> filterSuggestions(listOf("list", "enable", "disable", "toggle"), args[1])
+                args[0].equals("goods", true) -> filterSuggestions(listOf("add"), args[1])
+                else -> emptyList()
+            }
             3 -> if (args[0].equals("module", true) && args[1].lowercase() in setOf("enable", "disable", "toggle")) {
                 filterSuggestions(listOf("economy", "menu", "system-shop", "player-shop", "global-market", "auction", "transaction", "chestshop", "cart", "record"), args[2])
+            } else if (args[0].equals("goods", true) && args[1].equals("add", true)) {
+                filterSuggestions(ModuleRegistry.systemShop.categoryIds(), args[2])
             } else emptyList()
             else -> emptyList()
         }

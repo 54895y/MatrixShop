@@ -11,6 +11,7 @@ object PermissionNodes {
     const val ADMIN_SYNC = "matrixshop.admin.sync"
     const val ADMIN_STATUS = "matrixshop.admin.status"
     const val ADMIN_MODULE = "matrixshop.admin.module"
+    const val ADMIN_GOODS = "matrixshop.admin.goods"
     const val ADMIN_RECORD_VIEW_OTHERS = "matrixshop.admin.record.view.others"
     const val ADMIN_RECORD_EXPORT = "matrixshop.admin.record.export"
     const val ADMIN_AUCTION_MANAGE_OTHERS = "matrixshop.admin.auction.manage.others"

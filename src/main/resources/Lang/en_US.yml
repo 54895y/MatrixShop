@@ -115,6 +115,7 @@ commands:
       admin-status: "Show module, economy, and data status"
       admin-module-list: "Show module states"
       admin-module-change: "Change one module state"
+      admin-goods-add: "Quick-list the main-hand item into a SystemShop category"
   admin:
     reloaded: "&aConfiguration and modules reloaded."
     sync-success: "&a{message} &7(version {from} -> {to})"
@@ -159,6 +160,9 @@ system-shop:
     category-load-failed: "Failed to load SystemShop category {file}: {reason}"
   errors:
     category-not-found: "&cSystemShop category not found: &f{category}"
+    admin-add-usage: "&cUsage: &f/matrixshopadmin goods add <category> <price> [buy-max] [product-id]"
+    hold-item: "&cHold the item you want to list in your main hand."
+    save-failed: "&cFailed to save the SystemShop category file: &f{reason}"
     no-confirm-purchase: "&cThere is no pending purchase to confirm."
     product-invalid: "&cThis product is no longer valid."
     amount-over-limit: "&cThe amount exceeds the allowed single-purchase limit."
@@ -168,6 +172,7 @@ system-shop:
     withdraw-failed: "&cFailed to withdraw the payment. Purchase cancelled."
   success:
     purchase: "&aPurchase complete: &f{name} &7x&f{amount} &7- &e{total}"
+    admin-added: "&aThe main-hand item has been listed in &f{category}&a. Product ID: &f{product}&a, price: &e{price}"
 
 auction:
   errors:

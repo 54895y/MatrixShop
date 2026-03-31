@@ -19,26 +19,30 @@ data class SystemShopProduct(
     val lore: List<String>,
     val price: Double,
     val currency: String,
-    val buyMax: Int
+    val buyMax: Int,
+    val item: ItemStack? = null
 ) {
 
     fun toItemStack(displayName: String, displayLore: List<String>): ItemStack {
-        val item = ItemStack(Material.matchMaterial(material) ?: Material.STONE, amount.coerceAtLeast(1))
-        item.itemMeta = item.itemMeta?.apply {
+        val stack = (item?.clone() ?: ItemStack(Material.matchMaterial(material) ?: Material.STONE, amount.coerceAtLeast(1))).apply {
+            amount = this@SystemShopProduct.amount.coerceAtLeast(1)
+        }
+        stack.itemMeta = stack.itemMeta?.apply {
             setDisplayName(displayName)
             lore = displayLore
             addItemFlags(*ItemFlag.values())
         }
-        return item
+        return stack
     }
 
     fun toPurchasedItem(purchaseTimes: Int): List<ItemStack> {
         val stacks = ArrayList<ItemStack>()
         var remaining = amount * purchaseTimes
-        val materialValue = Material.matchMaterial(material) ?: Material.STONE
+        val template = item?.clone() ?: ItemStack(Material.matchMaterial(material) ?: Material.STONE, amount.coerceAtLeast(1))
+        val maxStackSize = template.maxStackSize.coerceAtLeast(1)
         while (remaining > 0) {
-            val take = remaining.coerceAtMost(materialValue.maxStackSize.coerceAtLeast(1))
-            stacks += ItemStack(materialValue, take)
+            val take = remaining.coerceAtMost(maxStackSize)
+            stacks += template.clone().apply { amount = take }
             remaining -= take
         }
         return stacks

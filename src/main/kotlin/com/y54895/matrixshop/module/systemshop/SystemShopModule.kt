@@ -11,6 +11,7 @@ import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
+import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import taboolib.common.platform.function.warning
@@ -74,6 +75,66 @@ object SystemShopModule : MatrixModule {
             goodsRenderer = { holder, goodsSlots ->
                 renderProducts(player, holder, goodsSlots, category)
             }
+        )
+    }
+
+    fun categoryIds(): List<String> {
+        val folder = File(ConfigFiles.dataFolder(), "SystemShop/shops")
+        if (!folder.exists()) {
+            return emptyList()
+        }
+        return folder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
+            ?.map { it.nameWithoutExtension }
+            ?.sorted()
+            .orEmpty()
+    }
+
+    fun quickAddFromHand(player: Player, categoryId: String?, price: Double?, buyMax: Int?, productId: String?): ModuleOperationResult {
+        val normalizedCategoryId = categoryId?.trim().orEmpty()
+        if (normalizedCategoryId.isBlank()) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-add-usage"))
+        }
+        if (price == null || price < 0.0) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-add-usage"))
+        }
+        val inHand = player.inventory.itemInMainHand?.clone() ?: ItemStack(Material.AIR)
+        if (inHand.type == Material.AIR || inHand.amount <= 0) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.hold-item"))
+        }
+        val categoryFile = File(ConfigFiles.dataFolder(), "SystemShop/shops/$normalizedCategoryId.yml")
+        if (!categoryFile.exists()) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.category-not-found", mapOf("category" to normalizedCategoryId)))
+        }
+        val yaml = YamlConfiguration.loadConfiguration(categoryFile)
+        val goodsSection = yaml.getConfigurationSection("goods") ?: yaml.createSection("goods")
+        val categoryCurrencyKey = EconomyModule.configuredKey(yaml, "Currency", currencyKey)
+        val resolvedProductId = nextProductId(goodsSection, inHand, productId)
+        val basePath = "goods.$resolvedProductId"
+        val meta = inHand.itemMeta
+        yaml.set("$basePath.item", inHand.clone())
+        yaml.set("$basePath.material", inHand.type.name)
+        yaml.set("$basePath.amount", inHand.amount)
+        yaml.set("$basePath.price", price)
+        yaml.set("$basePath.buy-max", (buyMax ?: inHand.maxStackSize).coerceAtLeast(1))
+        yaml.set("$basePath.name", meta?.displayName?.takeIf(String::isNotBlank) ?: defaultProductName(inHand))
+        yaml.set("$basePath.lore", meta?.lore ?: emptyList<String>())
+        runCatching { yaml.save(categoryFile) }.getOrElse {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.save-failed", mapOf("reason" to (it.message ?: it.javaClass.simpleName))))
+        }
+        if (isEnabled()) {
+            reload()
+        }
+        return ModuleOperationResult(
+            true,
+            Texts.tr(
+                "@system-shop.success.admin-added",
+                mapOf(
+                    "category" to normalizedCategoryId,
+                    "product" to resolvedProductId,
+                    "name" to (meta?.displayName?.takeIf(String::isNotBlank) ?: defaultProductName(inHand)),
+                    "price" to EconomyModule.formatAmount(categoryCurrencyKey, price)
+                )
+            )
         )
     }
 
@@ -262,18 +323,20 @@ object SystemShopModule : MatrixModule {
     }
 
     private fun parseProduct(id: String, section: ConfigurationSection, categoryCurrencyKey: String): SystemShopProduct {
+        val configuredItem = section.getItemStack("item")?.clone()
         return SystemShopProduct(
             id = id,
-            material = section.getString("material", "STONE").orEmpty(),
-            amount = section.getInt("amount", 1),
-            name = section.getString("name", id).orEmpty(),
-            lore = section.getStringList("lore"),
+            material = section.getString("material", configuredItem?.type?.name ?: "STONE").orEmpty(),
+            amount = section.getInt("amount", configuredItem?.amount ?: 1),
+            name = section.getString("name", configuredItem?.itemMeta?.displayName ?: id).orEmpty(),
+            lore = section.getStringList("lore").ifEmpty { configuredItem?.itemMeta?.lore ?: emptyList() },
             price = section.getDouble("price", 0.0),
             currency = section.getString("currency")
                 ?.trim()
                 ?.takeIf(String::isNotBlank)
                 ?: categoryCurrencyKey,
-            buyMax = section.getInt("buy-max", 64)
+            buyMax = section.getInt("buy-max", 64),
+            item = configuredItem
         )
     }
 
@@ -321,5 +384,48 @@ object SystemShopModule : MatrixModule {
             }
         }
         return true
+    }
+
+    private fun nextProductId(goodsSection: ConfigurationSection, inHand: ItemStack, preferredId: String?): String {
+        val requested = normalizeProductId(preferredId)
+        if (requested != null) {
+            if (!goodsSection.contains(requested)) {
+                return requested
+            }
+            var duplicateIndex = 2
+            while (goodsSection.contains("${requested}_$duplicateIndex")) {
+                duplicateIndex++
+            }
+            return "${requested}_$duplicateIndex"
+        }
+        val base = normalizeProductId(inHand.type.name.lowercase()) ?: "product"
+        if (!goodsSection.contains(base)) {
+            return base
+        }
+        var index = 2
+        while (goodsSection.contains("${base}_$index")) {
+            index++
+        }
+        return "${base}_$index"
+    }
+
+    private fun normalizeProductId(raw: String?): String? {
+        val normalized = raw?.trim().orEmpty()
+        if (normalized.isBlank()) {
+            return null
+        }
+        return normalized
+            .replace('.', '_')
+            .replace(':', '_')
+            .replace('/', '_')
+            .replace('\\', '_')
+            .replace(' ', '_')
+    }
+
+    private fun defaultProductName(item: ItemStack): String {
+        return item.type.name.lowercase()
+            .split('_')
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { part -> part.replaceFirstChar { it.uppercase() } }
     }
 }

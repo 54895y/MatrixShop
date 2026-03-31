@@ -115,6 +115,7 @@ commands:
       admin-status: "查看模块、经济与数据状态"
       admin-module-list: "查看模块状态"
       admin-module-change: "切换单个模块状态"
+      admin-goods-add: "向系统商店分类快速上架主手物品"
   admin:
     reloaded: "&a配置与模块已重载。"
     sync-success: "&a{message} &7(版本 {from} -> {to})"
@@ -159,6 +160,9 @@ system-shop:
     category-load-failed: "加载系统商店分类 {file} 失败: {reason}"
   errors:
     category-not-found: "&c未找到系统商店分类: &f{category}"
+    admin-add-usage: "&c用法: &f/matrixshopadmin goods add <分类> <价格> [buy-max] [product-id]"
+    hold-item: "&c请将要上架的商品拿在主手。"
+    save-failed: "&c写入系统商店配置失败: &f{reason}"
     no-confirm-purchase: "&c当前没有待确认的购买。"
     product-invalid: "&c当前商品已经失效。"
     amount-over-limit: "&c数量超过该商品允许的单次上限。"
@@ -168,6 +172,7 @@ system-shop:
     withdraw-failed: "&c扣款失败，购买已取消。"
   success:
     purchase: "&a购买成功: &f{name} &7x&f{amount} &7- &e{total}"
+    admin-added: "&a已将主手物品上架到 &f{category} &a分类，商品ID 为 &f{product} &a，价格 &e{price}"
 
 auction:
   errors:
