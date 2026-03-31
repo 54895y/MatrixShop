@@ -51,8 +51,12 @@ object PlayerShopModule : MatrixModule {
     }
 
     fun openShop(viewer: Player, targetName: String, shopId: String?) {
-        val offline = Bukkit.getOfflinePlayer(targetName)
-        openShop(viewer, offline.uniqueId, offline.name ?: targetName, shopId = shopId)
+        val owner = PlayerShopRepository.resolveOwner(targetName)
+        if (owner == null) {
+            Texts.sendKey(viewer, "@player-shop.errors.owner-not-found", mapOf("player" to targetName))
+            return
+        }
+        openShop(viewer, owner.first, owner.second, shopId = shopId)
     }
 
     fun openShop(viewer: Player, ownerId: UUID, ownerName: String, page: Int = 1) {

@@ -14,6 +14,7 @@ import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.util.BukkitCompat
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.configuration.file.YamlConfiguration
@@ -535,7 +536,7 @@ object TransactionModule : MatrixModule {
         val stack = ItemStack(Material.SKULL_ITEM, 1, 3.toShort())
         val meta = stack.itemMeta as? SkullMeta
         if (meta != null) {
-            meta.owner = request.requesterName
+            BukkitCompat.applySkullOwner(meta, request.requesterName)
             MenuRenderer.decorate(meta, Texts.apply(icon.name, placeholders), Texts.apply(icon.lore, placeholders))
             stack.itemMeta = meta
         }

@@ -338,6 +338,7 @@ global-market:
 player-shop:
   errors:
     price-positive: "&cPrice must be greater than 0."
+    owner-not-found: "&cNo player shop was found for &f{player}&c."
     hold-item: "&cHold the item you want to list in your main hand."
     store-full: "&cYour store is already full in this shop."
     main-hand-not-enough: "&cYou do not have enough items in your main hand."

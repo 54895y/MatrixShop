@@ -4,6 +4,7 @@ import com.y54895.matrixshop.core.config.ConfigFiles
 import com.y54895.matrixshop.core.database.DatabaseManager
 import com.y54895.matrixshop.core.database.ItemStackCodec
 import com.y54895.matrixshop.core.database.LegacyImportResult
+import org.bukkit.Bukkit
 import org.bukkit.configuration.file.YamlConfiguration
 import java.io.File
 import java.util.UUID
@@ -80,6 +81,26 @@ object PlayerShopRepository {
         return (0 until store.unlockedSlots).firstOrNull { it !in occupied }
     }
 
+    fun resolveOwner(name: String): Pair<UUID, String>? {
+        initialize()
+        val normalized = name.trim()
+        if (normalized.isBlank()) {
+            return null
+        }
+        Bukkit.getPlayerExact(normalized)?.let { return it.uniqueId to it.name }
+        Bukkit.getOnlinePlayers().firstOrNull { it.name.equals(normalized, true) }?.let {
+            return it.uniqueId to it.name
+        }
+        Bukkit.getOfflinePlayers().firstOrNull { it.name?.equals(normalized, true) == true }?.let {
+            return it.uniqueId to (it.name ?: normalized)
+        }
+        return if (DatabaseManager.isJdbcAvailable()) {
+            resolveOwnerJdbc(normalized) ?: resolveOwnerFile(normalized)
+        } else {
+            resolveOwnerFile(normalized)
+        }
+    }
+
     private fun loadJdbc(shopId: String, ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {
         DatabaseManager.withConnection { connection ->
             val normalizedShopId = shopId.trim().ifBlank { "default" }
@@ -139,6 +160,29 @@ object PlayerShopRepository {
         return loadFile(shopId, ownerId, ownerName, defaultUnlockedSlots, maxUnlockedSlots)
     }
 
+    private fun resolveOwnerJdbc(name: String): Pair<UUID, String>? {
+        return DatabaseManager.withConnection { connection ->
+            connection.prepareStatement(
+                """
+                SELECT owner_id, owner_name
+                FROM player_shop_stores
+                WHERE LOWER(owner_name) = LOWER(?)
+                ORDER BY owner_name ASC
+                LIMIT 1
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, name)
+                statement.executeQuery().use { result ->
+                    if (result.next()) {
+                        UUID.fromString(result.getString("owner_id")) to result.getString("owner_name").ifBlank { name }
+                    } else {
+                        null
+                    }
+                }
+            }
+        }
+    }
+
     private fun saveJdbc(store: PlayerShopStore) {
         val success = DatabaseManager.withConnection { connection ->
             val previousAutoCommit = connection.autoCommit
@@ -193,6 +237,26 @@ object PlayerShopRepository {
         if (!success) {
             saveFile(store)
         }
+    }
+
+    private fun resolveOwnerFile(name: String): Pair<UUID, String>? {
+        val files = folder.walkTopDown()
+            .filter { it.isFile && it.extension.equals("yml", true) }
+            .toList()
+        files.forEach { file ->
+            val yaml = YamlConfiguration.loadConfiguration(file)
+            val ownerName = yaml.getString("owner-name").orEmpty()
+            if (!ownerName.equals(name, true)) {
+                return@forEach
+            }
+            val ownerId = yaml.getString("owner-id")
+                ?.takeIf { it.isNotBlank() }
+                ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                ?: runCatching { UUID.fromString(file.nameWithoutExtension) }.getOrNull()
+                ?: return@forEach
+            return ownerId to ownerName
+        }
+        return null
     }
 
     private fun loadFile(shopId: String, ownerId: UUID, ownerName: String, defaultUnlockedSlots: Int, maxUnlockedSlots: Int): PlayerShopStore {

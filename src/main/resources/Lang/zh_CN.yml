@@ -338,6 +338,7 @@ global-market:
 player-shop:
   errors:
     price-positive: "&c价格必须大于 0。"
+    owner-not-found: "&c未找到名为 &f{player} &c的玩家商店。"
     hold-item: "&c请将要上架的物品拿在主手。"
     store-full: "&c当前商店视图中你的店铺已满。"
     main-hand-not-enough: "&c你的主手物品数量不足。"
