@@ -32,6 +32,7 @@ MatrixShop is a Chinese-first Minecraft GUI economy and commerce plugin for Pape
 - Supported economy backends: `Vault` / `PlayerPoints` / Placeholder-based custom currencies
 - Database: `SQLite` / `MySQL`
 - Optional sync layer: `Redis`
+- Latest smoke validation: `paper-1.21.8` / `paper-1.21.11`
 
 ## Why MatrixShop
 
@@ -81,16 +82,33 @@ SystemShop/goods/weapon_refresh_pool_example.yml
 
 The default `weapon` shop also includes a commented refresh example you can enable directly.
 
+## Admin Workflow
+
+`SystemShop` goods maintenance is now split into a reusable repository flow:
+
+- `/matrixshopadmin goods ui [page]`
+- `/matrixshopadmin goods save <price> [buy-max] [product-id]`
+- `/matrixshopadmin goods add <category> <product-id>`
+- `/matrixshopadmin goods select <category> <product-id>`
+- `/matrixshopadmin goods edit <price|buy-max|currency|name|item|remove> ...`
+
+Refresh maintenance commands are also available:
+
+- `/matrixshopadmin refresh list [category]`
+- `/matrixshopadmin refresh run <category> [icon]`
+
+This lets you keep item definitions in `SystemShop/goods/*.yml`, then link them into one or more category files under `SystemShop/shops/*.yml`.
+
 ## Source Build
 
-```powershell
-./gradlew.bat build
+```bash
+./gradlew build
 ```
 
 The deployable runtime artifact is:
 
 ```text
-build/libs/MatrixShop-1.2.0-all.jar
+build/libs/MatrixShop-1.3.0-all.jar
 ```
 
 Current source dependency:
@@ -106,7 +124,8 @@ Current source dependency:
 - GitHub Repo: [https://github.com/54895y/MatrixShop](https://github.com/54895y/MatrixShop)
 - Docs: [https://54895y.github.io/docs/matrixshop](https://54895y.github.io/docs/matrixshop)
 - Changelog: [CHANGELOG.md](./CHANGELOG.md)
-- Release Notes 1.2.0: [https://54895y.github.io/docs/matrixshop/release-notes-1-2-0](https://54895y.github.io/docs/matrixshop/release-notes-1-2-0)
+- Release Notes 1.3.0: [https://54895y.github.io/docs/matrixshop/release-notes-1-3-0](https://54895y.github.io/docs/matrixshop/release-notes-1-3-0)
+- Telemetry Docs: [https://54895y.github.io/docs/matrixshop/bstats-and-telemetry](https://54895y.github.io/docs/matrixshop/bstats-and-telemetry)
 - Issues: [https://github.com/54895y/MatrixShop/issues](https://github.com/54895y/MatrixShop/issues)
 - Releases: [https://github.com/54895y/MatrixShop/releases](https://github.com/54895y/MatrixShop/releases)
 - Required dependency: [MatrixLib](https://github.com/54895y/MatrixLib)

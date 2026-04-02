@@ -4,6 +4,32 @@ All notable changes to MatrixShop will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning for release tags.
 
+## [1.3.0] - 2026-04-02
+
+### Added
+
+- Added `SystemShop` goods repository flow with reusable `product`, `group`, and `pool` resources under `SystemShop/goods/*.yml`.
+- Added admin goods browser and editor entry points through:
+  - `/matrixshopadmin goods ui [page]`
+  - `/matrixshopadmin goods save <price> [buy-max] [product-id]`
+  - `/matrixshopadmin goods add <category> <product-id>`
+  - `/matrixshopadmin goods select <category> <product-id>`
+  - `/matrixshopadmin goods edit <price|buy-max|currency|name|item|remove> ...`
+- Added `SystemShop` refresh foundation with cron-driven goods areas, player-group matching, shared or per-player snapshots, and admin refresh commands.
+- Added shaded `bStats` metrics integration for deployment and module usage telemetry.
+
+### Changed
+
+- Reworked default `SystemShop` resources so categories reference standalone goods files instead of repeating inline definitions.
+- Expanded the official docs and repository README to cover goods repository management, refresh configuration, telemetry, and the current release entry points.
+- Updated default `weapon` shop resources with a commented refresh example that can be enabled directly.
+
+### Validated
+
+- Verified `./gradlew build` on the `1.3.0` release source.
+- Verified smoke boot on `paper-1.21.8`.
+- Verified smoke boot on `paper-1.21.11`.
+
 ## [1.2.0] - 2026-03-31
 
 ### Added
