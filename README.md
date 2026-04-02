@@ -59,6 +59,28 @@ plugins/MatrixShop/Economy/currency.yml
 
 This means you can keep one unified currency registry and let business modules only reference a currency key.
 
+## SystemShop Goods
+
+`SystemShop/goods/*.yml` now supports three reusable resource types:
+
+- product
+- group
+- pool
+
+This allows:
+
+- reusing item groups in `SystemShop/shops/*.yml`
+- reusing random pools for timed refresh areas
+- reducing repeated goods definitions across shops
+
+The default example pool is:
+
+```text
+SystemShop/goods/weapon_refresh_pool_example.yml
+```
+
+The default `weapon` shop also includes a commented refresh example you can enable directly.
+
 ## Source Build
 
 ```powershell
