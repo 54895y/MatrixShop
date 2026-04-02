@@ -47,3 +47,23 @@ goods:
   - diamond_sword
   - bow
   - arrow_bundle
+
+# 刷新示例（默认不启用）
+#
+# 取消下面注释后，可让 g 区域按 cron 从 goods/weapon_refresh_pool_example.yml 中随机抽商品。
+#
+# icons:
+#   'g':
+#     material: 'AIR'
+#     mode: 'goods'
+#     refresh:
+#       Enabled: true
+#       Cron: '0 0 6 * * ?'
+#       Timezone: 'Asia/Shanghai'
+#       Same-For-Players-In-Group: true
+#       groups:
+#         default:
+#           Enabled: true
+#           Random-Refresh: true
+#           Pick: 2
+#           Pool-Ref: 'weapon_refresh_pool_example'
