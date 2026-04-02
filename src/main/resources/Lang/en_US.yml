@@ -166,6 +166,8 @@ system-shop:
     goods-load-failed: "Failed to load SystemShop goods file {file}: {reason}"
     goods-id-duplicate: "Duplicate SystemShop goods id {id}; skipped file {file}"
     goods-ref-missing: "SystemShop category {shop} references missing goods {goods}"
+    goods-group-ref-missing: "SystemShop goods group {group} references missing goods {goods}"
+    goods-group-loop: "SystemShop goods group reference loop detected: {chain}"
   errors:
     category-not-found: "&cSystemShop category not found: &f{category}"
     admin-save-usage: "&cUsage: &f/matrixshopadmin goods save <price> [buy-max] [product-id]"
@@ -191,6 +193,7 @@ system-shop:
     purchase: "&aPurchase complete: &f{name} &7x&f{amount} &7- &e{total}"
     admin-saved: "&aSaved the main-hand item into the goods store as &f{product} &7(&f{name}&7), price: &e{price}"
     admin-linked: "&aListed saved goods &f{product} &ainto category &f{category}&a, price: &e{price}"
+    admin-linked-group: "&aListed goods group &f{product} &ainto category &f{category}&a."
     admin-added: "&aListed saved goods &f{product} &ainto category &f{category}&a, price: &e{price}"
     admin-selected: "&aSelected SystemShop product: &f{category}/{product} &7(&f{name}&7)"
     admin-updated: "&aUpdated {field} for product &f{product}&a."

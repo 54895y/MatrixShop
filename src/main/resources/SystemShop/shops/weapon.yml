@@ -43,8 +43,7 @@ Currency:
   Key: vault
 
 goods:
-  - wooden_sword
-  - iron_sword
+  - starter_weapons
   - diamond_sword
   - bow
   - arrow_bundle

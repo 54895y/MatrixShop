@@ -24,6 +24,12 @@ data class SystemShopProductSource(
     val configPath: String? = null
 )
 
+data class SystemShopGoodsGroup(
+    val id: String,
+    val entries: List<String>,
+    val sourceFile: File
+)
+
 data class SystemShopProductTemplate(
     val id: String,
     val material: String,

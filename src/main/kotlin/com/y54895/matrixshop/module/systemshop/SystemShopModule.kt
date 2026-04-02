@@ -32,6 +32,7 @@ object SystemShopModule : MatrixModule {
     private lateinit var goodsShopsMenu: MenuDefinition
     private val categories = LinkedHashMap<String, SystemShopCategory>()
     private val goodsTemplates = LinkedHashMap<String, SystemShopProductTemplate>()
+    private val goodsGroups = LinkedHashMap<String, SystemShopGoodsGroup>()
     private val confirmSessions = HashMap<UUID, ConfirmSession>()
     private val adminSelections = HashMap<UUID, AdminGoodsSelection>()
     private var currencyKey: String = "vault"
@@ -44,6 +45,7 @@ object SystemShopModule : MatrixModule {
         if (!isEnabled()) {
             categories.clear()
             goodsTemplates.clear()
+            goodsGroups.clear()
             adminSelections.clear()
             return
         }
@@ -57,13 +59,14 @@ object SystemShopModule : MatrixModule {
         goodsShopsMenu = MenuLoader.load(File(dataFolder, "SystemShop/ui/goods-shops.yml"))
         categories.clear()
         goodsTemplates.clear()
+        goodsGroups.clear()
         adminSelections.clear()
         val goodsFolder = File(dataFolder, "SystemShop/goods")
         goodsFolder.mkdirs()
         goodsFolder.listFiles { file -> file.isFile && file.extension.equals("yml", true) }
             ?.sortedBy { it.nameWithoutExtension }
             ?.forEach { file ->
-                runCatching { loadGoodsTemplate(file) }.onFailure {
+                runCatching { loadGoodsEntry(file) }.onFailure {
                     warning(Texts.tr("@system-shop.logs.goods-load-failed", mapOf("file" to file.name, "reason" to (it.message ?: it.javaClass.simpleName))))
                 }
             }
@@ -121,7 +124,7 @@ object SystemShopModule : MatrixModule {
     }
 
     fun goodsIds(): List<String> {
-        return goodsTemplates.keys.sorted()
+        return goodsReferenceIds().sorted()
     }
 
     fun openGoodsBrowser(player: Player, page: Int = 1) {
@@ -199,7 +202,7 @@ object SystemShopModule : MatrixModule {
         if (inHand.type == Material.AIR || inHand.amount <= 0) {
             return ModuleOperationResult(false, Texts.tr("@system-shop.errors.hold-item"))
         }
-        val resolvedProductId = nextProductId(goodsTemplates.keys, inHand, productId)
+        val resolvedProductId = nextProductId(goodsReferenceIds(), inHand, productId)
         val goodsFolder = File(ConfigFiles.dataFolder(), "SystemShop/goods")
         goodsFolder.mkdirs()
         val goodsFile = File(goodsFolder, "$resolvedProductId.yml")
@@ -238,7 +241,7 @@ object SystemShopModule : MatrixModule {
         if (normalizedCategoryId.isBlank() || normalizedProductId.isBlank()) {
             return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-link-usage"))
         }
-        val referencedGoods = goodsTemplates.entries.firstOrNull { it.key.equals(normalizedProductId, true) }
+        val referencedGoods = resolveGoodsReferenceId(normalizedProductId)
             ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-goods-not-found", mapOf("product" to normalizedProductId)))
         val categoryFile = File(ConfigFiles.dataFolder(), "SystemShop/shops/$normalizedCategoryId.yml")
         if (!categoryFile.exists()) {
@@ -247,27 +250,41 @@ object SystemShopModule : MatrixModule {
         val yaml = YamlConfiguration.loadConfiguration(categoryFile)
         val categoryCurrencyKey = EconomyModule.configuredKey(yaml, "Currency", currencyKey)
         val goodsReferences = ensureGoodsReferencesMode(categoryFile, yaml, normalizedCategoryId)
-        if (goodsReferences.any { it.equals(referencedGoods.key, true) }) {
-            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-product-already-linked", mapOf("category" to normalizedCategoryId, "product" to referencedGoods.key)))
+        if (goodsReferences.any { it.equals(referencedGoods, true) }) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-product-already-linked", mapOf("category" to normalizedCategoryId, "product" to referencedGoods)))
         }
-        goodsReferences += referencedGoods.key
+        goodsReferences += referencedGoods
         writeGoodsReferences(yaml, goodsReferences)
         saveCategoryYaml(categoryFile, yaml)?.let { return saveFailedResult(it) }
         if (isEnabled()) {
             reload()
         }
-        return ModuleOperationResult(
-            true,
-            Texts.tr(
-                "@system-shop.success.admin-linked",
-                mapOf(
-                    "category" to normalizedCategoryId,
-                    "product" to referencedGoods.key,
-                    "name" to referencedGoods.value.name,
-                    "price" to EconomyModule.formatAmount(referencedGoods.value.resolve(categoryCurrencyKey).currency, referencedGoods.value.price)
+        val template = findGoodsTemplate(referencedGoods)
+        return if (template != null) {
+            ModuleOperationResult(
+                true,
+                Texts.tr(
+                    "@system-shop.success.admin-linked",
+                    mapOf(
+                        "category" to normalizedCategoryId,
+                        "product" to referencedGoods,
+                        "name" to template.name,
+                        "price" to EconomyModule.formatAmount(template.resolve(categoryCurrencyKey).currency, template.price)
+                    )
                 )
             )
-        )
+        } else {
+            ModuleOperationResult(
+                true,
+                Texts.tr(
+                    "@system-shop.success.admin-linked-group",
+                    mapOf(
+                        "category" to normalizedCategoryId,
+                        "product" to referencedGoods
+                    )
+                )
+            )
+        }
     }
 
     fun removeGoodsFromCategory(categoryId: String?, productId: String?): ModuleOperationResult {
@@ -825,14 +842,8 @@ object SystemShopModule : MatrixModule {
                 ).resolve(categoryCurrencyKey)
             }
         } else {
-            readGoodsReferences(yaml).mapNotNull { goodsId ->
-                val template = goodsTemplates.entries.firstOrNull { it.key.equals(goodsId, true) }?.value
-                if (template == null) {
-                    warning(Texts.tr("@system-shop.logs.goods-ref-missing", mapOf("shop" to id, "goods" to goodsId)))
-                    null
-                } else {
-                    template.resolve(categoryCurrencyKey)
-                }
+            readGoodsReferences(yaml).flatMap { goodsId ->
+                resolveGoodsReference(goodsId, categoryCurrencyKey, id)
             }
         }
         categories[id] = SystemShopCategory(id = id, menu = menu, currencyKey = categoryCurrencyKey, products = products, shopFile = file)
@@ -860,22 +871,26 @@ object SystemShopModule : MatrixModule {
         )
     }
 
-    private fun loadGoodsTemplate(file: File) {
+    private fun loadGoodsEntry(file: File) {
         val yaml = YamlConfiguration.loadConfiguration(file)
         val resolvedId = normalizeProductId(yaml.getString("id", file.nameWithoutExtension)) ?: file.nameWithoutExtension
-        if (goodsTemplates.keys.any { it.equals(resolvedId, true) }) {
+        if (goodsReferenceIds().any { it.equals(resolvedId, true) }) {
             warning(Texts.tr("@system-shop.logs.goods-id-duplicate", mapOf("id" to resolvedId, "file" to file.name)))
             return
         }
-        goodsTemplates[resolvedId] = parseProductTemplate(
-            id = resolvedId,
-            section = yaml,
-            source = SystemShopProductSource(
-                type = SystemShopProductSourceType.REFERENCE,
-                configFile = file,
-                configPath = null
+        if (isGoodsGroupDefinition(yaml)) {
+            goodsGroups[resolvedId] = parseGoodsGroup(resolvedId, yaml, file)
+        } else {
+            goodsTemplates[resolvedId] = parseProductTemplate(
+                id = resolvedId,
+                section = yaml,
+                source = SystemShopProductSource(
+                    type = SystemShopProductSourceType.REFERENCE,
+                    configFile = file,
+                    configPath = null
+                )
             )
-        )
+        }
     }
 
     private fun ensureGoodsReferencesMode(categoryFile: File, yaml: YamlConfiguration, categoryId: String): MutableList<String> {
@@ -977,8 +992,20 @@ object SystemShopModule : MatrixModule {
         return sameAmount && leftCopy.isSimilar(rightCopy)
     }
 
+    private fun goodsReferenceIds(): List<String> {
+        return (goodsTemplates.keys + goodsGroups.keys).distinctBy { it.lowercase() }
+    }
+
+    private fun resolveGoodsReferenceId(productId: String): String? {
+        return goodsReferenceIds().firstOrNull { it.equals(productId, true) }
+    }
+
     private fun findGoodsTemplate(productId: String): SystemShopProductTemplate? {
         return goodsTemplates.entries.firstOrNull { it.key.equals(productId, true) }?.value
+    }
+
+    private fun findGoodsGroup(groupId: String): SystemShopGoodsGroup? {
+        return goodsGroups.entries.firstOrNull { it.key.equals(groupId, true) }?.value
     }
 
     private fun listedCategoryIds(productId: String): List<String> {
@@ -1034,6 +1061,73 @@ object SystemShopModule : MatrixModule {
             }
         }
         return null
+    }
+
+    private fun isGoodsGroupDefinition(yaml: YamlConfiguration): Boolean {
+        val kind = yaml.getString("Kind")
+            ?.trim()
+            ?.ifBlank { null }
+            ?: yaml.getString("kind")
+                ?.trim()
+                ?.ifBlank { null }
+        return when {
+            kind.equals("group", true) -> true
+            kind.equals("product", true) -> false
+            yaml.isList("entries") -> true
+            yaml.isList("goods") -> true
+            else -> false
+        }
+    }
+
+    private fun parseGoodsGroup(id: String, yaml: YamlConfiguration, file: File): SystemShopGoodsGroup {
+        val entries = yaml.getStringList("entries")
+            .ifEmpty { yaml.getStringList("goods") }
+            .mapNotNull { entry ->
+                entry?.trim()?.takeIf(String::isNotBlank)
+            }
+        return SystemShopGoodsGroup(id = id, entries = entries, sourceFile = file)
+    }
+
+    private fun resolveGoodsReference(
+        goodsId: String,
+        categoryCurrencyKey: String,
+        shopId: String,
+        chain: List<String> = emptyList()
+    ): List<SystemShopProduct> {
+        val normalized = goodsId.trim()
+        if (normalized.isBlank()) {
+            return emptyList()
+        }
+        if (chain.any { it.equals(normalized, true) }) {
+            warning(
+                Texts.tr(
+                    "@system-shop.logs.goods-group-loop",
+                    mapOf("chain" to (chain + normalized).joinToString(" -> "))
+                )
+            )
+            return emptyList()
+        }
+        val template = findGoodsTemplate(normalized)
+        if (template != null) {
+            return listOf(template.resolve(categoryCurrencyKey))
+        }
+        val group = findGoodsGroup(normalized)
+        if (group != null) {
+            return group.entries.flatMap { entry ->
+                val resolved = resolveGoodsReference(entry, categoryCurrencyKey, shopId, chain + group.id)
+                if (resolved.isEmpty() && findGoodsTemplate(entry) == null && findGoodsGroup(entry) == null) {
+                    warning(
+                        Texts.tr(
+                            "@system-shop.logs.goods-group-ref-missing",
+                            mapOf("group" to group.id, "goods" to entry)
+                        )
+                    )
+                }
+                resolved
+            }
+        }
+        warning(Texts.tr("@system-shop.logs.goods-ref-missing", mapOf("shop" to shopId, "goods" to normalized)))
+        return emptyList()
     }
 
     private fun findProduct(categoryId: String, productId: String): SystemShopProduct? {

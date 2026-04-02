@@ -1,0 +1,5 @@
+id: starter_weapons
+Kind: group
+entries:
+  - wooden_sword
+  - iron_sword
