@@ -1,157 +1,111 @@
 # MatrixShop
 
-**Keywords:** Minecraft shop plugin, GUI shop plugin, auction plugin, player market plugin, trade plugin, Vault economy plugin, Paper plugin, Folia plugin, Bukkit plugin,  Minecraft plugin
+> 中文优先的 Minecraft GUI 经济与商业插件  
+> Chinese-first Minecraft GUI economy and commerce plugin
 
-MatrixShop is a Chinese-first Minecraft GUI economy and commerce plugin for Paper, Bukkit, Spigot and Folia. It combines system shop, player shop, global market, auction, chest shop, face-to-face trade, shopping cart and transaction records in one project.
+MatrixShop 将系统商店、玩家商店、全局市场、拍卖、箱子商店、面对面交易、购物车和交易记录整合到同一个项目中，面向 `Paper`、`Bukkit`、`Spigot` 和 `Folia` 服务端生态。
 
-**中文关键词：** 商店插件, GUI 商店插件, 拍卖插件, 玩家市场插件, 交易插件, 经济插件, Vault 商店插件, 中文服插件, Paper 插件, Folia 插件
+| 文档 | 更新日志 | Releases | 依赖 |
+| --- | --- | --- | --- |
+| [Docs](https://54895y.github.io/docs/matrixshop) | [Release Notes](https://54895y.github.io/docs/matrixshop/release-notes) | [GitHub Releases](https://github.com/54895y/MatrixShop/releases) | [MatrixLib](https://github.com/54895y/MatrixLib) |
 
-## Discoverability
+## 中文简介
 
-- English: Minecraft shop plugin, GUI shop, player market, auction house, chest shop, trade plugin, Vault economy, Chinese server plugin
-- 中文: 商店系统, 玩家商店, 全局市场, 拍卖行, 箱子商店, 面对面交易, 中文 GUI 商城, 中文服经济插件
+MatrixShop 是一款面向生存服、经济服和商业玩法场景的综合交易插件。  
+当前主线重点包括：
 
-## Core Modules
+- 统一经济模块与货币优先级
+- `SystemShop/goods/*.yml` 仓库式商品定义
+- `product` / `group` / `pool` 三种 SystemShop 资源模型
+- `SystemShop` 定时刷新区域与后台刷新管理
+- 统一命令入口、菜单框架和权限校验
+- `SQLite` / `MySQL` 数据层与文件回退机制
+- `bStats` 统计与部署分布遥测
 
-- Economy
-- System Shop
-- Player Shop
-- Global Market
-- Auction
-- Chest Shop
-- Face-to-face Trade
-- Shopping Cart
-- Transaction Record
-- Unified Menu Entry
+## English Overview
 
-## Runtime Targets
+MatrixShop is a modular commerce plugin for survival and economy servers. It provides a unified stack for shop browsing, listing, trading, checkout, and record tracking, with a Chinese-first default resource set and current documentation aligned to the `main` branch.
 
-- Recommended server: `Paper` / `Folia`
-- Build target: `Bukkit API 1.12.2`
-- Required dependency: [MatrixLib](https://github.com/54895y/MatrixLib)
-- Supported economy backends: `Vault` / `PlayerPoints` / Placeholder-based custom currencies
-- Database: `SQLite` / `MySQL`
-- Optional sync layer: `Redis`
-- Latest smoke validation: `paper-1.21.8` / `paper-1.21.11`
+## 核心模块 / Core Modules
 
-## Compatibility Matrix
+- `Economy`
+- `SystemShop`
+- `PlayerShop`
+- `GlobalMarket`
+- `Auction`
+- `ChestShop`
+- `Transaction`
+- `Cart`
+- `Record`
+- `Menu`
 
-The table below only lists data that is currently confirmed from the source tree or from real local test runs.
+## 兼容性测试
 
-### Verified Runtime Tests
+| 版本 | 兼容性 |
+| --- | --- |
+| `1.3.0` | `Paper 1.21.8` smoke boot 通过 |
+| `1.3.0` | `Paper 1.21.11` smoke boot 通过 |
 
-| MatrixShop | Server Software | Server Version | Result | Test Type | Verified On | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| `1.3.0` | `Paper` | `1.21.8` | Pass | Smoke boot | `2026-04-02` | Plugin load, enable, and server ready state confirmed |
-| `1.3.0` | `Paper` | `1.21.11` | Pass | Smoke boot | `2026-04-02` | Plugin load, enable, and server ready state confirmed |
+## SystemShop 重点
 
-### Source-Level Compatibility Facts
+`SystemShop` 当前推荐把商品定义集中放在 `SystemShop/goods/*.yml`，再由 `SystemShop/shops/*.yml` 通过 `goods:` 引用。
 
-| Item | Real Value | Source |
-| --- | --- | --- |
-| Plugin version | `1.3.0` | `gradle.properties` |
-| Build target API | `Bukkit API 1.12.2` | `build.gradle.kts` |
-| Required dependency | `MatrixLib 1.0.1` | `gradle.properties` / `build.gradle.kts` |
-| Runtime artifact | `build/libs/MatrixShop-1.3.0-all.jar` | local `./gradlew build` output |
+支持的可复用资源：
 
-Notes:
+- `product`
+- `group`
+- `pool`
 
-- Versions not listed in `Verified Runtime Tests` are not marked here as verified compatibility.
-- `Paper 1.21.8` and `Paper 1.21.11` were tested locally on `2026-04-02` against `MatrixShop v1.3.0`.
-- If additional platforms such as `Folia`, `Bukkit`, or `Spigot` need to appear in this table, they should be added only after real test results are collected.
-
-## Why MatrixShop
-
-- Chinese-first GUI economy plugin for Minecraft servers
-- Unified command and menu structure for multiple commerce modules
-- Built for Chinese communities that want one plugin to cover shop, market, auction and trade workflows
-- Default configs are Chinese-oriented and ready for further customization
-
-## Economy Model
-
-MatrixShop now uses a dedicated `Economy` module for currency definitions.
-
-Priority order:
-
-1. Product-level currency
-2. Shop-level currency
-3. Module-level currency
-4. Fallback to `vault`
-
-Default currency config path:
-
-```text
-plugins/MatrixShop/Economy/currency.yml
-```
-
-This means you can keep one unified currency registry and let business modules only reference a currency key.
-
-## SystemShop Goods
-
-`SystemShop/goods/*.yml` now supports three reusable resource types:
-
-- product
-- group
-- pool
-
-This allows:
-
-- reusing item groups in `SystemShop/shops/*.yml`
-- reusing random pools for timed refresh areas
-- reducing repeated goods definitions across shops
-
-The default example pool is:
+默认示例池文件：
 
 ```text
 SystemShop/goods/weapon_refresh_pool_example.yml
 ```
 
-The default `weapon` shop also includes a commented refresh example you can enable directly.
+默认 `weapon` 分类中也已经带了可直接启用的刷新示例。
 
-## Admin Workflow
+## 后台维护流程
 
-`SystemShop` goods maintenance is now split into a reusable repository flow:
+当前推荐的管理员维护流：
 
 - `/matrixshopadmin goods ui [page]`
 - `/matrixshopadmin goods save <price> [buy-max] [product-id]`
 - `/matrixshopadmin goods add <category> <product-id>`
 - `/matrixshopadmin goods select <category> <product-id>`
 - `/matrixshopadmin goods edit <price|buy-max|currency|name|item|remove> ...`
-
-Refresh maintenance commands are also available:
-
 - `/matrixshopadmin refresh list [category]`
 - `/matrixshopadmin refresh run <category> [icon]`
 
-This lets you keep item definitions in `SystemShop/goods/*.yml`, then link them into one or more category files under `SystemShop/shops/*.yml`.
+## 构建与运行信息
 
-## Source Build
+- Build target: `Bukkit API 1.12.2`
+- Required dependency: `MatrixLib 1.0.1`
+- Supported economy backends: `Vault` / `PlayerPoints` / Placeholder-based custom currencies
+- Database: `SQLite` / `MySQL`
+- Optional sync layer: `Redis`
+
+构建命令：
 
 ```bash
 ./gradlew build
 ```
 
-The deployable runtime artifact is:
+运行产物：
 
 ```text
 build/libs/MatrixShop-1.3.0-all.jar
 ```
 
-Current source dependency:
+## 文档入口
 
-- `com.y54895.matrixlib:matrixlib-api:1.0.1`
+- [快速开始](https://54895y.github.io/docs/matrixshop/quick-start)
+- [配置与系统](https://54895y.github.io/docs/matrixshop/configuration-structure)
+- [模块总览](https://54895y.github.io/docs/matrixshop/modules-overview)
+- [商店与模块详解](https://54895y.github.io/docs/matrixshop/shop-types)
+- [更新日志](https://54895y.github.io/docs/matrixshop/release-notes)
+- [bStats 与遥测](https://54895y.github.io/docs/matrixshop/bstats-and-telemetry)
 
-## Telemetry
+## Search Keywords
 
-[![bStats](https://bstats.org/signatures/bukkit/MatrixShop.svg)](https://bstats.org/plugin/bukkit/MatrixShop)
-
-## Links
-
-- GitHub Repo: [https://github.com/54895y/MatrixShop](https://github.com/54895y/MatrixShop)
-- Docs: [https://54895y.github.io/docs/matrixshop](https://54895y.github.io/docs/matrixshop)
-- Changelog: [CHANGELOG.md](./CHANGELOG.md)
-- Release Notes 1.3.0: [https://54895y.github.io/docs/matrixshop/release-notes-1-3-0](https://54895y.github.io/docs/matrixshop/release-notes-1-3-0)
-- Telemetry Docs: [https://54895y.github.io/docs/matrixshop/bstats-and-telemetry](https://54895y.github.io/docs/matrixshop/bstats-and-telemetry)
-- Issues: [https://github.com/54895y/MatrixShop/issues](https://github.com/54895y/MatrixShop/issues)
-- Releases: [https://github.com/54895y/MatrixShop/releases](https://github.com/54895y/MatrixShop/releases)
-- Required dependency: [MatrixLib](https://github.com/54895y/MatrixLib)
+- English: Minecraft shop plugin, GUI shop plugin, auction plugin, player market plugin, trade plugin, Vault economy plugin, Paper plugin, Folia plugin
+- 中文: 商店插件, GUI 商店插件, 拍卖插件, 玩家市场插件, 交易插件, 经济插件, 中文服插件, Paper 插件, Folia 插件
