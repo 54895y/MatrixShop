@@ -1,0 +1,24 @@
+# 示例随机池
+# 不会自动生效，只有在某个 shop 的 refresh 配置中引用后才会被使用
+
+id: weapon_refresh_pool_example
+Kind: pool
+
+entries:
+  iron_sword_offer:
+    goods: iron_sword
+    weight: 10
+    price: 99
+    buy-max: 3
+
+  bow_offer:
+    goods: bow
+    weight: 8
+    price: 123
+    buy-max: 2
+
+  diamond_sword_offer:
+    goods: diamond_sword
+    weight: 2
+    price: 321
+    buy-max: 1

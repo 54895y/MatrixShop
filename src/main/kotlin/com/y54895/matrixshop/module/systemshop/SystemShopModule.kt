@@ -11,14 +11,26 @@ import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.database.ItemStackCodec
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.quartz.CronExpression
 import taboolib.common.platform.function.warning
+import taboolib.common.platform.function.submit
+import taboolib.common.platform.service.PlatformExecutor
+import taboolib.module.kether.KetherShell
+import taboolib.module.kether.ScriptOptions
 import java.io.File
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 import java.util.UUID
+import java.text.SimpleDateFormat
 
 object SystemShopModule : MatrixModule {
 
@@ -33,8 +45,14 @@ object SystemShopModule : MatrixModule {
     private val categories = LinkedHashMap<String, SystemShopCategory>()
     private val goodsTemplates = LinkedHashMap<String, SystemShopProductTemplate>()
     private val goodsGroups = LinkedHashMap<String, SystemShopGoodsGroup>()
+    private val goodsPools = LinkedHashMap<String, SystemShopGoodsPool>()
     private val confirmSessions = HashMap<UUID, ConfirmSession>()
     private val adminSelections = HashMap<UUID, AdminGoodsSelection>()
+    private val refreshWindows = LinkedHashMap<String, SystemShopRefreshWindowState>()
+    private val refreshStates = LinkedHashMap<String, SystemShopRefreshAreaState>()
+    private val openCategoryViewers = HashMap<UUID, String>()
+    private val renderedViews = HashMap<UUID, SystemShopRenderedView>()
+    private var refreshTask: PlatformExecutor.PlatformTask? = null
     private var currencyKey: String = "vault"
 
     override fun isEnabled(): Boolean {
@@ -42,10 +60,17 @@ object SystemShopModule : MatrixModule {
     }
 
     override fun reload() {
+        refreshTask?.cancel()
+        refreshTask = null
         if (!isEnabled()) {
             categories.clear()
             goodsTemplates.clear()
             goodsGroups.clear()
+            goodsPools.clear()
+            refreshWindows.clear()
+            refreshStates.clear()
+            openCategoryViewers.clear()
+            renderedViews.clear()
             adminSelections.clear()
             return
         }
@@ -60,6 +85,11 @@ object SystemShopModule : MatrixModule {
         categories.clear()
         goodsTemplates.clear()
         goodsGroups.clear()
+        goodsPools.clear()
+        refreshWindows.clear()
+        refreshStates.clear()
+        openCategoryViewers.clear()
+        renderedViews.clear()
         adminSelections.clear()
         val goodsFolder = File(dataFolder, "SystemShop/goods")
         goodsFolder.mkdirs()
@@ -79,6 +109,7 @@ object SystemShopModule : MatrixModule {
                     warning(Texts.tr("@system-shop.logs.category-load-failed", mapOf("file" to file.name, "reason" to (it.message ?: it.javaClass.simpleName))))
                 }
             }
+        initializeRefreshState()
     }
 
     fun openMain(player: Player) {
@@ -92,12 +123,21 @@ object SystemShopModule : MatrixModule {
             Texts.sendKey(player, "@system-shop.errors.category-not-found", mapOf("category" to categoryId))
             return
         }
+        val renderedView = resolveRenderedView(player, category)
         val placeholders = playerPlaceholders(player) + mapOf("page" to page.toString(), "max-page" to "1")
+        openCategoryViewers[player.uniqueId] = category.id
+        renderedViews[player.uniqueId] = renderedView
         MenuRenderer.open(
             player = player,
             definition = category.menu,
             placeholders = placeholders,
             backAction = { openMain(player) },
+            closeHandler = {
+                if (openCategoryViewers[player.uniqueId] == category.id) {
+                    openCategoryViewers.remove(player.uniqueId)
+                }
+                renderedViews.remove(player.uniqueId)
+            },
             goodsRenderer = { holder, goodsSlots ->
                 renderProducts(player, holder, goodsSlots, category)
             }
@@ -125,6 +165,82 @@ object SystemShopModule : MatrixModule {
 
     fun goodsIds(): List<String> {
         return goodsReferenceIds().sorted()
+    }
+
+    fun refreshCategoryIds(): List<String> {
+        return categories.values
+            .filter { it.refreshAreas.isNotEmpty() }
+            .map { it.id }
+            .sorted()
+    }
+
+    fun refreshAreaIds(categoryId: String?): List<String> {
+        val category = categories[categoryId?.trim().orEmpty()] ?: return emptyList()
+        return category.refreshAreas.keys.map(Char::toString).sorted()
+    }
+
+    fun refreshOverviewLines(categoryId: String? = null): List<String> {
+        val targets = if (categoryId.isNullOrBlank()) {
+            categories.values.filter { it.refreshAreas.isNotEmpty() }
+        } else {
+            listOfNotNull(categories[categoryId.trim()])
+        }
+        val lines = ArrayList<String>()
+        targets.forEach { category ->
+            category.refreshAreas.toSortedMap(compareBy { it.toString() }).forEach { (icon, area) ->
+                val areaKey = refreshAreaKey(category.id, icon)
+                val window = refreshWindows[areaKey]
+                val next = window?.nextRefreshAt?.takeIf { it > 0 && it != Long.MAX_VALUE }?.let(::formatRefreshTime) ?: "n/a"
+                lines += Texts.color("&8[&bMatrixShop&8] &f${category.id}/${icon} &7same=&f${area.sameForPlayersInGroup} &7cron=&f${area.cron} &7next=&f$next")
+                area.groups.values.forEach { group ->
+                    lines += Texts.color(" &8- &f${group.id} &7enabled=&f${group.enabled} &7random=&f${group.randomRefresh} &7pick=&f${group.pick}")
+                }
+            }
+        }
+        return lines
+    }
+
+    fun forceRefresh(categoryId: String?, iconRaw: String? = null): ModuleOperationResult {
+        val normalizedCategoryId = categoryId?.trim().orEmpty()
+        if (normalizedCategoryId.isBlank()) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.refresh-usage"))
+        }
+        val category = categories[normalizedCategoryId]
+            ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.category-not-found", mapOf("category" to normalizedCategoryId)))
+        val targets = if (iconRaw.isNullOrBlank()) {
+            category.refreshAreas.entries.map { entry -> entry.key to entry.value }
+        } else {
+            val icon = iconRaw.trim().firstOrNull()
+                ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.refresh-usage"))
+            val area = category.refreshAreas[icon]
+                ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.refresh-area-not-found", mapOf("category" to normalizedCategoryId, "icon" to iconRaw)))
+            listOf(icon to area)
+        }
+        if (targets.isEmpty()) {
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.refresh-none"))
+        }
+        val now = System.currentTimeMillis()
+        targets.forEach { (icon, area) ->
+            val areaKey = refreshAreaKey(category.id, icon)
+            refreshWindows[areaKey] = SystemShopRefreshWindowState(
+                version = now,
+                lastRefreshAt = now,
+                nextRefreshAt = nextRefreshTime(area, Date(now))
+            )
+            val areaState = refreshStates.computeIfAbsent(areaKey) { SystemShopRefreshAreaState() }
+            if (area.sameForPlayersInGroup) {
+                area.groups.values.filter { it.enabled }.forEach { group ->
+                    val groupState = areaState.groups.computeIfAbsent(group.id) { SystemShopRefreshGroupState() }
+                    groupState.sharedSnapshot = buildSnapshot(category, area, group, now)
+                }
+            } else {
+                areaState.groups.values.forEach { state -> state.playerSnapshots.clear() }
+            }
+        }
+        saveRefreshState()
+        refreshOpenCategories(setOf(category.id))
+        val iconLabel = iconRaw?.takeIf(String::isNotBlank) ?: "*"
+        return ModuleOperationResult(true, Texts.tr("@system-shop.success.refreshed", mapOf("category" to category.id, "icon" to iconLabel)))
     }
 
     fun openGoodsBrowser(player: Player, page: Int = 1) {
@@ -507,13 +623,9 @@ object SystemShopModule : MatrixModule {
             Texts.sendKey(player, "@system-shop.errors.no-confirm-purchase")
             return
         }
-        val product = findProduct(session.categoryId, session.productId) ?: run {
-            confirmSessions.remove(player.uniqueId)
-            Texts.sendKey(player, "@system-shop.errors.product-invalid")
-            return
-        }
+        val product = session.product
         session.amount = (session.amount + delta).coerceIn(1, product.buyMax.coerceAtLeast(1))
-        openConfirm(player, session.categoryId, session.productId)
+        openConfirm(player, session.categoryId, product)
     }
 
     fun confirmPurchase(player: Player) {
@@ -522,7 +634,7 @@ object SystemShopModule : MatrixModule {
             Texts.sendKey(player, "@system-shop.errors.no-confirm-purchase")
             return
         }
-        val result = purchaseDirect(player, session.categoryId, session.productId, session.amount, true)
+        val result = purchaseProduct(player, session.categoryId, session.product, session.amount, true)
         if (result.success) {
             confirmSessions.remove(player.uniqueId)
         } else if (result.message.isNotBlank()) {
@@ -532,12 +644,11 @@ object SystemShopModule : MatrixModule {
 
     fun currentSelection(player: Player): SystemShopSelection? {
         val session = confirmSessions[player.uniqueId] ?: return null
-        val product = findProduct(session.categoryId, session.productId) ?: return null
         return SystemShopSelection(
             categoryId = session.categoryId,
             productId = session.productId,
-            product = product,
-            amount = session.amount.coerceIn(1, product.buyMax.coerceAtLeast(1))
+            product = session.product,
+            amount = session.amount.coerceIn(1, session.product.buyMax.coerceAtLeast(1))
         )
     }
 
@@ -551,6 +662,10 @@ object SystemShopModule : MatrixModule {
         if (category == null || product == null) {
             return ModuleOperationResult(false, Texts.tr("@system-shop.errors.product-invalid"))
         }
+        return validateSnapshotProduct(product, amount)
+    }
+
+    fun validateSnapshotProduct(product: SystemShopProduct, amount: Int): ModuleOperationResult {
         val safeAmount = amount.coerceAtLeast(1)
         if (safeAmount > product.buyMax.coerceAtLeast(1)) {
             return ModuleOperationResult(false, Texts.tr("@system-shop.errors.amount-over-limit"))
@@ -572,6 +687,31 @@ object SystemShopModule : MatrixModule {
         val category = categories[categoryId]
         val product = findProduct(categoryId, productId)
         if (category == null || product == null) {
+            confirmSessions.remove(player.uniqueId)
+            return ModuleOperationResult(false, Texts.tr("@system-shop.errors.product-invalid"))
+        }
+        return purchaseProduct(player, categoryId, product, amount, closeInventoryOnSuccess)
+    }
+
+    fun purchaseSnapshot(
+        player: Player,
+        categoryId: String,
+        product: SystemShopProduct,
+        amount: Int,
+        closeInventoryOnSuccess: Boolean = false
+    ): ModuleOperationResult {
+        return purchaseProduct(player, categoryId, product, amount, closeInventoryOnSuccess)
+    }
+
+    private fun purchaseProduct(
+        player: Player,
+        categoryId: String,
+        product: SystemShopProduct,
+        amount: Int,
+        closeInventoryOnSuccess: Boolean = false
+    ): ModuleOperationResult {
+        val category = categories[categoryId]
+        if (category == null) {
             confirmSessions.remove(player.uniqueId)
             return ModuleOperationResult(false, Texts.tr("@system-shop.errors.product-invalid"))
         }
@@ -615,10 +755,15 @@ object SystemShopModule : MatrixModule {
 
     fun openConfirm(player: Player, categoryId: String, productId: String) {
         val product = findProduct(categoryId, productId) ?: return
+        openConfirm(player, categoryId, product)
+    }
+
+    fun openConfirm(player: Player, categoryId: String, product: SystemShopProduct) {
         val session = confirmSessions.compute(player.uniqueId) { _, current ->
-            if (current == null || current.categoryId != categoryId || current.productId != productId) {
-                ConfirmSession(categoryId, productId, 1)
+            if (current == null || current.categoryId != categoryId || current.productId != product.id) {
+                ConfirmSession(categoryId, product.id, product, 1)
             } else {
+                current.product = product
                 current
             }
         }!!
@@ -642,8 +787,8 @@ object SystemShopModule : MatrixModule {
     }
 
     private fun renderProducts(player: Player, holder: MatrixMenuHolder, goodsSlots: List<Int>, category: SystemShopCategory) {
-        category.products.take(goodsSlots.size).forEachIndexed { index, product ->
-            val slot = goodsSlots[index]
+        val slotProducts = renderedViews[player.uniqueId]?.slotProducts ?: resolveCategorySlotProducts(player, category)
+        slotProducts.forEach { (slot, product) ->
             val placeholders = mapOf(
                 "name" to product.name,
                 "price" to EconomyModule.formatAmount(product.currency, product.price),
@@ -674,7 +819,7 @@ object SystemShopModule : MatrixModule {
                     Texts.sendKey(player, "@system-shop.hints.admin-edit-limit")
                     Texts.sendKey(player, "@system-shop.hints.admin-edit-item")
                 } else {
-                    openConfirm(player, category.id, product.id)
+                    openConfirm(player, category.id, product)
                 }
             }
         }
@@ -822,11 +967,479 @@ object SystemShopModule : MatrixModule {
         buttonSlot(goodsShopsMenu, 'N')?.let { holder.handlers[it] = { openGoodsShopSelector(player, productId, browserPage, (currentPage + 1).coerceAtMost(maxPage)) } }
     }
 
+    private fun resolveCategorySlotProducts(player: Player, category: SystemShopCategory): Map<Int, SystemShopProduct> {
+        val goodsSlotsByIcon = goodsSlotsByIcon(category.menu)
+        val result = linkedMapOf<Int, SystemShopProduct>()
+        val staticSymbols = goodsSlotsByIcon.keys.filter { icon -> category.refreshAreas[icon] == null }
+        val staticSlots = staticSymbols.flatMap { goodsSlotsByIcon[it].orEmpty() }
+        val staticProducts = category.products.iterator()
+        staticSlots.forEach { slot ->
+            if (staticProducts.hasNext()) {
+                result[slot] = staticProducts.next()
+            }
+        }
+        category.refreshAreas.forEach { (icon, area) ->
+            val slots = goodsSlotsByIcon[icon].orEmpty()
+            val products = resolveRefreshProducts(player, category, area)
+            slots.forEachIndexed { index, slot ->
+                products.getOrNull(index)?.let { result[slot] = it }
+            }
+        }
+        return result
+    }
+
+    private fun resolveRenderedView(player: Player, category: SystemShopCategory): SystemShopRenderedView {
+        return SystemShopRenderedView(
+            categoryId = category.id,
+            slotProducts = resolveCategorySlotProducts(player, category)
+        )
+    }
+
+    private fun goodsSlotsByIcon(definition: MenuDefinition): Map<Char, List<Int>> {
+        val slots = linkedMapOf<Char, MutableList<Int>>()
+        definition.layout.forEachIndexed { row, line ->
+            line.forEachIndexed { column, char ->
+                val icon = definition.icons[char] ?: return@forEachIndexed
+                if (icon.mode.equals("goods", true)) {
+                    slots.computeIfAbsent(char) { mutableListOf() } += row * 9 + column
+                }
+            }
+        }
+        return slots
+    }
+
+    private fun resolveRefreshProducts(player: Player, category: SystemShopCategory, area: SystemShopRefreshArea): List<SystemShopProduct> {
+        if (!area.enabled) {
+            return emptyList()
+        }
+        val group = selectRefreshGroup(player, category.id, area) ?: return emptyList()
+        val areaKey = refreshAreaKey(category.id, area.iconKey)
+        val areaState = refreshStates.computeIfAbsent(areaKey) { SystemShopRefreshAreaState() }
+        val groupState = areaState.groups.computeIfAbsent(group.id) { SystemShopRefreshGroupState() }
+        val window = refreshWindows.computeIfAbsent(areaKey) { buildCurrentRefreshWindow(area) }
+        return if (area.sameForPlayersInGroup) {
+            val snapshot = groupState.sharedSnapshot
+            if (snapshot == null || snapshot.version != window.version) {
+                val generated = buildSnapshot(category, area, group, window.version)
+                groupState.sharedSnapshot = generated
+                saveRefreshState()
+                generated.products
+            } else {
+                snapshot.products
+            }
+        } else {
+            val playerKey = player.uniqueId.toString()
+            val snapshot = groupState.playerSnapshots[playerKey]
+            if (snapshot == null || snapshot.version != window.version) {
+                val generated = buildSnapshot(category, area, group, window.version)
+                groupState.playerSnapshots[playerKey] = generated
+                saveRefreshState()
+                generated.products
+            } else {
+                snapshot.products
+            }
+        }
+    }
+
+    private fun selectRefreshGroup(player: Player, categoryId: String, area: SystemShopRefreshArea): SystemShopRefreshGroup? {
+        val enabledGroups = area.groups.values.filter { it.enabled }
+        if (enabledGroups.isEmpty()) {
+            return null
+        }
+        enabledGroups.firstOrNull { it.id.equals("default", true) && it.matchScript.isEmpty() }?.let { defaultGroup ->
+            enabledGroups.filter { it.matchScript.isNotEmpty() }.forEach { group ->
+                if (matchesRefreshGroup(player, categoryId, area.iconKey, group)) {
+                    return group
+                }
+            }
+            return defaultGroup
+        }
+        enabledGroups.forEach { group ->
+            if (group.matchScript.isEmpty() || matchesRefreshGroup(player, categoryId, area.iconKey, group)) {
+                return group
+            }
+        }
+        return enabledGroups.firstOrNull()
+    }
+
+    private fun matchesRefreshGroup(player: Player, categoryId: String, iconKey: Char, group: SystemShopRefreshGroup): Boolean {
+        if (group.matchScript.isEmpty()) {
+            return false
+        }
+        return runCatching {
+            val options = ScriptOptions.builder()
+                .sender(player)
+                .set("player", player)
+                .set("shop_id", categoryId)
+                .set("icon_key", iconKey.toString())
+                .set("group_id", group.id)
+                .detailError(true)
+                .build()
+            val result = KetherShell.eval(group.matchScript, options).get(3, TimeUnit.SECONDS)
+            when (result) {
+                is Boolean -> result
+                is Number -> result.toInt() != 0
+                else -> result?.toString()?.equals("true", true) == true
+            }
+        }.getOrElse {
+            warning(
+                Texts.tr(
+                    "@system-shop.logs.refresh-group-script-failed",
+                    mapOf(
+                        "shop" to categoryId,
+                        "icon" to iconKey.toString(),
+                        "group" to group.id,
+                        "reason" to (it.message ?: it.javaClass.simpleName)
+                    )
+                )
+            )
+            false
+        }
+    }
+
+    private fun buildSnapshot(
+        category: SystemShopCategory,
+        area: SystemShopRefreshArea,
+        group: SystemShopRefreshGroup,
+        version: Long
+    ): SystemShopResolvedSnapshot {
+        val products = if (group.randomRefresh) {
+            val pool = group.inlinePool ?: group.poolRef?.let(::findGoodsPool)
+            if (pool == null || pool.entries.isEmpty()) {
+                expandGoodsReferences(group.fallbackRefs, category.currencyKey, category.id)
+                    .mapIndexed { index, product ->
+                        product.copy(
+                            id = refreshProductId(area.iconKey, group.id, product.goodsId, index),
+                            refreshArea = area.iconKey,
+                            refreshGroupId = group.id,
+                            sameForPlayersInGroup = area.sameForPlayersInGroup
+                        )
+                    }
+            } else {
+                pickPoolProducts(category, area, group, pool)
+            }
+        } else {
+            expandGoodsReferences(group.goodsRefs.ifEmpty { group.fallbackRefs }, category.currencyKey, category.id)
+                .mapIndexed { index, product ->
+                    product.copy(
+                        id = refreshProductId(area.iconKey, group.id, product.goodsId, index),
+                        refreshArea = area.iconKey,
+                        refreshGroupId = group.id,
+                        sameForPlayersInGroup = area.sameForPlayersInGroup
+                    )
+                }
+        }
+        return SystemShopResolvedSnapshot(version = version, products = products)
+    }
+
+    private fun pickPoolProducts(
+        category: SystemShopCategory,
+        area: SystemShopRefreshArea,
+        group: SystemShopRefreshGroup,
+        pool: SystemShopGoodsPool
+    ): List<SystemShopProduct> {
+        val remaining = buildPoolCandidates(category, area, group, pool).toMutableList()
+        val selected = ArrayList<SystemShopProduct>()
+        val target = group.pick.coerceAtLeast(1).coerceAtMost(remaining.size)
+        while (selected.size < target && remaining.isNotEmpty()) {
+            val totalWeight = remaining.sumOf { it.first.coerceAtLeast(1) }
+            var random = kotlin.random.Random.nextInt(totalWeight)
+            val iterator = remaining.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                random -= entry.first.coerceAtLeast(1)
+                if (random < 0) {
+                    selected += entry.second
+                    iterator.remove()
+                    break
+                }
+            }
+        }
+        return selected
+    }
+
+    private fun buildPoolCandidates(
+        category: SystemShopCategory,
+        area: SystemShopRefreshArea,
+        group: SystemShopRefreshGroup,
+        pool: SystemShopGoodsPool
+    ): List<Pair<Int, SystemShopProduct>> {
+        val candidates = ArrayList<Pair<Int, SystemShopProduct>>()
+        pool.entries.forEach { entry ->
+            val bases = expandGoodsReferences(listOf(entry.goodsId), category.currencyKey, category.id)
+            if (bases.isEmpty()) {
+                warning(Texts.tr("@system-shop.logs.goods-ref-missing", mapOf("shop" to category.id, "goods" to entry.goodsId)))
+            }
+            bases.forEachIndexed { baseIndex, base ->
+                candidates += entry.weight to buildRefreshProduct(category, area, group, base, entry, candidates.size + baseIndex)
+            }
+        }
+        return candidates
+    }
+
+    private fun buildRefreshProduct(
+        category: SystemShopCategory,
+        area: SystemShopRefreshArea,
+        group: SystemShopRefreshGroup,
+        base: SystemShopProduct,
+        entry: SystemShopGoodsPoolEntry,
+        index: Int
+    ): SystemShopProduct {
+        val rawItem = entry.item?.clone() ?: base.item?.clone()
+        val resolvedCurrency = entry.configuredCurrency?.trim()?.takeIf(String::isNotBlank)
+            ?: base.currency
+            .trim()
+            .takeIf(String::isNotBlank)
+            ?: category.currencyKey
+        return SystemShopProduct(
+            id = refreshProductId(area.iconKey, group.id, base.goodsId, index),
+            goodsId = base.goodsId,
+            material = entry.item?.type?.name ?: base.material,
+            amount = entry.amount ?: base.amount,
+            name = entry.name ?: base.name,
+            lore = entry.lore ?: base.lore,
+            price = entry.price ?: base.price,
+            currency = resolvedCurrency,
+            buyMax = entry.buyMax ?: base.buyMax,
+            item = rawItem,
+            source = base.source,
+            refreshArea = area.iconKey,
+            refreshGroupId = group.id,
+            sameForPlayersInGroup = area.sameForPlayersInGroup
+        )
+    }
+
+    private fun expandGoodsReferences(goodsRefs: List<String>, categoryCurrencyKey: String, shopId: String): List<SystemShopProduct> {
+        return goodsRefs.flatMap { goodsId ->
+            resolveGoodsReference(goodsId, categoryCurrencyKey, shopId)
+        }
+    }
+
+    private fun refreshAreaKey(categoryId: String, iconKey: Char): String {
+        return "${categoryId.lowercase(Locale.ROOT)}:$iconKey"
+    }
+
+    private fun refreshProductId(iconKey: Char, groupId: String, goodsId: String, index: Int): String {
+        return "refresh_${iconKey}_${normalizeProductId(groupId) ?: groupId}_${goodsId}_$index"
+    }
+
+    private fun buildCurrentRefreshWindow(area: SystemShopRefreshArea): SystemShopRefreshWindowState {
+        val now = System.currentTimeMillis()
+        val next = nextRefreshTime(area, Date(now))
+        return SystemShopRefreshWindowState(
+            version = next,
+            lastRefreshAt = now,
+            nextRefreshAt = next
+        )
+    }
+
+    private fun nextRefreshTime(area: SystemShopRefreshArea, after: Date): Long {
+        val expression = CronExpression(area.cron)
+        expression.timeZone = TimeZone.getTimeZone(area.timezone)
+        return expression.getNextValidTimeAfter(after)?.time ?: Long.MAX_VALUE
+    }
+
+    private fun initializeRefreshState() {
+        loadRefreshState()
+        categories.values.forEach { category ->
+            category.refreshAreas.forEach { (iconKey, area) ->
+                val areaKey = refreshAreaKey(category.id, iconKey)
+                val window = rollRefreshWindow(area, refreshWindows[areaKey])
+                refreshWindows[areaKey] = window
+                val areaState = refreshStates.computeIfAbsent(areaKey) { SystemShopRefreshAreaState() }
+                if (area.sameForPlayersInGroup) {
+                    area.groups.values
+                        .filter { it.enabled }
+                        .forEach { group ->
+                            val groupState = areaState.groups.computeIfAbsent(group.id) { SystemShopRefreshGroupState() }
+                            val snapshot = groupState.sharedSnapshot
+                            if (snapshot == null || snapshot.version != window.version) {
+                                groupState.sharedSnapshot = buildSnapshot(category, area, group, window.version)
+                            }
+                        }
+                }
+            }
+        }
+        saveRefreshState()
+        refreshTask = submit(period = 20L) {
+            tickRefreshWindows()
+        }
+    }
+
+    private fun tickRefreshWindows() {
+        val changedCategories = linkedSetOf<String>()
+        categories.values.forEach { category ->
+            category.refreshAreas.forEach { (iconKey, area) ->
+                val areaKey = refreshAreaKey(category.id, iconKey)
+                val previous = refreshWindows[areaKey]
+                val rolled = rollRefreshWindow(area, previous)
+                refreshWindows[areaKey] = rolled
+                if (previous == null || previous.version != rolled.version) {
+                    changedCategories += category.id
+                }
+            }
+        }
+        if (changedCategories.isNotEmpty()) {
+            saveRefreshState()
+            refreshOpenCategories(changedCategories)
+        }
+    }
+
+    private fun rollRefreshWindow(area: SystemShopRefreshArea, current: SystemShopRefreshWindowState?): SystemShopRefreshWindowState {
+        var state = current ?: buildCurrentRefreshWindow(area)
+        val now = System.currentTimeMillis()
+        while (now >= state.nextRefreshAt && state.nextRefreshAt != Long.MAX_VALUE) {
+            val last = state.nextRefreshAt
+            val next = nextRefreshTime(area, Date(last))
+            state = SystemShopRefreshWindowState(
+                version = next,
+                lastRefreshAt = last,
+                nextRefreshAt = next
+            )
+        }
+        return state
+    }
+
+    private fun refreshOpenCategories(changedCategories: Set<String>) {
+        val viewers = openCategoryViewers.toMap()
+        viewers.forEach { (viewerId, categoryId) ->
+            if (!changedCategories.contains(categoryId)) {
+                return@forEach
+            }
+            val player = Bukkit.getPlayer(viewerId) ?: return@forEach
+            if (!player.isOnline) {
+                openCategoryViewers.remove(viewerId)
+                renderedViews.remove(viewerId)
+                return@forEach
+            }
+            openCategory(player, categoryId)
+        }
+    }
+
+    private fun loadRefreshState() {
+        val file = refreshStateFile()
+        if (!file.exists()) {
+            return
+        }
+        val yaml = YamlConfiguration.loadConfiguration(file)
+        yaml.getConfigurationSection("windows")?.getKeys(false)?.forEach { areaKey ->
+            val section = yaml.getConfigurationSection("windows.$areaKey") ?: return@forEach
+            refreshWindows[areaKey] = SystemShopRefreshWindowState(
+                version = section.getLong("version"),
+                lastRefreshAt = section.getLong("last-refresh-at"),
+                nextRefreshAt = section.getLong("next-refresh-at")
+            )
+        }
+        yaml.getConfigurationSection("states")?.getKeys(false)?.forEach { areaKey ->
+            val areaSection = yaml.getConfigurationSection("states.$areaKey") ?: return@forEach
+            val areaState = SystemShopRefreshAreaState()
+            areaSection.getConfigurationSection("groups")?.getKeys(false)?.forEach { groupId ->
+                val groupSection = areaSection.getConfigurationSection("groups.$groupId") ?: return@forEach
+                val groupState = SystemShopRefreshGroupState()
+                deserializeSnapshot(groupSection.getConfigurationSection("shared"))?.let { groupState.sharedSnapshot = it }
+                groupSection.getConfigurationSection("players")?.getKeys(false)?.forEach { playerId ->
+                    val playerSection = groupSection.getConfigurationSection("players.$playerId") ?: return@forEach
+                    deserializeSnapshot(playerSection)?.let { groupState.playerSnapshots[playerId] = it }
+                }
+                areaState.groups[groupId] = groupState
+            }
+            refreshStates[areaKey] = areaState
+        }
+    }
+
+    private fun saveRefreshState() {
+        val yaml = YamlConfiguration()
+        refreshWindows.forEach { (areaKey, window) ->
+            yaml.set("windows.$areaKey.version", window.version)
+            yaml.set("windows.$areaKey.last-refresh-at", window.lastRefreshAt)
+            yaml.set("windows.$areaKey.next-refresh-at", window.nextRefreshAt)
+        }
+        refreshStates.forEach { (areaKey, areaState) ->
+            areaState.groups.forEach { (groupId, groupState) ->
+                serializeSnapshot(yaml, "states.$areaKey.groups.$groupId.shared", groupState.sharedSnapshot)
+                groupState.playerSnapshots.forEach { (playerId, snapshot) ->
+                    serializeSnapshot(yaml, "states.$areaKey.groups.$groupId.players.$playerId", snapshot)
+                }
+            }
+        }
+        saveCategoryYaml(refreshStateFile(), yaml)
+    }
+
+    private fun serializeSnapshot(yaml: YamlConfiguration, basePath: String, snapshot: SystemShopResolvedSnapshot?) {
+        if (snapshot == null) {
+            return
+        }
+        yaml.set("$basePath.version", snapshot.version)
+        snapshot.products.forEachIndexed { index, product ->
+            val path = "$basePath.products.$index"
+            yaml.set("$path.id", product.id)
+            yaml.set("$path.goods-id", product.goodsId)
+            yaml.set("$path.material", product.material)
+            yaml.set("$path.amount", product.amount)
+            yaml.set("$path.name", product.name)
+            yaml.set("$path.lore", product.lore)
+            yaml.set("$path.price", product.price)
+            yaml.set("$path.currency", product.currency)
+            yaml.set("$path.buy-max", product.buyMax)
+            yaml.set("$path.item", ItemStackCodec.encode(product.item))
+            yaml.set("$path.refresh-area", product.refreshArea?.toString())
+            yaml.set("$path.refresh-group-id", product.refreshGroupId)
+            yaml.set("$path.same-for-players-in-group", product.sameForPlayersInGroup)
+        }
+    }
+
+    private fun deserializeSnapshot(section: ConfigurationSection?): SystemShopResolvedSnapshot? {
+        if (section == null || !section.contains("version")) {
+            return null
+        }
+        val products = section.getConfigurationSection("products")?.getKeys(false)?.mapNotNull { key ->
+            val productSection = section.getConfigurationSection("products.$key") ?: return@mapNotNull null
+            val goodsId = productSection.getString("goods-id").orEmpty()
+            val id = productSection.getString("id", goodsId).orEmpty()
+            if (goodsId.isBlank() || id.isBlank()) {
+                return@mapNotNull null
+            }
+            val material = productSection.getString("material", "STONE").orEmpty()
+            val sourceTemplate = findGoodsTemplate(goodsId)
+            SystemShopProduct(
+                id = id,
+                goodsId = goodsId,
+                material = material,
+                amount = productSection.getInt("amount", 1),
+                name = productSection.getString("name", goodsId).orEmpty(),
+                lore = productSection.getStringList("lore"),
+                price = productSection.getDouble("price", 0.0),
+                currency = productSection.getString("currency", currencyKey).orEmpty(),
+                buyMax = productSection.getInt("buy-max", 64),
+                item = ItemStackCodec.decode(productSection.getString("item")),
+                source = sourceTemplate?.source ?: SystemShopProductSource(
+                    type = SystemShopProductSourceType.REFERENCE,
+                    configFile = refreshStateFile(),
+                    configPath = null
+                ),
+                refreshArea = productSection.getString("refresh-area")?.firstOrNull(),
+                refreshGroupId = productSection.getString("refresh-group-id"),
+                sameForPlayersInGroup = productSection.getBoolean("same-for-players-in-group", true)
+            )
+        }.orEmpty()
+        return SystemShopResolvedSnapshot(
+            version = section.getLong("version"),
+            products = products
+        )
+    }
+
+    private fun refreshStateFile(): File {
+        val folder = File(ConfigFiles.dataFolder(), "SystemShop")
+        folder.mkdirs()
+        return File(folder, "refresh-state.yml")
+    }
+
     private fun loadCategory(file: File) {
         val yaml = YamlConfiguration.loadConfiguration(file)
         val id = yaml.getString("id", file.nameWithoutExtension).orEmpty()
         val menu = MenuLoader.load(file)
         val categoryCurrencyKey = EconomyModule.configuredKey(yaml, "Currency", currencyKey)
+        val refreshAreas = parseRefreshAreas(yaml, id)
         val inlineGoods = yaml.getConfigurationSection("goods")
         val products = if (inlineGoods != null) {
             inlineGoods.getKeys(false).mapNotNull { key ->
@@ -846,7 +1459,14 @@ object SystemShopModule : MatrixModule {
                 resolveGoodsReference(goodsId, categoryCurrencyKey, id)
             }
         }
-        categories[id] = SystemShopCategory(id = id, menu = menu, currencyKey = categoryCurrencyKey, products = products, shopFile = file)
+        categories[id] = SystemShopCategory(
+            id = id,
+            menu = menu,
+            currencyKey = categoryCurrencyKey,
+            products = products,
+            refreshAreas = refreshAreas,
+            shopFile = file
+        )
     }
 
     private fun parseProductTemplate(
@@ -874,11 +1494,13 @@ object SystemShopModule : MatrixModule {
     private fun loadGoodsEntry(file: File) {
         val yaml = YamlConfiguration.loadConfiguration(file)
         val resolvedId = normalizeProductId(yaml.getString("id", file.nameWithoutExtension)) ?: file.nameWithoutExtension
-        if (goodsReferenceIds().any { it.equals(resolvedId, true) }) {
+        if ((goodsReferenceIds() + goodsPools.keys).any { it.equals(resolvedId, true) }) {
             warning(Texts.tr("@system-shop.logs.goods-id-duplicate", mapOf("id" to resolvedId, "file" to file.name)))
             return
         }
-        if (isGoodsGroupDefinition(yaml)) {
+        if (isGoodsPoolDefinition(yaml)) {
+            goodsPools[resolvedId] = parseGoodsPool(resolvedId, yaml, file)
+        } else if (isGoodsGroupDefinition(yaml)) {
             goodsGroups[resolvedId] = parseGoodsGroup(resolvedId, yaml, file)
         } else {
             goodsTemplates[resolvedId] = parseProductTemplate(
@@ -1008,6 +1630,10 @@ object SystemShopModule : MatrixModule {
         return goodsGroups.entries.firstOrNull { it.key.equals(groupId, true) }?.value
     }
 
+    private fun findGoodsPool(poolId: String): SystemShopGoodsPool? {
+        return goodsPools.entries.firstOrNull { it.key.equals(poolId, true) }?.value
+    }
+
     private fun listedCategoryIds(productId: String): List<String> {
         return categories.values
             .filter { category -> category.products.any { it.id.equals(productId, true) } }
@@ -1086,6 +1712,157 @@ object SystemShopModule : MatrixModule {
                 entry?.trim()?.takeIf(String::isNotBlank)
             }
         return SystemShopGoodsGroup(id = id, entries = entries, sourceFile = file)
+    }
+
+    private fun isGoodsPoolDefinition(yaml: YamlConfiguration): Boolean {
+        val kind = yaml.getString("Kind")
+            ?.trim()
+            ?.ifBlank { null }
+            ?: yaml.getString("kind")
+                ?.trim()
+                ?.ifBlank { null }
+        return when {
+            kind.equals("pool", true) -> true
+            kind.equals("product", true) || kind.equals("group", true) -> false
+            yaml.isConfigurationSection("entries") -> true
+            else -> false
+        }
+    }
+
+    private fun parseGoodsPool(id: String, yaml: YamlConfiguration, file: File): SystemShopGoodsPool {
+        val entriesSection = yaml.getConfigurationSection("entries")
+        val entries = entriesSection?.getKeys(false)?.mapNotNull { entryId ->
+            val section = entriesSection.getConfigurationSection(entryId) ?: return@mapNotNull null
+            val goodsId = section.getString("goods")?.trim().orEmpty()
+            if (goodsId.isBlank()) {
+                null
+            } else {
+                SystemShopGoodsPoolEntry(
+                    id = entryId,
+                    goodsId = goodsId,
+                    weight = section.getInt("weight", 1).coerceAtLeast(1),
+                    amount = section.getInt("amount").takeIf { section.contains("amount") },
+                    price = section.getDouble("price").takeIf { section.contains("price") },
+                    configuredCurrency = section.getString("currency")?.trim()?.takeIf(String::isNotBlank),
+                    buyMax = section.getInt("buy-max").takeIf { section.contains("buy-max") },
+                    name = section.getString("name")?.takeIf(String::isNotBlank),
+                    lore = section.getStringList("lore").takeIf { it.isNotEmpty() },
+                    item = section.getItemStack("item")?.clone()
+                )
+            }
+        }.orEmpty()
+        return SystemShopGoodsPool(id = id, entries = entries, sourceFile = file)
+    }
+
+    private fun parseRefreshAreas(yaml: YamlConfiguration, shopId: String): Map<Char, SystemShopRefreshArea> {
+        val iconSection = yaml.getConfigurationSection("icons") ?: return emptyMap()
+        val direct = LinkedHashMap<Char, SystemShopRefreshArea>()
+        val refs = LinkedHashMap<Char, Char>()
+        iconSection.getKeys(false).forEach { key ->
+            val child = iconSection.getConfigurationSection(key) ?: return@forEach
+            if (!child.getString("mode").equals("goods", true)) {
+                return@forEach
+            }
+            val iconKey = key.first()
+            val ref = child.getString("refresh-ref")
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?.firstOrNull()
+            if (ref != null) {
+                refs[iconKey] = ref
+                return@forEach
+            }
+            val refreshSection = child.getConfigurationSection("refresh") ?: return@forEach
+            parseRefreshArea(iconKey, refreshSection, shopId)?.let {
+                direct[iconKey] = it
+            }
+        }
+        refs.forEach { (icon, target) ->
+            val targetArea = direct[target]
+            if (targetArea == null) {
+                warning(Texts.tr("@system-shop.logs.refresh-ref-missing", mapOf("shop" to shopId, "icon" to icon.toString(), "target" to target.toString())))
+            } else {
+                direct[icon] = targetArea.copy(iconKey = icon)
+            }
+        }
+        return direct
+    }
+
+    private fun parseRefreshArea(
+        iconKey: Char,
+        section: ConfigurationSection,
+        shopId: String
+    ): SystemShopRefreshArea? {
+        val cron = section.getString("Cron")?.trim().orEmpty()
+        if (cron.isBlank()) {
+            return null
+        }
+        if (!runCatching { CronExpression(cron) }.isSuccess) {
+            warning(Texts.tr("@system-shop.logs.refresh-cron-invalid", mapOf("shop" to shopId, "icon" to iconKey.toString(), "cron" to cron)))
+            return null
+        }
+        val timezoneId = section.getString("Timezone", "Asia/Shanghai").orEmpty().ifBlank { "Asia/Shanghai" }
+        if (!validTimezone(timezoneId)) {
+            warning(Texts.tr("@system-shop.logs.refresh-timezone-invalid", mapOf("shop" to shopId, "icon" to iconKey.toString(), "timezone" to timezoneId)))
+            return null
+        }
+        val groupsSection = section.getConfigurationSection("groups") ?: return null
+        val groups = linkedMapOf<String, SystemShopRefreshGroup>()
+        groupsSection.getKeys(false).forEach { groupId ->
+            val groupSection = groupsSection.getConfigurationSection(groupId) ?: return@forEach
+            groups[groupId] = SystemShopRefreshGroup(
+                id = groupId,
+                enabled = groupSection.getBoolean("Enabled", true),
+                matchScript = readStringList(groupSection, "Match-Script", "match-script"),
+                randomRefresh = groupSection.getBoolean("Random-Refresh", groupSection.contains("Pool") || groupSection.contains("Pool-Ref")),
+                pick = groupSection.getInt("Pick", 1).coerceAtLeast(1),
+                goodsRefs = readStringList(groupSection, "Goods", "goods"),
+                poolRef = groupSection.getString("Pool-Ref")?.trim()?.takeIf(String::isNotBlank),
+                inlinePool = groupSection.getConfigurationSection("Pool")?.let { parseInlinePool(shopId, iconKey, groupId, it) },
+                fallbackRefs = readStringList(groupSection, "Fallback", "fallback")
+            )
+        }
+        if (groups.isEmpty()) {
+            return null
+        }
+        return SystemShopRefreshArea(
+            iconKey = iconKey,
+            enabled = section.getBoolean("Enabled", true),
+            cron = cron,
+            timezone = timezoneId,
+            sameForPlayersInGroup = section.getBoolean("Same-For-Players-In-Group", true),
+            groups = LinkedHashMap(groups)
+        )
+    }
+
+    private fun parseInlinePool(
+        shopId: String,
+        iconKey: Char,
+        groupId: String,
+        section: ConfigurationSection
+    ): SystemShopGoodsPool {
+        val yaml = YamlConfiguration()
+        section.getKeys(false).forEach { key ->
+            yaml.set(key, section.get(key))
+        }
+        return parseGoodsPool("${shopId}_${iconKey}_${groupId}_inline", yaml, File(ConfigFiles.dataFolder(), "SystemShop/shops/$shopId.yml"))
+    }
+
+    private fun readStringList(section: ConfigurationSection, vararg paths: String): List<String> {
+        paths.forEach { path ->
+            if (section.isList(path)) {
+                return section.getStringList(path).mapNotNull { it?.trim()?.takeIf(String::isNotBlank) }
+            }
+            val single = section.getString(path)?.trim()?.takeIf(String::isNotBlank)
+            if (single != null) {
+                return listOf(single)
+            }
+        }
+        return emptyList()
+    }
+
+    private fun validTimezone(id: String): Boolean {
+        return runCatching { TimeZone.getTimeZone(id) }.getOrNull()?.id?.isNotBlank() == true
     }
 
     private fun resolveGoodsReference(
@@ -1188,6 +1965,14 @@ object SystemShopModule : MatrixModule {
 
     private fun trimDouble(value: Double): String {
         return if (value % 1.0 == 0.0) value.toInt().toString() else "%.2f".format(value)
+    }
+
+    private fun formatRefreshTime(epochMillis: Long): String {
+        return runCatching {
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss").apply {
+                timeZone = TimeZone.getTimeZone("Asia/Shanghai")
+            }.format(Date(epochMillis))
+        }.getOrDefault(epochMillis.toString())
     }
 
     private fun canFit(currentContents: List<ItemStack>, incoming: List<ItemStack>): Boolean {

@@ -782,6 +782,7 @@ object MatrixShopCommands {
                 ModuleRegistry.moduleStates().forEach { Texts.sendRaw(commandSender, it) }
             }
             "module" -> handleAdminModule(commandSender, args.drop(1))
+            "refresh" -> handleAdminRefresh(commandSender, args.drop(1))
             "goods" -> handleAdminGoods(commandSender, args.drop(1))
             else -> sendAdminHelp(commandSender, label)
         }
@@ -915,6 +916,8 @@ object MatrixShopCommands {
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_STATUS), helpLine("$root status", "@commands.help.desc.admin-status"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), helpLine("$root module list", "@commands.help.desc.admin-module-list"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_MODULE), helpLine("$root module <enable|disable|toggle> <id>", "@commands.help.desc.admin-module-change"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_REFRESH), helpLine("$root refresh list [category]", "@commands.help.desc.admin-refresh-list"))
+        addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_REFRESH), helpLine("$root refresh run <category> [icon]", "@commands.help.desc.admin-refresh-run"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_GOODS), helpLine("$root goods ui [page]", "@commands.help.desc.admin-goods-ui"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_GOODS), helpLine("$root goods save <price> [buy-max] [product-id]", "@commands.help.desc.admin-goods-save"))
         addHelp(lines, Permissions.has(sender, PermissionNodes.ADMIN_GOODS), helpLine("$root goods add <category> <product-id>", "@commands.help.desc.admin-goods-link"))
@@ -968,6 +971,33 @@ object MatrixShopCommands {
                 }
             }
             else -> sendUsage(player, adminUsage("goods save <price> [buy-max] [product-id]"))
+        }
+    }
+
+    private fun handleAdminRefresh(sender: CommandSender, args: List<String>) {
+        if (!Permissions.require(sender, PermissionNodes.ADMIN_REFRESH)) {
+            return
+        }
+        if (args.isEmpty() || args[0].equals("help", true)) {
+            sendUsage(sender, adminUsage("refresh <list|run> [category] [icon]"))
+            return
+        }
+        when (args[0].lowercase()) {
+            "list" -> {
+                val lines = ModuleRegistry.systemShop.refreshOverviewLines(args.getOrNull(1))
+                if (lines.isEmpty()) {
+                    Texts.sendKey(sender, "@system-shop.errors.refresh-none")
+                } else {
+                    Texts.sendRaw(sender, lines.joinToString("\n"))
+                }
+            }
+            "run" -> {
+                val result = ModuleRegistry.systemShop.forceRefresh(args.getOrNull(1), args.getOrNull(2))
+                if (result.message.isNotBlank()) {
+                    Texts.send(sender, result.message)
+                }
+            }
+            else -> sendUsage(sender, adminUsage("refresh <list|run> [category] [icon]"))
         }
     }
 
@@ -1258,14 +1288,17 @@ object MatrixShopCommands {
             return emptyList()
         }
         return when (args.size) {
-            1 -> filterSuggestions(listOf("help", "reload", "sync", "status", "module", "goods"), args[0])
+            1 -> filterSuggestions(listOf("help", "reload", "sync", "status", "module", "refresh", "goods"), args[0])
             2 -> when {
                 args[0].equals("module", true) -> filterSuggestions(listOf("list", "enable", "disable", "toggle"), args[1])
+                args[0].equals("refresh", true) -> filterSuggestions(listOf("list", "run"), args[1])
                 args[0].equals("goods", true) -> filterSuggestions(listOf("ui", "save", "add", "select", "edit"), args[1])
                 else -> emptyList()
             }
             3 -> if (args[0].equals("module", true) && args[1].lowercase() in setOf("enable", "disable", "toggle")) {
                 filterSuggestions(listOf("economy", "menu", "system-shop", "player-shop", "global-market", "auction", "transaction", "chestshop", "cart", "record"), args[2])
+            } else if (args[0].equals("refresh", true) && args[1].lowercase() in setOf("list", "run")) {
+                filterSuggestions(ModuleRegistry.systemShop.refreshCategoryIds(), args[2])
             } else if (args[0].equals("goods", true) && args[1].equals("add", true)) {
                 filterSuggestions(ModuleRegistry.systemShop.categoryIds(), args[2])
             } else if (args[0].equals("goods", true) && args[1].equals("ui", true)) {
@@ -1278,6 +1311,8 @@ object MatrixShopCommands {
                 filterSuggestions(listOf("price", "buy-max", "limit", "currency", "name", "item", "sync-hand", "remove"), args[2])
             } else emptyList()
             4 -> when {
+                args[0].equals("refresh", true) && args[1].equals("run", true) ->
+                    filterSuggestions(ModuleRegistry.systemShop.refreshAreaIds(args[2]), args[3])
                 args[0].equals("goods", true) && args[1].equals("add", true) ->
                     filterSuggestions(ModuleRegistry.systemShop.goodsIds(), args[3])
                 args[0].equals("goods", true) && args[1].equals("select", true) ->

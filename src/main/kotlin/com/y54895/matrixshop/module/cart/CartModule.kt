@@ -15,6 +15,9 @@ import com.y54895.matrixshop.module.globalmarket.GlobalMarketModule
 import com.y54895.matrixshop.module.playershop.PlayerShopModule
 import com.y54895.matrixshop.module.systemshop.ModuleOperationResult
 import com.y54895.matrixshop.module.systemshop.SystemShopModule
+import com.y54895.matrixshop.module.systemshop.SystemShopProduct
+import com.y54895.matrixshop.module.systemshop.SystemShopProductSource
+import com.y54895.matrixshop.module.systemshop.SystemShopProductSourceType
 import org.bukkit.ChatColor
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
@@ -172,7 +175,12 @@ object CartModule : MatrixModule {
             editableAmount = true,
             metadata = linkedMapOf(
                 "category-id" to selection.categoryId,
-                "product-id" to selection.productId
+                "product-id" to selection.productId,
+                "goods-id" to selection.product.goodsId,
+                "snapshot-buy-max" to selection.product.buyMax.toString(),
+                "snapshot-refresh-area" to (selection.product.refreshArea?.toString() ?: ""),
+                "snapshot-refresh-group" to (selection.product.refreshGroupId ?: ""),
+                "snapshot-same-group" to selection.product.sameForPlayersInGroup.toString()
             )
         )
         CartRepository.save(store)
@@ -333,8 +341,8 @@ object CartModule : MatrixModule {
             }
             val result = when (entry.sourceModule.lowercase()) {
                 "system_shop" -> {
-                    val (categoryId, productId) = systemShopTarget(entry)
-                    SystemShopModule.purchaseDirect(player, categoryId, productId, entry.amount, false)
+                    val categoryId = systemShopTarget(entry).first
+                    SystemShopModule.purchaseSnapshot(player, categoryId, systemShopSnapshot(entry), entry.amount, false)
                 }
                 "player_shop" -> PlayerShopModule.purchaseDirect(
                     player,
@@ -372,20 +380,12 @@ object CartModule : MatrixModule {
     fun validate(entry: CartEntry): CartValidation {
         return when (entry.sourceModule.lowercase()) {
             "system_shop" -> {
-                val (categoryId, productId) = systemShopTarget(entry)
-                val result = SystemShopModule.validateProduct(
-                    categoryId,
-                    productId,
-                    entry.amount
-                )
-                val currentPrice = SystemShopModule.currentPrice(
-                    categoryId,
-                    productId
-                )
+                val product = systemShopSnapshot(entry)
+                val result = SystemShopModule.validateSnapshotProduct(product, entry.amount)
                 if (result.success) {
-                    CartValidation(true, "valid", "", "", currentPrice)
+                    CartValidation(true, "valid", "", "", entry.snapshotPrice)
                 } else {
-                    CartValidation(false, "invalid", Texts.color(result.message), "product", currentPrice)
+                    CartValidation(false, "invalid", Texts.color(result.message), "product", entry.snapshotPrice)
                 }
             }
             "player_shop" -> {
@@ -647,10 +647,7 @@ object CartModule : MatrixModule {
 
     private fun effectiveCheckoutTotal(entry: CartEntry): Double {
         return when (entry.sourceModule.lowercase()) {
-            "system_shop" -> {
-                val (categoryId, productId) = systemShopTarget(entry)
-                (SystemShopModule.currentPrice(categoryId, productId) ?: entry.snapshotPrice) * entry.amount
-            }
+            "system_shop" -> entry.snapshotPrice * entry.amount
             "player_shop" -> PlayerShopModule.currentListingPrice(
                 UUID.fromString(entry.metadata["owner-id"].orEmpty()),
                 entry.metadata["owner-name"].orEmpty(),
@@ -677,6 +674,34 @@ object CartModule : MatrixModule {
                 .takeUnless { it == entry.sourceId }
                 .orEmpty()
         return categoryId to productId
+    }
+
+    private fun systemShopSnapshot(entry: CartEntry): SystemShopProduct {
+        val goodsId = entry.metadata["goods-id"]
+            ?.takeIf(String::isNotBlank)
+            ?: systemShopTarget(entry).second
+        return SystemShopProduct(
+            id = entry.metadata["product-id"]
+                ?.takeIf(String::isNotBlank)
+                ?: goodsId,
+            goodsId = goodsId,
+            material = entry.item.type.name,
+            amount = entry.item.amount.coerceAtLeast(1),
+            name = entry.name,
+            lore = entry.item.itemMeta?.lore ?: emptyList(),
+            price = entry.snapshotPrice,
+            currency = entry.currency,
+            buyMax = entry.metadata["snapshot-buy-max"]?.toIntOrNull()?.coerceAtLeast(1) ?: 64,
+            item = entry.item.clone(),
+            source = SystemShopProductSource(
+                type = SystemShopProductSourceType.REFERENCE,
+                configFile = File(ConfigFiles.dataFolder(), "SystemShop/refresh-state.yml"),
+                configPath = null
+            ),
+            refreshArea = entry.metadata["snapshot-refresh-area"]?.firstOrNull(),
+            refreshGroupId = entry.metadata["snapshot-refresh-group"]?.takeIf(String::isNotBlank),
+            sameForPlayersInGroup = entry.metadata["snapshot-same-group"]?.toBoolean() ?: true
+        )
     }
 
     private fun entryStateLabel(entry: CartEntry, validation: CartValidation): String {

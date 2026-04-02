@@ -10,6 +10,7 @@ data class SystemShopCategory(
     val menu: com.y54895.matrixshop.core.menu.MenuDefinition,
     val currencyKey: String,
     val products: List<SystemShopProduct>,
+    val refreshAreas: Map<Char, SystemShopRefreshArea> = emptyMap(),
     val shopFile: File
 )
 
@@ -46,6 +47,7 @@ data class SystemShopProductTemplate(
     fun resolve(categoryCurrencyKey: String): SystemShopProduct {
         return SystemShopProduct(
             id = id,
+            goodsId = id,
             material = material,
             amount = amount,
             name = name,
@@ -61,6 +63,7 @@ data class SystemShopProductTemplate(
 
 data class SystemShopProduct(
     val id: String,
+    val goodsId: String,
     val material: String,
     val amount: Int,
     val name: String,
@@ -69,7 +72,10 @@ data class SystemShopProduct(
     val currency: String,
     val buyMax: Int,
     val item: ItemStack? = null,
-    val source: SystemShopProductSource
+    val source: SystemShopProductSource,
+    val refreshArea: Char? = null,
+    val refreshGroupId: String? = null,
+    val sameForPlayersInGroup: Boolean = true
 ) {
 
     fun toItemStack(displayName: String, displayLore: List<String>): ItemStack {
@@ -101,6 +107,7 @@ data class SystemShopProduct(
 data class ConfirmSession(
     val categoryId: String,
     val productId: String,
+    var product: SystemShopProduct,
     var amount: Int
 )
 

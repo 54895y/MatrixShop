@@ -15,7 +15,7 @@ val matrixLibApiVersion = providers.gradleProperty("matrixlibApiVersion").orElse
 
 taboolib {
     env {
-        install(Basic, Bukkit, BukkitHook, CommandHelper)
+        install(Basic, Bukkit, BukkitHook, CommandHelper, Kether)
         repoTabooLib = "https://repo.tabooproject.org/repository/releases"
         disableOnSkippedVersion = false
     }
@@ -43,6 +43,10 @@ repositories {
 
 dependencies {
     implementation("org.bstats:bstats-bukkit:3.2.1")
+    implementation("org.quartz-scheduler:quartz:2.3.2") {
+        isTransitive = false
+    }
+    implementation("org.slf4j:slf4j-api:1.7.36")
     compileOnly("org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT")
     compileOnly(kotlin("stdlib"))
     compileOnly("com.y54895.matrixlib:matrixlib-api:$matrixLibApiVersion")
@@ -73,11 +77,13 @@ tasks.named<ShadowJar>("shadowJar") {
 
     dependencies {
         exclude { dependency ->
-            dependency.moduleGroup != "org.bstats"
+            dependency.moduleGroup !in setOf("org.bstats", "org.quartz-scheduler", "org.slf4j")
         }
     }
 
     relocate("org.bstats", "${project.group}.libs.bstats")
+    relocate("org.quartz", "${project.group}.libs.quartz")
+    relocate("org.slf4j", "${project.group}.libs.slf4j")
 }
 
 tasks.named("build") {
