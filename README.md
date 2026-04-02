@@ -34,6 +34,32 @@ MatrixShop is a Chinese-first Minecraft GUI economy and commerce plugin for Pape
 - Optional sync layer: `Redis`
 - Latest smoke validation: `paper-1.21.8` / `paper-1.21.11`
 
+## Compatibility Matrix
+
+The table below only lists data that is currently confirmed from the source tree or from real local test runs.
+
+### Verified Runtime Tests
+
+| MatrixShop | Server Software | Server Version | Result | Test Type | Verified On | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `1.3.0` | `Paper` | `1.21.8` | Pass | Smoke boot | `2026-04-02` | Plugin load, enable, and server ready state confirmed |
+| `1.3.0` | `Paper` | `1.21.11` | Pass | Smoke boot | `2026-04-02` | Plugin load, enable, and server ready state confirmed |
+
+### Source-Level Compatibility Facts
+
+| Item | Real Value | Source |
+| --- | --- | --- |
+| Plugin version | `1.3.0` | `gradle.properties` |
+| Build target API | `Bukkit API 1.12.2` | `build.gradle.kts` |
+| Required dependency | `MatrixLib 1.0.1` | `gradle.properties` / `build.gradle.kts` |
+| Runtime artifact | `build/libs/MatrixShop-1.3.0-all.jar` | local `./gradlew build` output |
+
+Notes:
+
+- Versions not listed in `Verified Runtime Tests` are not marked here as verified compatibility.
+- `Paper 1.21.8` and `Paper 1.21.11` were tested locally on `2026-04-02` against `MatrixShop v1.3.0`.
+- If additional platforms such as `Folia`, `Bukkit`, or `Spigot` need to appear in this table, they should be added only after real test results are collected.
+
 ## Why MatrixShop
 
 - Chinese-first GUI economy plugin for Minecraft servers
