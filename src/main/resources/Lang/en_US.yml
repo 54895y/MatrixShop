@@ -2,6 +2,7 @@ messages:
   no-permission: "&cYou do not have permission."
   player-only: "&cThis command can only be used by players."
   unsupported-sender: "&cThis command sender type is not supported."
+  delivery-mailbox: "&eYour inventory was full, so the item was sent to your mailbox."
 
 console:
   boot:

@@ -13,6 +13,7 @@ import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.warehouse.PlayerItemDelivery
 import com.y54895.matrixshop.module.cart.CartModule
 import com.y54895.matrixshop.module.systemshop.ModuleOperationResult
 import org.bukkit.Bukkit
@@ -243,7 +244,7 @@ object PlayerShopModule : MatrixModule {
         if (target.price > 0 && !EconomyModule.isAvailable(target.currency)) {
             return ModuleOperationResult(false, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(target.currency))))
         }
-        if (!canFit(viewer.inventory.contents.filterNotNull(), listOf(target.item))) {
+        if (!PlayerItemDelivery.canDeliver(viewer, listOf(target.item))) {
             return ModuleOperationResult(false, Texts.tr("@player-shop.errors.inventory-no-space"))
         }
         if (!EconomyModule.has(viewer, target.currency, target.price)) {
@@ -280,8 +281,14 @@ object PlayerShopModule : MatrixModule {
         }
         refreshed.listings.remove(target)
         PlayerShopRepository.save(refreshed)
-        viewer.inventory.addItem(target.item.clone())
-        viewer.updateInventory()
+        PlayerItemDelivery.deliverOrStore(
+            player = viewer,
+            stacks = listOf(target.item.clone()),
+            sourceModule = "player_shop",
+            sourceId = target.id,
+            reason = "purchase",
+            allowDropWhenUnavailable = true
+        )
         Texts.sendKey(
             viewer,
             "@player-shop.success.purchased",
@@ -334,10 +341,14 @@ object PlayerShopModule : MatrixModule {
         }
         store.listings.remove(listing)
         PlayerShopRepository.save(store)
-        owner.inventory.addItem(listing.item.clone()).values.forEach {
-            owner.world.dropItemNaturally(owner.location, it)
-        }
-        owner.updateInventory()
+        PlayerItemDelivery.deliverOrStore(
+            player = owner,
+            stacks = listOf(listing.item.clone()),
+            sourceModule = "player_shop",
+            sourceId = listing.id,
+            reason = "listing-remove",
+            allowDropWhenUnavailable = true
+        )
         Texts.sendKey(
             owner,
             "@player-shop.success.removed",

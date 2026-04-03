@@ -11,6 +11,7 @@ import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.warehouse.PlayerItemDelivery
 import com.y54895.matrixshop.core.database.ItemStackCodec
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
@@ -726,13 +727,20 @@ object SystemShopModule : MatrixModule {
             return ModuleOperationResult(false, EconomyModule.insufficientMessage(player, product.currency, total))
         }
         val purchaseStacks = product.toPurchasedItem(safeAmount)
-        if (!canFit(player.inventory.contents.filterNotNull(), purchaseStacks)) {
+        if (!PlayerItemDelivery.canDeliver(player, purchaseStacks)) {
             return ModuleOperationResult(false, Texts.tr("@system-shop.errors.inventory-no-space"))
         }
         if (!EconomyModule.withdraw(player, product.currency, total)) {
             return ModuleOperationResult(false, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(product.currency))))
         }
-        purchaseStacks.forEach { player.inventory.addItem(it) }
+        PlayerItemDelivery.deliverOrStore(
+            player = player,
+            stacks = purchaseStacks,
+            sourceModule = "system_shop",
+            sourceId = "${category.id}:${product.id}",
+            reason = "purchase",
+            allowDropWhenUnavailable = true
+        )
         if (closeInventoryOnSuccess) {
             player.closeInventory()
         }

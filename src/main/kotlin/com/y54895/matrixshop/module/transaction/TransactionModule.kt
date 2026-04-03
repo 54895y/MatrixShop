@@ -15,6 +15,7 @@ import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.warehouse.PlayerItemDelivery
 import com.y54895.matrixshop.core.util.BukkitCompat
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -662,14 +663,14 @@ object TransactionModule : MatrixModule {
         }
         val leftIncoming = offeredItems(session.rightOffers)
         val rightIncoming = offeredItems(session.leftOffers)
-        if (!canFit(left.inventory.contents.filterNotNull(), leftIncoming)) {
+        if (!PlayerItemDelivery.canDeliver(left, leftIncoming)) {
             markDirty(session)
             notifyPlayers(session, Texts.tr("@transaction.notify.inventory-no-space", mapOf("player" to left.name)))
             openTrade(left, session)
             openTrade(right, session)
             return
         }
-        if (!canFit(right.inventory.contents.filterNotNull(), rightIncoming)) {
+        if (!PlayerItemDelivery.canDeliver(right, rightIncoming)) {
             markDirty(session)
             notifyPlayers(session, Texts.tr("@transaction.notify.inventory-no-space", mapOf("player" to right.name)))
             openTrade(left, session)
@@ -754,10 +755,22 @@ object TransactionModule : MatrixModule {
         }
         setTotalExperience(left, leftOriginalExp - session.leftExp + session.rightExp)
         setTotalExperience(right, rightOriginalExp - session.rightExp + session.leftExp)
-        leftIncoming.forEach { left.inventory.addItem(it.clone()) }
-        rightIncoming.forEach { right.inventory.addItem(it.clone()) }
-        left.updateInventory()
-        right.updateInventory()
+        PlayerItemDelivery.deliverOrStore(
+            player = left,
+            stacks = leftIncoming,
+            sourceModule = "transaction",
+            sourceId = session.id,
+            reason = "trade-complete-left",
+            allowDropWhenUnavailable = true
+        )
+        PlayerItemDelivery.deliverOrStore(
+            player = right,
+            stacks = rightIncoming,
+            sourceModule = "transaction",
+            sourceId = session.id,
+            reason = "trade-complete-right",
+            allowDropWhenUnavailable = true
+        )
         if (settings.writeOnComplete) {
             writeCompletionRecord(session, leftTax.amount, rightTax.amount, leftNet, rightNet)
         }
@@ -1096,9 +1109,14 @@ object TransactionModule : MatrixModule {
     }
 
     private fun returnItem(player: Player, item: ItemStack) {
-        player.inventory.addItem(item.clone()).values.forEach {
-            player.world.dropItemNaturally(player.location, it)
-        }
+        PlayerItemDelivery.deliverOrStore(
+            player = player,
+            stacks = listOf(item.clone()),
+            sourceModule = "transaction",
+            sourceId = "return-${System.currentTimeMillis().toString(36)}",
+            reason = "offer-return",
+            allowDropWhenUnavailable = true
+        )
     }
 
     private fun totalExperience(player: Player): Int {

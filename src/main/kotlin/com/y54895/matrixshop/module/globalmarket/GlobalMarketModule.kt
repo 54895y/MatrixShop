@@ -14,6 +14,7 @@ import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.warehouse.PlayerItemDelivery
 import com.y54895.matrixshop.module.cart.CartModule
 import com.y54895.matrixshop.module.systemshop.ModuleOperationResult
 import org.bukkit.Bukkit
@@ -244,7 +245,7 @@ object GlobalMarketModule : MatrixModule {
         if (listing.price > 0 && !EconomyModule.isAvailable(listing.currency)) {
             return ModuleOperationResult(false, Texts.tr("@economy.errors.currency-unavailable", mapOf("currency" to EconomyModule.displayName(listing.currency))))
         }
-        if (!canFit(player.inventory.contents.filterNotNull(), listOf(listing.item))) {
+        if (!PlayerItemDelivery.canDeliver(player, listOf(listing.item))) {
             return ModuleOperationResult(false, Texts.tr("@global-market.errors.inventory-no-space"))
         }
         if (!EconomyModule.has(player, listing.currency, listing.price)) {
@@ -281,8 +282,14 @@ object GlobalMarketModule : MatrixModule {
         }
         listings.removeIf { it.id == listing.id }
         GlobalMarketRepository.saveAll(listings)
-        player.inventory.addItem(listing.item.clone())
-        player.updateInventory()
+        PlayerItemDelivery.deliverOrStore(
+            player = player,
+            stacks = listOf(listing.item.clone()),
+            sourceModule = "global_market",
+            sourceId = listing.id,
+            reason = "purchase",
+            allowDropWhenUnavailable = true
+        )
         Texts.sendKey(
             player,
             "@global-market.success.purchased",
@@ -331,10 +338,14 @@ object GlobalMarketModule : MatrixModule {
         }
         listings.removeIf { it.id == listing.id }
         GlobalMarketRepository.saveAll(listings)
-        player.inventory.addItem(listing.item.clone()).values.forEach {
-            player.world.dropItemNaturally(player.location, it)
-        }
-        player.updateInventory()
+        PlayerItemDelivery.deliverOrStore(
+            player = player,
+            stacks = listOf(listing.item.clone()),
+            sourceModule = "global_market",
+            sourceId = listing.id,
+            reason = "listing-remove",
+            allowDropWhenUnavailable = true
+        )
         Texts.sendKey(
             player,
             "@global-market.success.removed",

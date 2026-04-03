@@ -14,6 +14,7 @@ import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.warehouse.PlayerItemDelivery
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -714,7 +715,7 @@ object ChestShopModule : MatrixModule {
             return
         }
         val purchaseStacks = splitStacks(shop.item, totalAmount)
-        if (!canFitPlayer(player, purchaseStacks)) {
+        if (!PlayerItemDelivery.canDeliver(player, purchaseStacks)) {
             Texts.sendKey(player, "@chestshop.errors.inventory-no-space")
             return
         }
@@ -744,8 +745,14 @@ object ChestShopModule : MatrixModule {
             Texts.send(player, Texts.tr("@economy.errors.deposit-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
-        purchaseStacks.forEach { player.inventory.addItem(it) }
-        player.updateInventory()
+        PlayerItemDelivery.deliverOrStore(
+            player = player,
+            stacks = purchaseStacks,
+            sourceModule = "chestshop",
+            sourceId = shop.id,
+            reason = "purchase",
+            allowDropWhenUnavailable = true
+        )
         appendHistory(shop, "buy", player.name, totalAmount, ownerIncome, "purchase-from-shop")
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)
@@ -811,7 +818,14 @@ object ChestShopModule : MatrixModule {
             return
         }
         if (!addToStock(shop, incomingStacks)) {
-            player.inventory.addItem(*incomingStacks.toTypedArray())
+            PlayerItemDelivery.deliverOrStore(
+                player = player,
+                stacks = incomingStacks,
+                sourceModule = "chestshop",
+                sourceId = shop.id,
+                reason = "sell-rollback",
+                allowDropWhenUnavailable = true
+            )
             if (totalPrice > 0) {
                 EconomyModule.deposit(owner, settings.currencyKey, totalPrice)
             }
@@ -820,12 +834,18 @@ object ChestShopModule : MatrixModule {
         }
         if (playerIncome > 0 && !EconomyModule.deposit(player, settings.currencyKey, playerIncome, mapOf("seller" to shop.ownerName, "item" to itemDisplayName(shop.item)))) {
             removeFromStock(shop, totalAmount)
-            player.inventory.addItem(*incomingStacks.toTypedArray())
+            PlayerItemDelivery.deliverOrStore(
+                player = player,
+                stacks = incomingStacks,
+                sourceModule = "chestshop",
+                sourceId = shop.id,
+                reason = "deposit-rollback",
+                allowDropWhenUnavailable = true
+            )
             EconomyModule.deposit(owner, settings.currencyKey, totalPrice)
             Texts.send(player, Texts.tr("@economy.errors.deposit-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
             return
         }
-        player.updateInventory()
         appendHistory(shop, "sell", player.name, totalAmount, totalPrice, "sell-to-shop")
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)

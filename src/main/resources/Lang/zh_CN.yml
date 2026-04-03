@@ -2,6 +2,7 @@ messages:
   no-permission: "&c你没有权限执行此操作。"
   player-only: "&c该命令只能由玩家执行。"
   unsupported-sender: "&c当前命令发送者类型不受支持。"
+  delivery-mailbox: "&e背包空间不足，物品已自动投递到邮箱。"
 
 console:
   boot:

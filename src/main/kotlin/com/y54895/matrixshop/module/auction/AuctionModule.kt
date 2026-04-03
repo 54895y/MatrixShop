@@ -14,6 +14,7 @@ import com.y54895.matrixshop.core.menu.ShopMenuSelection
 import com.y54895.matrixshop.core.module.MatrixModule
 import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.warehouse.PlayerItemDelivery
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.OfflinePlayer
@@ -552,9 +553,15 @@ object AuctionModule : MatrixModule {
                 }
             }
             if (delivered && entry.item != null) {
-                player.inventory.addItem(entry.item.clone()).values.forEach {
-                    player.world.dropItemNaturally(player.location, it)
-                }
+                val itemResult = PlayerItemDelivery.deliverOrStore(
+                    player = player,
+                    stacks = listOf(entry.item.clone()),
+                    sourceModule = "auction",
+                    sourceId = entry.id,
+                    reason = "delivery-claim",
+                    allowDropWhenUnavailable = false
+                )
+                delivered = itemResult.success
             }
             if (delivered) {
                 Texts.send(player, "&a${entry.message}")
@@ -808,11 +815,18 @@ object AuctionModule : MatrixModule {
     private fun deliverItemOrQueue(ownerId: UUID, ownerName: String, item: ItemStack, message: String) {
         val player = Bukkit.getPlayer(ownerId)
         if (player != null && player.isOnline) {
-            player.inventory.addItem(item.clone()).values.forEach {
-                player.world.dropItemNaturally(player.location, it)
+            val delivered = PlayerItemDelivery.deliverOrStore(
+                player = player,
+                stacks = listOf(item.clone()),
+                sourceModule = "auction",
+                sourceId = nextDeliveryId(),
+                reason = "auction-delivery",
+                allowDropWhenUnavailable = false
+            )
+            if (delivered.success) {
+                Texts.send(player, "&a$message")
+                return
             }
-            Texts.send(player, "&a$message")
-            return
         }
         val deliveries = AuctionDeliveryRepository.loadAll().toMutableList()
         deliveries += AuctionDeliveryEntry(
