@@ -2,6 +2,30 @@ id: diamond_sword
 material: 'DIAMOND_SWORD'
 amount: 1
 price: 420
+# 折扣写法示例：
+# price:
+#   base: 420
+#   discounts:
+#     - id: vip
+#       percent: 10
+#       condition:
+#         - "perm 'group.vip'"
+#     - id: svip
+#       percent: 15
+#       blacklist:
+#         - vip
+#       condition:
+#         - "perm 'group.svip'"
+#     - id: mvp
+#       percent: 20
+#       blacklist:
+#         - svip
+#       condition:
+#         - "perm 'group.mvp'"
+#     - id: holiday
+#       amount-off: 20
+#     - id: night-surge
+#       surcharge: 15
 buy-max: 8
 name: '&b钻石剑'
 lore:

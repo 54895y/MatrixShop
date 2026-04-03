@@ -4,6 +4,31 @@ All notable changes to MatrixShop will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning for release tags.
 
+## [1.4.0] - 2026-04-03
+
+### Added
+
+- Added a `SystemShop` discount system under the `price` key with backward-compatible scalar and object forms.
+- Added support for `percent`, `amount-off`, and `surcharge` discount rules.
+- Added `whitelist` and `blacklist` controls for discount stacking.
+- Added Kether-based discount conditions with player and product context.
+- Added discount-aware placeholders for `SystemShop` rendering, including base price and discount summary data.
+
+### Changed
+
+- `SystemShop` now resolves final purchase price per player before menu display, confirm view, and direct purchase.
+- `SystemShop` refresh pool price overrides can now use price objects and merge discounts with the base goods definition.
+- `Cart` now locks `SystemShop` snapshot price to the discounted price at add-to-cart time.
+- Expanded the docs and default resource examples to cover the new discount format.
+
+### Validated
+
+- Verified `./gradlew build`.
+- Verified docs site `npm run build`.
+- Verified smoke boot on `paper-1.21.8`.
+- Verified smoke boot on `paper-1.21.11`.
+- Verified `paper-1.21.11` can load an inline `SystemShop` `price` object with `percent`, `amount-off`, `surcharge`, and Kether `condition` fields without startup warnings.
+
 ## [1.3.0] - 2026-04-02
 
 ### Added

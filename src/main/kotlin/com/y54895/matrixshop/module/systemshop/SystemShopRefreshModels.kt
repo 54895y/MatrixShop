@@ -14,7 +14,7 @@ data class SystemShopGoodsPoolEntry(
     val goodsId: String,
     val weight: Int,
     val amount: Int? = null,
-    val price: Double? = null,
+    val priceConfig: SystemShopPriceConfig? = null,
     val configuredCurrency: String? = null,
     val buyMax: Int? = null,
     val name: String? = null,

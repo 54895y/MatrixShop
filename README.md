@@ -43,8 +43,8 @@ MatrixShop is a modular commerce plugin for survival and economy servers. It pro
 
 | 版本 | 兼容性 |
 | --- | --- |
-| `1.3.0` | `Paper 1.21.8` smoke boot 通过 |
-| `1.3.0` | `Paper 1.21.11` smoke boot 通过 |
+| `1.4.0` | `Paper 1.21.8` smoke boot 通过 |
+| `1.4.0` | `Paper 1.21.11` smoke boot 通过 |
 
 ## SystemShop 重点
 
@@ -76,6 +76,33 @@ SystemShop/goods/weapon_refresh_pool_example.yml
 - `/matrixshopadmin refresh list [category]`
 - `/matrixshopadmin refresh run <category> [icon]`
 
+## 折扣系统
+
+`SystemShop` 现在支持把折扣规则直接写在 `price` 键下：
+
+```yaml
+price:
+  base: 420
+  discounts:
+    - id: vip
+      percent: 10
+      condition:
+        - "perm 'group.vip'"
+    - id: event
+      amount-off: 20
+    - id: night-surge
+      surcharge: 8
+```
+
+支持能力：
+
+- 兼容旧写法 `price: 420`
+- 支持 `percent`、`amount-off`、`surcharge`
+- 多条百分比折扣按相加计算
+- 支持 Kether 条件判断
+- 支持 `whitelist`、`blacklist` 控制折扣重叠
+- 刷新池价格对象会和商品本体折扣规则合并
+
 ## 构建与运行信息
 
 - Build target: `Bukkit API 1.12.2`
@@ -93,7 +120,7 @@ SystemShop/goods/weapon_refresh_pool_example.yml
 运行产物：
 
 ```text
-build/libs/MatrixShop-1.3.0-all.jar
+build/libs/MatrixShop-1.4.0-all.jar
 ```
 
 ## 文档入口

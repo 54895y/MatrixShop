@@ -689,6 +689,7 @@ object CartModule : MatrixModule {
             amount = entry.item.amount.coerceAtLeast(1),
             name = entry.name,
             lore = entry.item.itemMeta?.lore ?: emptyList(),
+            priceConfig = com.y54895.matrixshop.module.systemshop.SystemShopPriceConfig(entry.snapshotPrice),
             price = entry.snapshotPrice,
             currency = entry.currency,
             buyMax = entry.metadata["snapshot-buy-max"]?.toIntOrNull()?.coerceAtLeast(1) ?: 64,

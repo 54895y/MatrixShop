@@ -174,6 +174,8 @@ system-shop:
     refresh-cron-invalid: "系统商店分类 {shop} 的刷新区域 {icon} 使用了无效 cron: {cron}"
     refresh-timezone-invalid: "系统商店分类 {shop} 的刷新区域 {icon} 使用了无效时区: {timezone}"
     refresh-group-script-failed: "系统商店分类 {shop} 的刷新区域 {icon} 分组 {group} 执行 Kether 脚本失败: {reason}"
+    price-config-invalid: "解析系统商店价格配置失败 {target}: {reason}"
+    discount-condition-failed: "系统商店商品 {product} 的折扣规则 {rule} 执行 Kether 条件失败: {reason}"
   errors:
     category-not-found: "&c未找到系统商店分类: &f{category}"
     refresh-usage: "&c用法: &f/matrixshopadmin refresh <list|run> [分类] [图标]"

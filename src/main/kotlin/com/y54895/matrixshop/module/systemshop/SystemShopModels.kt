@@ -31,18 +31,59 @@ data class SystemShopGoodsGroup(
     val sourceFile: File
 )
 
+data class SystemShopDiscountRule(
+    val id: String?,
+    val enabled: Boolean,
+    val priority: Int,
+    val condition: List<String>,
+    val whitelist: List<String>,
+    val blacklist: List<String>,
+    val percent: Double,
+    val amountOff: Double,
+    val surcharge: Double
+) {
+
+    fun isEffective(): Boolean {
+        return enabled && (percent > 0.0 || amountOff > 0.0 || surcharge > 0.0)
+    }
+}
+
+data class SystemShopPriceConfig(
+    val base: Double,
+    val discounts: List<SystemShopDiscountRule> = emptyList()
+)
+
+data class SystemShopAppliedDiscount(
+    val id: String,
+    val percent: Double,
+    val amountOff: Double,
+    val surcharge: Double
+)
+
+data class SystemShopResolvedPrice(
+    val base: Double,
+    val final: Double,
+    val appliedDiscounts: List<SystemShopAppliedDiscount>,
+    val percentTotal: Double,
+    val amountOffTotal: Double,
+    val surchargeTotal: Double
+)
+
 data class SystemShopProductTemplate(
     val id: String,
     val material: String,
     val amount: Int,
     val name: String,
     val lore: List<String>,
-    val price: Double,
+    val priceConfig: SystemShopPriceConfig,
     val configuredCurrency: String?,
     val buyMax: Int,
     val item: ItemStack? = null,
     val source: SystemShopProductSource
 ) {
+
+    val basePrice: Double
+        get() = priceConfig.base
 
     fun resolve(categoryCurrencyKey: String): SystemShopProduct {
         return SystemShopProduct(
@@ -52,7 +93,8 @@ data class SystemShopProductTemplate(
             amount = amount,
             name = name,
             lore = lore,
-            price = price,
+            priceConfig = priceConfig,
+            price = priceConfig.base,
             currency = configuredCurrency?.trim()?.takeIf(String::isNotBlank) ?: categoryCurrencyKey,
             buyMax = buyMax,
             item = item,
@@ -68,15 +110,23 @@ data class SystemShopProduct(
     val amount: Int,
     val name: String,
     val lore: List<String>,
+    val priceConfig: SystemShopPriceConfig,
     val price: Double,
     val currency: String,
     val buyMax: Int,
     val item: ItemStack? = null,
     val source: SystemShopProductSource,
+    val appliedDiscounts: List<SystemShopAppliedDiscount> = emptyList(),
     val refreshArea: Char? = null,
     val refreshGroupId: String? = null,
     val sameForPlayersInGroup: Boolean = true
 ) {
+
+    val basePrice: Double
+        get() = priceConfig.base
+
+    val discountCount: Int
+        get() = appliedDiscounts.size
 
     fun toItemStack(displayName: String, displayLore: List<String>): ItemStack {
         val stack = (item?.clone() ?: ItemStack(Material.matchMaterial(material) ?: Material.STONE, amount.coerceAtLeast(1))).apply {

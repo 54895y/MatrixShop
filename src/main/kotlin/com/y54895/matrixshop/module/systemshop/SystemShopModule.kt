@@ -34,6 +34,8 @@ import java.text.SimpleDateFormat
 
 object SystemShopModule : MatrixModule {
 
+    private const val MIN_FINAL_PRICE = 0.01
+
     override val id: String = "system-shop"
     override val displayName: String = "SystemShop"
 
@@ -272,8 +274,8 @@ object SystemShopModule : MatrixModule {
         val template = findGoodsTemplate(productId)
             ?: return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-goods-not-found", mapOf("product" to productId)))
         val yaml = YamlConfiguration.loadConfiguration(template.source.configFile)
-        val nextPrice = (template.price + delta).coerceAtLeast(0.0)
-        setProductValue(yaml, null, "price", nextPrice)
+        val nextPrice = (template.basePrice + delta).coerceAtLeast(0.0)
+        setBasePrice(yaml, null, nextPrice)
         saveCategoryYaml(template.source.configFile, yaml)?.let { return saveFailedResult(it) }
         reload()
         return ModuleOperationResult(true, "")
@@ -302,7 +304,7 @@ object SystemShopModule : MatrixModule {
             yaml = yaml,
             basePath = null,
             stack = inHand,
-            price = template.price,
+            price = template.basePrice,
             buyMax = template.buyMax
         )
         saveCategoryYaml(template.source.configFile, yaml)?.let { return saveFailedResult(it) }
@@ -385,7 +387,7 @@ object SystemShopModule : MatrixModule {
                         "category" to normalizedCategoryId,
                         "product" to referencedGoods,
                         "name" to template.name,
-                        "price" to EconomyModule.formatAmount(template.resolve(categoryCurrencyKey).currency, template.price)
+                        "price" to EconomyModule.formatAmount(template.resolve(categoryCurrencyKey).currency, template.basePrice)
                     )
                 )
             )
@@ -457,7 +459,7 @@ object SystemShopModule : MatrixModule {
         val listedShops = listedCategoryIds(productId)
         val placeholders = playerPlaceholders(player) + mapOf(
             "product-id" to template.id,
-            "price" to trimDouble(template.price),
+            "price" to trimDouble(template.basePrice),
             "limit" to template.buyMax.toString(),
             "shop-count" to listedShops.size.toString(),
             "shops" to listedShops.ifEmpty { listOf("未上架") }.joinToString(", ")
@@ -531,7 +533,7 @@ object SystemShopModule : MatrixModule {
                 if (price < 0.0) {
                     return ModuleOperationResult(false, Texts.tr("@system-shop.errors.admin-edit-usage"))
                 }
-                setProductValue(yaml, basePath, "price", price)
+                setBasePrice(yaml, basePath, price)
                 saveCategoryYaml(product.source.configFile, yaml)?.let { return saveFailedResult(it) }
                 reload()
                 adminSelections[player.uniqueId] = selection
@@ -584,7 +586,7 @@ object SystemShopModule : MatrixModule {
                     yaml = yaml,
                     basePath = basePath,
                     stack = inHand,
-                    price = section.getDouble("price", product.price),
+                    price = parsePriceConfig(section, "price", product.basePrice, sectionDisplayTarget(product.source.configFile, basePath)).base,
                     buyMax = section.getInt("buy-max", product.buyMax)
                 )
                 saveCategoryYaml(product.source.configFile, yaml)?.let { return saveFailedResult(it) }
@@ -685,7 +687,7 @@ object SystemShopModule : MatrixModule {
         closeInventoryOnSuccess: Boolean = false
     ): ModuleOperationResult {
         val category = categories[categoryId]
-        val product = findProduct(categoryId, productId)
+        val product = findProduct(categoryId, productId)?.let { resolveProductForPlayer(player, categoryId, it) }
         if (category == null || product == null) {
             confirmSessions.remove(player.uniqueId)
             return ModuleOperationResult(false, Texts.tr("@system-shop.errors.product-invalid"))
@@ -748,13 +750,13 @@ object SystemShopModule : MatrixModule {
             type = "purchase",
             actor = player.name,
             moneyChange = -total,
-            detail = "category=${category.id};product=${product.id};amount=$safeAmount;total=${trimDouble(total)}"
+            detail = "category=${category.id};product=${product.id};amount=$safeAmount;base=${trimDouble(product.basePrice)};price=${trimDouble(product.price)};discounts=${product.appliedDiscounts.joinToString(",") { it.id }.ifBlank { "none" }};total=${trimDouble(total)}"
         )
         return ModuleOperationResult(true, "")
     }
 
     fun openConfirm(player: Player, categoryId: String, productId: String) {
-        val product = findProduct(categoryId, productId) ?: return
+        val product = findProduct(categoryId, productId)?.let { resolveProductForPlayer(player, categoryId, it) } ?: return
         openConfirm(player, categoryId, product)
     }
 
@@ -771,9 +773,12 @@ object SystemShopModule : MatrixModule {
         val placeholders = playerPlaceholders(player) + mapOf(
             "name" to product.name,
             "amount" to session.amount.toString(),
+            "base-price" to EconomyModule.formatAmount(product.currency, product.basePrice),
             "price" to EconomyModule.formatAmount(product.currency, product.price),
             "total-price" to EconomyModule.formatAmount(product.currency, total),
-            "currency" to EconomyModule.displayName(product.currency)
+            "currency" to EconomyModule.displayName(product.currency),
+            "discount-count" to product.discountCount.toString(),
+            "discount-summary" to discountSummary(product)
         )
         MenuRenderer.open(
             player = player,
@@ -791,10 +796,13 @@ object SystemShopModule : MatrixModule {
         slotProducts.forEach { (slot, product) ->
             val placeholders = mapOf(
                 "name" to product.name,
+                "base-price" to EconomyModule.formatAmount(product.currency, product.basePrice),
                 "price" to EconomyModule.formatAmount(product.currency, product.price),
                 "currency" to EconomyModule.displayName(product.currency),
                 "limit" to product.buyMax.toString(),
                 "has_currency" to EconomyModule.formatAmount(product.currency, EconomyModule.balance(player, product.currency)),
+                "discount-count" to product.discountCount.toString(),
+                "discount-summary" to discountSummary(product),
                 "lore" to ""
             )
             val displayLore = if (category.menu.template.lore.isNotEmpty()) {
@@ -848,7 +856,7 @@ object SystemShopModule : MatrixModule {
                 displayName = template.name,
                 displayLore = listOf(
                     "&7商品ID: &f${template.id}",
-                    "&7价格: &e${trimDouble(template.price)}",
+                    "&7基础价格: &e${trimDouble(template.basePrice)}",
                     "&7限购: &f${template.buyMax}",
                     "&7上架商店: &f${listedShops.size}",
                     "&7分类: &f${listedShops.ifEmpty { listOf("未上架") }.joinToString(", ")}",
@@ -874,7 +882,7 @@ object SystemShopModule : MatrixModule {
         val template = findGoodsTemplate(productId) ?: return
         val previewLore = listOf(
             "&7商品ID: &f${template.id}",
-            "&7价格: &e${trimDouble(template.price)}",
+            "&7基础价格: &e${trimDouble(template.basePrice)}",
             "&7限购: &f${template.buyMax}",
             "&7上架商店: &f${listedShops.ifEmpty { listOf("未上架") }.joinToString(", ")}"
         )
@@ -975,14 +983,14 @@ object SystemShopModule : MatrixModule {
         val staticProducts = category.products.iterator()
         staticSlots.forEach { slot ->
             if (staticProducts.hasNext()) {
-                result[slot] = staticProducts.next()
+                result[slot] = resolveProductForPlayer(player, category.id, staticProducts.next())
             }
         }
         category.refreshAreas.forEach { (icon, area) ->
             val slots = goodsSlotsByIcon[icon].orEmpty()
             val products = resolveRefreshProducts(player, category, area)
             slots.forEachIndexed { index, slot ->
-                products.getOrNull(index)?.let { result[slot] = it }
+                products.getOrNull(index)?.let { result[slot] = resolveProductForPlayer(player, category.id, it) }
             }
         }
         return result
@@ -1191,6 +1199,7 @@ object SystemShopModule : MatrixModule {
             .trim()
             .takeIf(String::isNotBlank)
             ?: category.currencyKey
+        val mergedPriceConfig = mergePriceConfig(base.priceConfig, entry.priceConfig)
         return SystemShopProduct(
             id = refreshProductId(area.iconKey, group.id, base.goodsId, index),
             goodsId = base.goodsId,
@@ -1198,7 +1207,8 @@ object SystemShopModule : MatrixModule {
             amount = entry.amount ?: base.amount,
             name = entry.name ?: base.name,
             lore = entry.lore ?: base.lore,
-            price = entry.price ?: base.price,
+            priceConfig = mergedPriceConfig,
+            price = mergedPriceConfig.base,
             currency = resolvedCurrency,
             buyMax = entry.buyMax ?: base.buyMax,
             item = rawItem,
@@ -1378,7 +1388,7 @@ object SystemShopModule : MatrixModule {
             yaml.set("$path.amount", product.amount)
             yaml.set("$path.name", product.name)
             yaml.set("$path.lore", product.lore)
-            yaml.set("$path.price", product.price)
+            writePriceConfig(yaml, "$path.price", product.priceConfig)
             yaml.set("$path.currency", product.currency)
             yaml.set("$path.buy-max", product.buyMax)
             yaml.set("$path.item", ItemStackCodec.encode(product.item))
@@ -1401,6 +1411,7 @@ object SystemShopModule : MatrixModule {
             }
             val material = productSection.getString("material", "STONE").orEmpty()
             val sourceTemplate = findGoodsTemplate(goodsId)
+            val priceConfig = parsePriceConfig(productSection, "price", 0.0, "refresh-state:${productSection.currentPath}")
             SystemShopProduct(
                 id = id,
                 goodsId = goodsId,
@@ -1408,7 +1419,8 @@ object SystemShopModule : MatrixModule {
                 amount = productSection.getInt("amount", 1),
                 name = productSection.getString("name", goodsId).orEmpty(),
                 lore = productSection.getStringList("lore"),
-                price = productSection.getDouble("price", 0.0),
+                priceConfig = priceConfig,
+                price = priceConfig.base,
                 currency = productSection.getString("currency", currencyKey).orEmpty(),
                 buyMax = productSection.getInt("buy-max", 64),
                 item = ItemStackCodec.decode(productSection.getString("item")),
@@ -1475,13 +1487,14 @@ object SystemShopModule : MatrixModule {
         source: SystemShopProductSource
     ): SystemShopProductTemplate {
         val configuredItem = section.getItemStack("item")?.clone()
+        val priceConfig = parsePriceConfig(section, "price", 0.0, sectionDisplayTarget(source.configFile, source.configPath))
         return SystemShopProductTemplate(
             id = id,
             material = section.getString("material", configuredItem?.type?.name ?: "STONE").orEmpty(),
             amount = section.getInt("amount", configuredItem?.amount ?: 1),
             name = section.getString("name", configuredItem?.itemMeta?.displayName ?: id).orEmpty(),
             lore = section.getStringList("lore").ifEmpty { configuredItem?.itemMeta?.lore ?: emptyList() },
-            price = section.getDouble("price", 0.0),
+            priceConfig = priceConfig,
             configuredCurrency = section.getString("currency")
                 ?.trim()
                 ?.takeIf(String::isNotBlank),
@@ -1580,7 +1593,7 @@ object SystemShopModule : MatrixModule {
         yaml.set("item", template.item?.clone())
         yaml.set("material", template.material)
         yaml.set("amount", template.amount)
-        yaml.set("price", template.price)
+        writePriceConfig(yaml, "price", template.priceConfig)
         yaml.set("buy-max", template.buyMax)
         yaml.set("name", template.name)
         yaml.set("lore", template.lore)
@@ -1593,7 +1606,7 @@ object SystemShopModule : MatrixModule {
             left.amount == right.amount &&
             left.name == right.name &&
             left.lore == right.lore &&
-            left.price == right.price &&
+            left.priceConfig == right.priceConfig &&
             left.configuredCurrency == right.configuredCurrency &&
             left.buyMax == right.buyMax &&
             itemsEquivalent(left.item, right.item)
@@ -1742,7 +1755,7 @@ object SystemShopModule : MatrixModule {
                     goodsId = goodsId,
                     weight = section.getInt("weight", 1).coerceAtLeast(1),
                     amount = section.getInt("amount").takeIf { section.contains("amount") },
-                    price = section.getDouble("price").takeIf { section.contains("price") },
+                    priceConfig = parsePriceConfigOrNull(section, "price", "pool:${file.name}:$entryId"),
                     configuredCurrency = section.getString("currency")?.trim()?.takeIf(String::isNotBlank),
                     buyMax = section.getInt("buy-max").takeIf { section.contains("buy-max") },
                     name = section.getString("name")?.takeIf(String::isNotBlank),
@@ -1937,6 +1950,341 @@ object SystemShopModule : MatrixModule {
         yaml.set("goods", references.distinctBy { it.lowercase() })
     }
 
+    private fun resolveProductForPlayer(player: Player, categoryId: String, product: SystemShopProduct): SystemShopProduct {
+        val resolvedPrice = resolvePriceForPlayer(player, categoryId, product)
+        return product.copy(
+            price = resolvedPrice.final,
+            appliedDiscounts = resolvedPrice.appliedDiscounts
+        )
+    }
+
+    private fun resolvePriceForPlayer(player: Player, categoryId: String, product: SystemShopProduct): SystemShopResolvedPrice {
+        val base = product.basePrice.coerceAtLeast(0.0)
+        if (product.priceConfig.discounts.isEmpty()) {
+            return SystemShopResolvedPrice(
+                base = base,
+                final = base.coerceAtLeast(MIN_FINAL_PRICE),
+                appliedDiscounts = emptyList(),
+                percentTotal = 0.0,
+                amountOffTotal = 0.0,
+                surchargeTotal = 0.0
+            )
+        }
+        val applied = ArrayList<SystemShopAppliedDiscount>()
+        val appliedRulePairs = ArrayList<Pair<String, SystemShopDiscountRule>>()
+        var percentTotal = 0.0
+        var amountOffTotal = 0.0
+        var surchargeTotal = 0.0
+        product.priceConfig.discounts.withIndex()
+            .sortedWith(compareByDescending<IndexedValue<SystemShopDiscountRule>> { it.value.priority }.thenBy { it.index })
+            .forEach { indexed ->
+                val rule = indexed.value
+                val ruleId = rule.id?.takeIf(String::isNotBlank) ?: "discount_${indexed.index + 1}"
+                if (!rule.isEffective() ||
+                    !shouldApplyDiscount(player, categoryId, product, rule, indexed.index) ||
+                    !canStackDiscount(ruleId, rule, appliedRulePairs)
+                ) {
+                    return@forEach
+                }
+                percentTotal += rule.percent
+                amountOffTotal += rule.amountOff
+                surchargeTotal += rule.surcharge
+                applied += SystemShopAppliedDiscount(
+                    id = ruleId,
+                    percent = rule.percent,
+                    amountOff = rule.amountOff,
+                    surcharge = rule.surcharge
+                )
+                appliedRulePairs += ruleId to rule
+            }
+        val cappedPercent = percentTotal.coerceIn(0.0, 100.0)
+        val final = (base - (base * cappedPercent / 100.0) - amountOffTotal + surchargeTotal)
+            .coerceAtLeast(MIN_FINAL_PRICE)
+        return SystemShopResolvedPrice(
+            base = base,
+            final = final,
+            appliedDiscounts = applied,
+            percentTotal = cappedPercent,
+            amountOffTotal = amountOffTotal,
+            surchargeTotal = surchargeTotal
+        )
+    }
+
+    private fun shouldApplyDiscount(
+        player: Player,
+        categoryId: String,
+        product: SystemShopProduct,
+        rule: SystemShopDiscountRule,
+        index: Int
+    ): Boolean {
+        if (rule.condition.isEmpty()) {
+            return true
+        }
+        val ruleId = rule.id?.takeIf(String::isNotBlank) ?: "discount_${index + 1}"
+        return runCatching {
+            val options = ScriptOptions.builder()
+                .sender(player)
+                .set("player", player)
+                .set("category", categoryId)
+                .set("category_id", categoryId)
+                .set("product", product.id)
+                .set("product_id", product.id)
+                .set("goodsId", product.goodsId)
+                .set("goods_id", product.goodsId)
+                .set("basePrice", product.basePrice)
+                .set("base_price", product.basePrice)
+                .set("currency", product.currency)
+                .set("discount_id", ruleId)
+                .detailError(true)
+                .build()
+            val result = KetherShell.eval(rule.condition, options).get(3, TimeUnit.SECONDS)
+            when (result) {
+                is Boolean -> result
+                is Number -> result.toInt() != 0
+                else -> result?.toString()?.equals("true", true) == true
+            }
+        }.getOrElse {
+            warning(
+                Texts.tr(
+                    "@system-shop.logs.discount-condition-failed",
+                    mapOf(
+                        "rule" to ruleId,
+                        "product" to product.id,
+                        "reason" to (it.message ?: it.javaClass.simpleName)
+                    )
+                )
+            )
+            false
+        }
+    }
+
+    private fun canStackDiscount(
+        ruleId: String,
+        rule: SystemShopDiscountRule,
+        selected: List<Pair<String, SystemShopDiscountRule>>
+    ): Boolean {
+        if (selected.isEmpty()) {
+            return true
+        }
+        val normalizedRuleId = ruleId.lowercase(Locale.ROOT)
+        val whitelist = rule.whitelist.map { it.lowercase(Locale.ROOT) }.toSet()
+        val blacklist = rule.blacklist.map { it.lowercase(Locale.ROOT) }.toSet()
+        return selected.all { (selectedId, selectedRule) ->
+            val normalizedSelectedId = selectedId.lowercase(Locale.ROOT)
+            val selectedWhitelist = selectedRule.whitelist.map { it.lowercase(Locale.ROOT) }.toSet()
+            val selectedBlacklist = selectedRule.blacklist.map { it.lowercase(Locale.ROOT) }.toSet()
+            when {
+                blacklist.contains(normalizedSelectedId) -> false
+                selectedBlacklist.contains(normalizedRuleId) -> false
+                whitelist.isNotEmpty() && !whitelist.contains(normalizedSelectedId) -> false
+                selectedWhitelist.isNotEmpty() && !selectedWhitelist.contains(normalizedRuleId) -> false
+                else -> true
+            }
+        }
+    }
+
+    private fun discountSummary(product: SystemShopProduct): String {
+        if (product.appliedDiscounts.isEmpty()) {
+            return ""
+        }
+        return product.appliedDiscounts.joinToString("; ") { applied ->
+            val parts = ArrayList<String>()
+            if (applied.percent > 0.0) {
+                parts += "-${trimDouble(applied.percent)}%"
+            }
+            if (applied.amountOff > 0.0) {
+                parts += "-${trimDouble(applied.amountOff)}"
+            }
+            if (applied.surcharge > 0.0) {
+                parts += "+${trimDouble(applied.surcharge)}"
+            }
+            "${applied.id}(${parts.joinToString(", ")})"
+        }
+    }
+
+    private fun parsePriceConfig(
+        section: ConfigurationSection,
+        path: String,
+        defaultBase: Double,
+        target: String
+    ): SystemShopPriceConfig {
+        val fallback = defaultBase.coerceAtLeast(0.0)
+        if (!section.contains(path)) {
+            return SystemShopPriceConfig(fallback)
+        }
+        val nested = section.getConfigurationSection(path)
+        if (nested != null) {
+            val base = if (nested.contains("base")) {
+                nested.getDouble("base").coerceAtLeast(0.0)
+            } else {
+                warning(Texts.tr("@system-shop.logs.price-config-invalid", mapOf("target" to target, "reason" to "missing price.base")))
+                fallback
+            }
+            return SystemShopPriceConfig(
+                base = base,
+                discounts = parseDiscountRules(nested, target)
+            )
+        }
+        val raw = section.get(path)
+        return when (raw) {
+            is Number -> SystemShopPriceConfig(raw.toDouble().coerceAtLeast(0.0))
+            is String -> raw.toDoubleOrNull()?.let { SystemShopPriceConfig(it.coerceAtLeast(0.0)) } ?: run {
+                warning(Texts.tr("@system-shop.logs.price-config-invalid", mapOf("target" to target, "reason" to "invalid scalar price")))
+                SystemShopPriceConfig(fallback)
+            }
+            else -> {
+                warning(Texts.tr("@system-shop.logs.price-config-invalid", mapOf("target" to target, "reason" to "unsupported price value")))
+                SystemShopPriceConfig(fallback)
+            }
+        }
+    }
+
+    private fun parsePriceConfigOrNull(
+        section: ConfigurationSection,
+        path: String,
+        target: String
+    ): SystemShopPriceConfig? {
+        if (!section.contains(path)) {
+            return null
+        }
+        return parsePriceConfig(section, path, 0.0, target)
+    }
+
+    private fun parseDiscountRules(section: ConfigurationSection, target: String): List<SystemShopDiscountRule> {
+        val raw = section.getList("discounts") ?: return emptyList()
+        return raw.mapIndexedNotNull { index, entry ->
+            if (entry !is Map<*, *>) {
+                warning(Texts.tr("@system-shop.logs.price-config-invalid", mapOf("target" to target, "reason" to "discount #${index + 1} is not a map")))
+                return@mapIndexedNotNull null
+            }
+            parseDiscountRule(entry, index, target)
+        }
+    }
+
+    private fun parseDiscountRule(
+        raw: Map<*, *>,
+        index: Int,
+        target: String
+    ): SystemShopDiscountRule? {
+        val enabled = mapBoolean(raw, "enabled") ?: true
+        val percent = (mapDouble(raw, "percent") ?: 0.0).coerceAtLeast(0.0)
+        val amountOff = (mapDouble(raw, "amount-off", "amountOff") ?: 0.0).coerceAtLeast(0.0)
+        val surcharge = (mapDouble(raw, "surcharge") ?: 0.0).coerceAtLeast(0.0)
+        if (percent <= 0.0 && amountOff <= 0.0 && surcharge <= 0.0) {
+            warning(Texts.tr("@system-shop.logs.price-config-invalid", mapOf("target" to target, "reason" to "discount #${index + 1} has no numeric effect")))
+            return null
+        }
+        return SystemShopDiscountRule(
+            id = mapString(raw, "id")?.takeIf(String::isNotBlank),
+            enabled = enabled,
+            priority = (mapDouble(raw, "priority") ?: 0.0).toInt(),
+            condition = mapStringList(raw, "condition", "Condition"),
+            whitelist = mapStringList(raw, "whitelist", "white-list", "whiteList", "Whitelist"),
+            blacklist = mapStringList(raw, "blacklist", "black-list", "blackList", "Blacklist"),
+            percent = percent,
+            amountOff = amountOff,
+            surcharge = surcharge
+        )
+    }
+
+    private fun mergePriceConfig(base: SystemShopPriceConfig, override: SystemShopPriceConfig?): SystemShopPriceConfig {
+        if (override == null) {
+            return base
+        }
+        return SystemShopPriceConfig(
+            base = override.base.coerceAtLeast(0.0),
+            discounts = base.discounts + override.discounts
+        )
+    }
+
+    private fun writePriceConfig(yaml: YamlConfiguration, path: String, priceConfig: SystemShopPriceConfig) {
+        if (priceConfig.discounts.isEmpty()) {
+            yaml.set(path, priceConfig.base)
+            return
+        }
+        yaml.set(path, null)
+        yaml.set("$path.base", priceConfig.base)
+        yaml.set(
+            "$path.discounts",
+            priceConfig.discounts.map { rule ->
+                linkedMapOf<String, Any>().apply {
+                    rule.id?.takeIf(String::isNotBlank)?.let { put("id", it) }
+                    if (!rule.enabled) {
+                        put("enabled", false)
+                    }
+                    if (rule.priority != 0) {
+                        put("priority", rule.priority)
+                    }
+                    if (rule.condition.isNotEmpty()) {
+                        put("condition", rule.condition)
+                    }
+                    if (rule.whitelist.isNotEmpty()) {
+                        put("whitelist", rule.whitelist)
+                    }
+                    if (rule.blacklist.isNotEmpty()) {
+                        put("blacklist", rule.blacklist)
+                    }
+                    if (rule.percent > 0.0) {
+                        put("percent", rule.percent)
+                    }
+                    if (rule.amountOff > 0.0) {
+                        put("amount-off", rule.amountOff)
+                    }
+                    if (rule.surcharge > 0.0) {
+                        put("surcharge", rule.surcharge)
+                    }
+                }
+            }
+        )
+    }
+
+    private fun mapString(raw: Map<*, *>, vararg keys: String): String? {
+        return mapValue(raw, *keys)?.toString()?.trim()?.takeIf(String::isNotBlank)
+    }
+
+    private fun mapDouble(raw: Map<*, *>, vararg keys: String): Double? {
+        val value = mapValue(raw, *keys) ?: return null
+        return when (value) {
+            is Number -> value.toDouble()
+            is String -> value.trim().toDoubleOrNull()
+            else -> null
+        }
+    }
+
+    private fun mapBoolean(raw: Map<*, *>, vararg keys: String): Boolean? {
+        val value = mapValue(raw, *keys) ?: return null
+        return when (value) {
+            is Boolean -> value
+            is String -> when (value.trim().lowercase(Locale.ROOT)) {
+                "true", "yes", "y", "1" -> true
+                "false", "no", "n", "0" -> false
+                else -> null
+            }
+            is Number -> value.toInt() != 0
+            else -> null
+        }
+    }
+
+    private fun mapStringList(raw: Map<*, *>, vararg keys: String): List<String> {
+        val value = mapValue(raw, *keys) ?: return emptyList()
+        return when (value) {
+            is Iterable<*> -> value.mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
+            is Array<*> -> value.mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
+            else -> value.toString().trim().takeIf(String::isNotBlank)?.let(::listOf).orEmpty()
+        }
+    }
+
+    private fun mapValue(raw: Map<*, *>, vararg keys: String): Any? {
+        val normalizedKeys = keys.map { it.trim().lowercase(Locale.ROOT) }
+        return raw.entries.firstOrNull { entry ->
+            normalizedKeys.contains(entry.key?.toString()?.trim()?.lowercase(Locale.ROOT))
+        }?.value
+    }
+
+    private fun sectionDisplayTarget(file: File, basePath: String?): String {
+        return if (basePath.isNullOrBlank()) file.name else "${file.name}#$basePath"
+    }
+
     private fun writeProductSnapshot(
         yaml: YamlConfiguration,
         basePath: String?,
@@ -1948,10 +2296,19 @@ object SystemShopModule : MatrixModule {
         setProductValue(yaml, basePath, "item", stack.clone())
         setProductValue(yaml, basePath, "material", stack.type.name)
         setProductValue(yaml, basePath, "amount", stack.amount)
-        setProductValue(yaml, basePath, "price", price)
+        setBasePrice(yaml, basePath, price)
         setProductValue(yaml, basePath, "buy-max", (buyMax ?: stack.maxStackSize).coerceAtLeast(1))
         setProductValue(yaml, basePath, "name", meta?.displayName?.takeIf(String::isNotBlank) ?: defaultProductName(stack))
         setProductValue(yaml, basePath, "lore", meta?.lore ?: emptyList<String>())
+    }
+
+    private fun setBasePrice(yaml: YamlConfiguration, basePath: String?, value: Double) {
+        val path = if (basePath.isNullOrBlank()) "price" else "$basePath.price"
+        if (yaml.isConfigurationSection(path)) {
+            yaml.set("$path.base", value)
+        } else {
+            yaml.set(path, value)
+        }
     }
 
     private fun setProductValue(yaml: YamlConfiguration, basePath: String?, key: String, value: Any?) {

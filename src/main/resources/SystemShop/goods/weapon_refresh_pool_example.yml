@@ -9,6 +9,14 @@ entries:
     goods: iron_sword
     weight: 10
     price: 99
+#    # 刷新池条目也支持价格对象，并会与商品本体的 discounts 合并：
+#    price:
+#      base: 99
+#      discounts:
+#        - id: vip_pool_bonus
+#          percent: 5
+#          condition:
+#            - "perm 'group.vip'"
     buy-max: 3
 
   bow_offer:
