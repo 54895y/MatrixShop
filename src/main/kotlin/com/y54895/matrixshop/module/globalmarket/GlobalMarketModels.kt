@@ -2,6 +2,7 @@ package com.y54895.matrixshop.module.globalmarket
 
 import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
+import com.y54895.matrixshop.core.economy.ConditionalTaxConfig
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
@@ -25,6 +26,6 @@ data class GlobalMarketMenus(
 
 data class GlobalMarketSettings(
     val expireHours: Int,
-    val taxPercent: Double,
+    val tax: ConditionalTaxConfig,
     val currencyKey: String
 )

@@ -2,6 +2,7 @@ package com.y54895.matrixshop.module.playershop
 
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.economy.ConditionalTaxEngine
 import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
@@ -251,8 +252,29 @@ object PlayerShopModule : MatrixModule {
         if (!EconomyModule.withdraw(viewer, target.currency, target.price, mapOf("seller" to store.ownerName, "item" to itemDisplayName(target.item)))) {
             return ModuleOperationResult(false, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(target.currency))))
         }
+        val taxResult = ConditionalTaxEngine.compute(
+            config = settings.tax,
+            amount = target.price,
+            actor = viewer,
+            moduleId = "player_shop",
+            context = mapOf(
+                "module" to "player_shop",
+                "shop_id" to store.shopId,
+                "listing_id" to target.id,
+                "currency" to target.currency,
+                "price" to target.price,
+                "amount" to target.item.amount,
+                "buyer" to viewer,
+                "buyer_name" to viewer.name,
+                "seller_name" to store.ownerName,
+                "owner_name" to store.ownerName,
+                "item_name" to itemDisplayName(target.item)
+            )
+        )
+        val tax = taxResult.amount
+        val sellerIncome = (target.price - tax).coerceAtLeast(0.0)
         val seller = Bukkit.getOfflinePlayer(store.ownerId)
-        if (!EconomyModule.deposit(seller, target.currency, target.price, mapOf("buyer" to viewer.name, "item" to itemDisplayName(target.item)))) {
+        if (!EconomyModule.deposit(seller, target.currency, sellerIncome, mapOf("buyer" to viewer.name, "item" to itemDisplayName(target.item)))) {
             EconomyModule.deposit(viewer, target.currency, target.price)
             return ModuleOperationResult(false, Texts.tr("@economy.errors.deposit-failed", mapOf("currency" to EconomyModule.displayName(target.currency))))
         }
@@ -274,7 +296,11 @@ object PlayerShopModule : MatrixModule {
             Texts.sendKey(
                 it,
                 "@player-shop.success.sold",
-                mapOf("shop" to store.shopId, "price" to EconomyModule.formatAmount(target.currency, target.price))
+                mapOf(
+                    "shop" to store.shopId,
+                    "price" to EconomyModule.formatAmount(target.currency, target.price),
+                    "income" to EconomyModule.formatAmount(target.currency, sellerIncome)
+                )
             )
         }
         RecordService.append(
@@ -283,15 +309,15 @@ object PlayerShopModule : MatrixModule {
             actor = viewer.name,
             target = store.ownerName,
             moneyChange = -target.price,
-            detail = "shop=${store.shopId};seller=${store.ownerName};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
+            detail = "shop=${store.shopId};seller=${store.ownerName};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount};tax=${trimDouble(tax)};tax-rule=${taxResult.ruleId ?: "default"}"
         )
         RecordService.append(
             module = "player_shop",
             type = "sale",
             actor = store.ownerName,
             target = viewer.name,
-            moneyChange = target.price,
-            detail = "shop=${store.shopId};buyer=${viewer.name};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount}"
+            moneyChange = sellerIncome,
+            detail = "shop=${store.shopId};buyer=${viewer.name};listing=${target.id};price=${trimDouble(target.price)};amount=${target.item.amount};tax=${trimDouble(tax)};income=${trimDouble(sellerIncome)};tax-rule=${taxResult.ruleId ?: "default"}"
         )
         if (reopenAfterSuccess) {
             openShop(viewer, store.ownerId, store.ownerName, store.shopId)
@@ -476,7 +502,14 @@ object PlayerShopModule : MatrixModule {
         return PlayerShopSettings(
             unlockedBase = yaml.getInt("Unlock.Base", 21),
             unlockedMax = yaml.getInt("Unlock.Max", 100),
-            currencyKey = EconomyModule.configuredKey(yaml)
+            currencyKey = EconomyModule.configuredKey(yaml),
+            tax = ConditionalTaxEngine.parse(
+                root = yaml,
+                path = "Listing.Tax",
+                defaultEnabled = false,
+                defaultMode = "percent",
+                defaultValue = 0.0
+            )
         )
     }
 

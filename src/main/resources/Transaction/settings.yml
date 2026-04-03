@@ -26,6 +26,18 @@ Options:
     Allow-Items: true
     Allow-Money: true
     Allow-Exp: true
+    Tax:
+      Enabled: false
+      Mode: percent
+      Value: 3.0
+      # Rules:
+      #   vip:
+      #     Enabled: true
+      #     Priority: 100
+      #     Mode: percent
+      #     Value: 1.0
+      #     Condition:
+      #       - "perm 'group.vip'"
   Record:
     Write-On-Complete: true
     Write-On-Cancel: false

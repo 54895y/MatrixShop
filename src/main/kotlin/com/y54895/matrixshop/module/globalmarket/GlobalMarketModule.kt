@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.globalmarket
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.economy.ConditionalTaxEngine
 import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
@@ -252,7 +253,26 @@ object GlobalMarketModule : MatrixModule {
         if (!EconomyModule.withdraw(player, listing.currency, listing.price, mapOf("seller" to listing.ownerName, "item" to itemDisplayName(listing.item)))) {
             return ModuleOperationResult(false, Texts.tr("@economy.errors.withdraw-failed", mapOf("currency" to EconomyModule.displayName(listing.currency))))
         }
-        val tax = listing.price * settings.taxPercent / 100.0
+        val taxResult = ConditionalTaxEngine.compute(
+            config = settings.tax,
+            amount = listing.price,
+            actor = player,
+            moduleId = "global_market",
+            context = mapOf(
+                "module" to "global_market",
+                "shop_id" to listing.shopId,
+                "listing_id" to listing.id,
+                "currency" to listing.currency,
+                "price" to listing.price,
+                "amount" to listing.item.amount,
+                "buyer" to player,
+                "buyer_name" to player.name,
+                "seller_name" to listing.ownerName,
+                "owner_name" to listing.ownerName,
+                "item_name" to itemDisplayName(listing.item)
+            )
+        )
+        val tax = taxResult.amount
         val sellerIncome = (listing.price - tax).coerceAtLeast(0.0)
         val seller = Bukkit.getOfflinePlayer(listing.ownerId)
         if (!EconomyModule.deposit(seller, listing.currency, sellerIncome, mapOf("buyer" to player.name, "item" to itemDisplayName(listing.item)))) {
@@ -286,7 +306,7 @@ object GlobalMarketModule : MatrixModule {
             actor = player.name,
             target = listing.ownerName,
             moneyChange = -listing.price,
-            detail = "shop=${listing.shopId};seller=${listing.ownerName};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
+            detail = "shop=${listing.shopId};seller=${listing.ownerName};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)};tax-rule=${taxResult.ruleId ?: "default"}"
         )
         RecordService.append(
             module = "global_market",
@@ -294,7 +314,7 @@ object GlobalMarketModule : MatrixModule {
             actor = listing.ownerName,
             target = player.name,
             moneyChange = sellerIncome,
-            detail = "shop=${listing.shopId};buyer=${player.name};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)}"
+            detail = "shop=${listing.shopId};buyer=${player.name};listing=${listing.id};price=${trimDouble(listing.price)};amount=${listing.item.amount};tax=${trimDouble(tax)};income=${trimDouble(sellerIncome)};tax-rule=${taxResult.ruleId ?: "default"}"
         )
         if (reopenAfterSuccess) {
             openMarket(player, listing.shopId)
@@ -385,7 +405,14 @@ object GlobalMarketModule : MatrixModule {
         val yaml = YamlConfiguration.loadConfiguration(File(ConfigFiles.dataFolder(), "GlobalMarket/settings.yml"))
         return GlobalMarketSettings(
             expireHours = yaml.getInt("Listing.Expire-Hours", 72),
-            taxPercent = yaml.getDouble("Listing.Tax-Percent", 3.0),
+            tax = ConditionalTaxEngine.parse(
+                root = yaml,
+                path = "Listing.Tax",
+                defaultEnabled = true,
+                defaultMode = "percent",
+                defaultValue = 3.0,
+                legacyPercentPath = "Listing.Tax-Percent"
+            ),
             currencyKey = EconomyModule.configuredKey(yaml)
         )
     }

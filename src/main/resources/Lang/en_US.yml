@@ -407,7 +407,7 @@ player-shop:
   success:
     listed: "&aListed in &f{shop}&a: &f{name} &7x&f{amount} &7- &e{price}"
     purchased: "&aPurchased from &f{shop}&a: &f{name} &7x&f{amount} &7- &e{price}"
-    sold: "&aYour player shop item sold in &f{shop}&a for &e{price}&a."
+    sold: "&aYour player shop item sold in &f{shop}&a for &e{income}&a."
     removed: "&aRemoved listing from &f{shop}&a: &f{name}"
   lore:
     price: "&7Price: &e{price} {currency}"

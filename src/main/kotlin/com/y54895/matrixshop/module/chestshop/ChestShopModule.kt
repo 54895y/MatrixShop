@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.chestshop
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.economy.ConditionalTaxEngine
 import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MatrixMenuHolder
 import com.y54895.matrixshop.core.menu.MenuDefinition
@@ -702,6 +703,8 @@ object ChestShopModule : MatrixModule {
         val shop = reloadShop(sourceShop.id) ?: return
         val totalAmount = (shop.tradeAmount * multiplier).coerceAtLeast(1)
         val totalPrice = shop.sellPrice * multiplier
+        val taxResult = chestShopTaxResult(player, shop, totalPrice, "buy_from_shop")
+        val ownerIncome = (totalPrice - taxResult.amount).coerceAtLeast(0.0)
         if (shop.mode == ChestShopMode.BUY) {
             Texts.sendKey(player, "@chestshop.errors.shop-not-selling")
             return
@@ -735,7 +738,7 @@ object ChestShopModule : MatrixModule {
             return
         }
         val owner = Bukkit.getOfflinePlayer(shop.ownerId)
-        if (totalPrice > 0 && !EconomyModule.deposit(owner, settings.currencyKey, totalPrice, mapOf("buyer" to player.name, "item" to itemDisplayName(shop.item)))) {
+        if (ownerIncome > 0 && !EconomyModule.deposit(owner, settings.currencyKey, ownerIncome, mapOf("buyer" to player.name, "item" to itemDisplayName(shop.item)))) {
             addToStock(shop, purchaseStacks)
             EconomyModule.deposit(player, settings.currencyKey, totalPrice)
             Texts.send(player, Texts.tr("@economy.errors.deposit-failed", mapOf("currency" to EconomyModule.displayName(settings.currencyKey))))
@@ -743,11 +746,11 @@ object ChestShopModule : MatrixModule {
         }
         purchaseStacks.forEach { player.inventory.addItem(it) }
         player.updateInventory()
-        appendHistory(shop, "buy", player.name, totalAmount, totalPrice, "purchase-from-shop")
+        appendHistory(shop, "buy", player.name, totalAmount, ownerIncome, "purchase-from-shop")
         saveShop(shop)
         val ownerPlayer = Bukkit.getPlayer(shop.ownerId)
         if (ownerPlayer != null && ownerPlayer.isOnline) {
-            Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-purchase", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, totalPrice)))
+            Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-purchase", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, ownerIncome)))
         }
         Texts.sendKey(player, "@chestshop.success.purchase", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, totalPrice)))
         RecordService.append(
@@ -756,15 +759,15 @@ object ChestShopModule : MatrixModule {
             actor = player.name,
             target = shop.ownerName,
             moneyChange = -totalPrice,
-            detail = "shop=${shop.id};amount=$totalAmount;price=${trimDouble(totalPrice)}"
+            detail = "shop=${shop.id};amount=$totalAmount;price=${trimDouble(totalPrice)};tax=${trimDouble(taxResult.amount)};tax-rule=${taxResult.ruleId ?: "default"}"
         )
         RecordService.append(
             module = "chestshop",
             type = "sale",
             actor = shop.ownerName,
             target = player.name,
-            moneyChange = totalPrice,
-            detail = "shop=${shop.id};amount=$totalAmount;price=${trimDouble(totalPrice)}"
+            moneyChange = ownerIncome,
+            detail = "shop=${shop.id};amount=$totalAmount;price=${trimDouble(totalPrice)};tax=${trimDouble(taxResult.amount)};income=${trimDouble(ownerIncome)};tax-rule=${taxResult.ruleId ?: "default"}"
         )
     }
 
@@ -772,6 +775,8 @@ object ChestShopModule : MatrixModule {
         val shop = reloadShop(sourceShop.id) ?: return
         val totalAmount = (shop.tradeAmount * multiplier).coerceAtLeast(1)
         val totalPrice = shop.buyPrice * multiplier
+        val taxResult = chestShopTaxResult(player, shop, totalPrice, "sell_to_shop")
+        val playerIncome = (totalPrice - taxResult.amount).coerceAtLeast(0.0)
         if (shop.mode == ChestShopMode.SELL) {
             Texts.sendKey(player, "@chestshop.errors.shop-not-buying")
             return
@@ -813,7 +818,7 @@ object ChestShopModule : MatrixModule {
             Texts.sendKey(player, "@chestshop.errors.stock-add-failed")
             return
         }
-        if (totalPrice > 0 && !EconomyModule.deposit(player, settings.currencyKey, totalPrice, mapOf("seller" to shop.ownerName, "item" to itemDisplayName(shop.item)))) {
+        if (playerIncome > 0 && !EconomyModule.deposit(player, settings.currencyKey, playerIncome, mapOf("seller" to shop.ownerName, "item" to itemDisplayName(shop.item)))) {
             removeFromStock(shop, totalAmount)
             player.inventory.addItem(*incomingStacks.toTypedArray())
             EconomyModule.deposit(owner, settings.currencyKey, totalPrice)
@@ -827,22 +832,22 @@ object ChestShopModule : MatrixModule {
         if (ownerPlayer != null && ownerPlayer.isOnline) {
             Texts.sendKey(ownerPlayer, "@chestshop.notify.owner-sell", mapOf("player" to player.name, "item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, totalPrice)))
         }
-        Texts.sendKey(player, "@chestshop.success.sell", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, totalPrice)))
+        Texts.sendKey(player, "@chestshop.success.sell", mapOf("item" to itemDisplayName(shop.item), "amount" to totalAmount.toString(), "price" to EconomyModule.formatAmount(settings.currencyKey, playerIncome)))
         RecordService.append(
             module = "chestshop",
             type = "expense",
             actor = shop.ownerName,
             target = player.name,
             moneyChange = -totalPrice,
-            detail = "shop=${shop.id};amount=$totalAmount;price=${trimDouble(totalPrice)};direction=buy-from-player"
+            detail = "shop=${shop.id};amount=$totalAmount;price=${trimDouble(totalPrice)};tax=${trimDouble(taxResult.amount)};tax-rule=${taxResult.ruleId ?: "default"};direction=buy-from-player"
         )
         RecordService.append(
             module = "chestshop",
             type = "income",
             actor = player.name,
             target = shop.ownerName,
-            moneyChange = totalPrice,
-            detail = "shop=${shop.id};amount=$totalAmount;price=${trimDouble(totalPrice)};direction=sell-to-shop"
+            moneyChange = playerIncome,
+            detail = "shop=${shop.id};amount=$totalAmount;price=${trimDouble(totalPrice)};tax=${trimDouble(taxResult.amount)};income=${trimDouble(playerIncome)};tax-rule=${taxResult.ruleId ?: "default"};direction=sell-to-shop"
         )
     }
 
@@ -930,9 +935,37 @@ object ChestShopModule : MatrixModule {
             doubleChestMode = yaml.getString("Stock.Double-Chest-Mode", "expand_only").orEmpty(),
             autoCreateSign = yaml.getBoolean("Sign.Auto-Create", true),
             floatingItemEnabled = yaml.getBoolean("Display.Floating-Item.Enabled", true),
-            floatingItemHeight = yaml.getDouble("Display.Floating-Item.Height", 1.15)
+            floatingItemHeight = yaml.getDouble("Display.Floating-Item.Height", 1.15),
+            tax = ConditionalTaxEngine.parse(
+                root = yaml,
+                path = "Trade.Tax",
+                defaultEnabled = false,
+                defaultMode = "percent",
+                defaultValue = 0.0
+            )
         )
     }
+
+    private fun chestShopTaxResult(player: Player, shop: ChestShopShop, amount: Double, direction: String) =
+        ConditionalTaxEngine.compute(
+            config = settings.tax,
+            amount = amount,
+            actor = player,
+            moduleId = "chestshop",
+            context = mapOf(
+                "module" to "chestshop",
+                "shop_id" to shop.id,
+                "currency" to settings.currencyKey,
+                "amount" to amount,
+                "direction" to direction,
+                "player" to player,
+                "player_name" to player.name,
+                "owner_name" to shop.ownerName,
+                "mode" to shop.mode.name,
+                "item_name" to itemDisplayName(shop.item),
+                "item_amount" to shop.tradeAmount
+            )
+        )
 
     private fun parseTriggers(rawValues: List<String>, fallback: List<ChestShopInteractionTrigger>): List<ChestShopInteractionTrigger> {
         val parsed = rawValues.mapNotNull(::parseTrigger).distinct()

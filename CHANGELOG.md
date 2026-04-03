@@ -4,6 +4,29 @@ All notable changes to MatrixShop will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning for release tags.
 
+## [1.5.0] - 2026-04-03
+
+### Added
+
+- Added a conditional tax system for `PlayerShop`, `GlobalMarket`, `Auction`, `Transaction`, and `ChestShop`.
+- Added tax rule support for `Enabled`, `Mode`, `Value`, `Priority`, and Kether `Condition`.
+- Added legacy-compatible tax parsing for `GlobalMarket` `Listing.Tax-Percent`.
+
+### Changed
+
+- `PlayerShop`, `GlobalMarket`, and `Auction` now resolve seller-side tax from a shared conditional tax engine instead of fixed inline math.
+- `Transaction` now applies money tax per offer direction and records net received amounts.
+- `ChestShop` now supports tax on both player-buy and player-sell flows.
+- Updated bundled settings and docs to show the new tax rule structure.
+
+### Validated
+
+- Verified `./gradlew build`.
+- Verified docs site `npm run build`.
+- Verified smoke boot on `paper-1.21.8`.
+- Verified smoke boot on `paper-1.21.11`.
+- Verified `paper-1.21.11` can load conditional tax configs with Kether `Condition` rules for `PlayerShop`, `GlobalMarket`, `Auction`, `Transaction`, and `ChestShop`.
+
 ## [1.4.0] - 2026-04-03
 
 ### Added

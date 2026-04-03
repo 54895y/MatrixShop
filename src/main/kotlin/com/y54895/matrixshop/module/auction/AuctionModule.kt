@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.auction
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.economy.ConditionalTaxEngine
 import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
@@ -481,7 +482,7 @@ object AuctionModule : MatrixModule {
             return
         }
         refundPreviousBidder(listing)
-        completeSale(listing, player.uniqueId, player.name, price, listings, if (listing.mode == AuctionMode.DUTCH) "dutch" else "buyout")
+        completeSale(listing, player.uniqueId, player.name, price, listings, if (listing.mode == AuctionMode.DUTCH) "dutch" else "buyout", player)
         Texts.sendKey(player, "@auction.success.purchased", mapOf("price" to EconomyModule.formatAmount(moneyCurrencyKey, price)))
     }
 
@@ -688,11 +689,30 @@ object AuctionModule : MatrixModule {
         buyerName: String,
         finalPrice: Double,
         listings: MutableList<AuctionListing>,
-        cause: String
+        cause: String,
+        actor: Player? = null
     ) {
         listings.removeIf { it.id == listing.id }
         AuctionRepository.saveAll(listings)
-        val tax = taxAmount(finalPrice)
+        val taxResult = ConditionalTaxEngine.compute(
+            config = settings.tax,
+            amount = finalPrice,
+            actor = actor,
+            moduleId = "auction",
+            context = mapOf(
+                "module" to "auction",
+                "shop_id" to listing.shopId,
+                "listing_id" to listing.id,
+                "currency" to currencyKey(listing.shopId),
+                "price" to finalPrice,
+                "buyer_name" to buyerName,
+                "seller_name" to listing.ownerName,
+                "mode" to listing.mode.name,
+                "cause" to cause,
+                "item_name" to itemDisplayName(listing.item)
+            )
+        )
+        val tax = taxResult.amount
         val sellerIncome = (finalPrice - tax).coerceAtLeast(0.0)
         val moneyCurrencyKey = currencyKey(listing.shopId)
         if (listing.depositPaid > 0 && settings.depositRefundOnSell) {
@@ -707,7 +727,7 @@ object AuctionModule : MatrixModule {
                 actor = buyerName,
                 target = listing.ownerName,
                 moneyChange = -finalPrice,
-                detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};price=${trimDouble(finalPrice)};cause=$cause"
+                detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};price=${trimDouble(finalPrice)};tax=${trimDouble(tax)};tax-rule=${taxResult.ruleId ?: "default"};cause=$cause"
             )
             RecordService.append(
                 module = "auction",
@@ -715,7 +735,7 @@ object AuctionModule : MatrixModule {
                 actor = listing.ownerName,
                 target = buyerName,
                 moneyChange = sellerIncome + if (settings.depositRefundOnSell) listing.depositPaid else 0.0,
-                detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};price=${trimDouble(finalPrice)};tax=${trimDouble(tax)};cause=$cause"
+                detail = "shop=${listing.shopId};listing=${listing.id};mode=${listing.mode.name};price=${trimDouble(finalPrice)};tax=${trimDouble(tax)};income=${trimDouble(sellerIncome)};tax-rule=${taxResult.ruleId ?: "default"};cause=$cause"
             )
         }
     }
@@ -737,7 +757,8 @@ object AuctionModule : MatrixModule {
                     buyerName = listing.highestBidderName,
                     finalPrice = listing.currentBid,
                     listings = listings,
-                    cause = "expire"
+                    cause = "expire",
+                    actor = Bukkit.getPlayer(listing.highestBidderId!!)
                 )
             } else {
                 listings.removeIf { it.id == listing.id }
@@ -840,9 +861,13 @@ object AuctionModule : MatrixModule {
             depositValue = yaml.getDouble("Options.Listing.Deposit.Value", 5.0),
             depositRefundOnSell = yaml.getBoolean("Options.Listing.Deposit.Refund-On-Sell", true),
             depositRefundOnCancel = yaml.getBoolean("Options.Listing.Deposit.Refund-On-Cancel", false),
-            taxEnabled = yaml.getBoolean("Options.Listing.Tax.Enabled", true),
-            taxMode = yaml.getString("Options.Listing.Tax.Mode", "percent").orEmpty(),
-            taxValue = yaml.getDouble("Options.Listing.Tax.Value", 3.0),
+            tax = ConditionalTaxEngine.parse(
+                root = yaml,
+                path = "Options.Listing.Tax",
+                defaultEnabled = true,
+                defaultMode = "percent",
+                defaultValue = 3.0
+            ),
             snipeEnabled = yaml.getBoolean("Options.Snipe-Protection.Enabled", true),
             snipeTriggerSeconds = yaml.getInt("Options.Snipe-Protection.Trigger-Seconds", 30),
             snipeExtendSeconds = yaml.getInt("Options.Snipe-Protection.Extend-Seconds", 30),
@@ -930,10 +955,12 @@ object AuctionModule : MatrixModule {
     }
 
     private fun taxAmount(finalPrice: Double): Double {
-        if (!settings.taxEnabled) {
-            return 0.0
-        }
-        return listingFee(finalPrice, settings.taxMode, settings.taxValue)
+        return ConditionalTaxEngine.compute(
+            config = settings.tax,
+            amount = finalPrice,
+            actor = null,
+            moduleId = "auction"
+        ).amount
     }
 
     private fun listingFee(base: Double, mode: String, value: Double): Double {

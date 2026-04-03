@@ -2,6 +2,7 @@ package com.y54895.matrixshop.module.auction
 
 import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
+import com.y54895.matrixshop.core.economy.ConditionalTaxConfig
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
@@ -60,9 +61,7 @@ data class AuctionSettings(
     val depositValue: Double,
     val depositRefundOnSell: Boolean,
     val depositRefundOnCancel: Boolean,
-    val taxEnabled: Boolean,
-    val taxMode: String,
-    val taxValue: Double,
+    val tax: ConditionalTaxConfig,
     val snipeEnabled: Boolean,
     val snipeTriggerSeconds: Int,
     val snipeExtendSeconds: Int,

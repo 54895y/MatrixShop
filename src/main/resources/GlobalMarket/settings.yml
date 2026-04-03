@@ -14,7 +14,18 @@ Bindings:
 
 Listing:
   Expire-Hours: 72
-  Tax-Percent: 3.0
+  Tax:
+    Enabled: true
+    Mode: percent
+    Value: 3.0
+    # Rules:
+    #   vip:
+    #     Enabled: true
+    #     Priority: 100
+    #     Mode: percent
+    #     Value: 1.0
+    #     Condition:
+    #       - "perm 'group.vip'"
 
 Currency:
   Key: vault

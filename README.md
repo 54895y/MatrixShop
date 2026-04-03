@@ -43,8 +43,8 @@ MatrixShop is a modular commerce plugin for survival and economy servers. It pro
 
 | 版本 | 兼容性 |
 | --- | --- |
-| `1.4.0` | `Paper 1.21.8` smoke boot 通过 |
-| `1.4.0` | `Paper 1.21.11` smoke boot 通过 |
+| `1.5.0` | `Paper 1.21.8` smoke boot 通过 |
+| `1.5.0` | `Paper 1.21.11` smoke boot 通过 |
 
 ## SystemShop 重点
 
@@ -103,6 +103,41 @@ price:
 - 支持 `whitelist`、`blacklist` 控制折扣重叠
 - 刷新池价格对象会和商品本体折扣规则合并
 
+## 条件税系统
+
+以下模块现在支持条件税配置：
+
+- `PlayerShop`
+- `GlobalMarket`
+- `Auction`
+- `Transaction`
+- `ChestShop`
+
+税规则当前支持：
+
+- `Enabled`
+- `Mode`
+- `Value`
+- `Priority`
+- `Condition`
+
+示例：
+
+```yaml
+Tax:
+  Enabled: true
+  Mode: percent
+  Value: 3.0
+  Rules:
+    vip:
+      Enabled: true
+      Priority: 100
+      Mode: percent
+      Value: 1.0
+      Condition:
+        - "perm 'group.vip'"
+```
+
 ## 构建与运行信息
 
 - Build target: `Bukkit API 1.12.2`
@@ -120,7 +155,7 @@ price:
 运行产物：
 
 ```text
-build/libs/MatrixShop-1.4.0-all.jar
+build/libs/MatrixShop-1.5.0-all.jar
 ```
 
 ## 文档入口

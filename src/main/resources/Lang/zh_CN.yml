@@ -407,7 +407,7 @@ player-shop:
   success:
     listed: "&a已在 &f{shop} &a上架: &f{name} &7x&f{amount} &7- &e{price}"
     purchased: "&a已从 &f{shop} &a购买: &f{name} &7x&f{amount} &7- &e{price}"
-    sold: "&a你在 &f{shop} &a中的玩家商店物品已售出，获得 &e{price}&a。"
+    sold: "&a你在 &f{shop} &a中的玩家商店物品已售出，获得 &e{income}&a。"
     removed: "&a已从 &f{shop} &a移除条目: &f{name}"
   lore:
     price: "&7价格: &e{price} {currency}"

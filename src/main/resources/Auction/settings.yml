@@ -43,6 +43,14 @@ Options:
       Enabled: true
       Mode: percent
       Value: 3
+      # Rules:
+      #   vip:
+      #     Enabled: true
+      #     Priority: 100
+      #     Mode: percent
+      #     Value: 1
+      #     Condition:
+      #       - "perm 'group.vip'"
   Snipe-Protection:
     Enabled: true
     Trigger-Seconds: 30

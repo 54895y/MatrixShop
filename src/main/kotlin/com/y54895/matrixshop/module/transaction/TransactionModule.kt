@@ -3,6 +3,7 @@ package com.y54895.matrixshop.module.transaction
 import com.y54895.matrixshop.core.command.CommandUsageContext
 import com.y54895.matrixshop.core.config.ModuleBindings
 import com.y54895.matrixshop.core.config.ConfigFiles
+import com.y54895.matrixshop.core.economy.ConditionalTaxEngine
 import com.y54895.matrixshop.core.economy.EconomyModule
 import com.y54895.matrixshop.core.menu.MenuDefinition
 import com.y54895.matrixshop.core.menu.MenuLoader
@@ -700,8 +701,12 @@ object TransactionModule : MatrixModule {
         }
         var withdrewLeft = false
         var withdrewRight = false
-        var depositedLeft = false
-        var depositedRight = false
+        var depositedLeftAmount = 0.0
+        var depositedRightAmount = 0.0
+        val leftTax = transactionTaxResult(session, left, right, session.leftMoney, "left_to_right")
+        val rightTax = transactionTaxResult(session, right, left, session.rightMoney, "right_to_left")
+        val leftNet = (session.leftMoney - leftTax.amount).coerceAtLeast(0.0)
+        val rightNet = (session.rightMoney - rightTax.amount).coerceAtLeast(0.0)
         if (session.leftMoney > 0) {
             if (!EconomyModule.withdraw(left, session.moneyCurrencyKey, session.leftMoney, mapOf("target" to right.name))) {
                 markDirty(session)
@@ -725,27 +730,27 @@ object TransactionModule : MatrixModule {
             }
             withdrewRight = true
         }
-        if (session.rightMoney > 0) {
-            if (!EconomyModule.deposit(left, session.moneyCurrencyKey, session.rightMoney, mapOf("target" to right.name))) {
-                rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeft, depositedRight)
+        if (rightNet > 0) {
+            if (!EconomyModule.deposit(left, session.moneyCurrencyKey, rightNet, mapOf("target" to right.name))) {
+                rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeftAmount, depositedRightAmount)
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.deposit-failed", mapOf("player" to right.name)))
                 openTrade(left, session)
                 openTrade(right, session)
                 return
             }
-            depositedLeft = true
+            depositedLeftAmount = rightNet
         }
-        if (session.leftMoney > 0) {
-            if (!EconomyModule.deposit(right, session.moneyCurrencyKey, session.leftMoney, mapOf("target" to left.name))) {
-                rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeft, depositedRight)
+        if (leftNet > 0) {
+            if (!EconomyModule.deposit(right, session.moneyCurrencyKey, leftNet, mapOf("target" to left.name))) {
+                rollbackMoney(left, right, session, withdrewLeft, withdrewRight, depositedLeftAmount, depositedRightAmount)
                 markDirty(session)
                 notifyPlayers(session, Texts.tr("@transaction.notify.deposit-failed", mapOf("player" to left.name)))
                 openTrade(left, session)
                 openTrade(right, session)
                 return
             }
-            depositedRight = true
+            depositedRightAmount = leftNet
         }
         setTotalExperience(left, leftOriginalExp - session.leftExp + session.rightExp)
         setTotalExperience(right, rightOriginalExp - session.rightExp + session.leftExp)
@@ -754,7 +759,7 @@ object TransactionModule : MatrixModule {
         left.updateInventory()
         right.updateInventory()
         if (settings.writeOnComplete) {
-            writeCompletionRecord(session)
+            writeCompletionRecord(session, leftTax.amount, rightTax.amount, leftNet, rightNet)
         }
         left.closeInventory()
         right.closeInventory()
@@ -769,14 +774,14 @@ object TransactionModule : MatrixModule {
         session: TransactionSession,
         withdrewLeft: Boolean,
         withdrewRight: Boolean,
-        depositedLeft: Boolean,
-        depositedRight: Boolean
+        depositedLeftAmount: Double,
+        depositedRightAmount: Double
     ) {
-        if (depositedLeft && session.rightMoney > 0) {
-            EconomyModule.withdraw(left, session.moneyCurrencyKey, session.rightMoney)
+        if (depositedLeftAmount > 0) {
+            EconomyModule.withdraw(left, session.moneyCurrencyKey, depositedLeftAmount)
         }
-        if (depositedRight && session.leftMoney > 0) {
-            EconomyModule.withdraw(right, session.moneyCurrencyKey, session.leftMoney)
+        if (depositedRightAmount > 0) {
+            EconomyModule.withdraw(right, session.moneyCurrencyKey, depositedRightAmount)
         }
         if (withdrewLeft && session.leftMoney > 0) {
             EconomyModule.deposit(left, session.moneyCurrencyKey, session.leftMoney)
@@ -786,7 +791,7 @@ object TransactionModule : MatrixModule {
         }
     }
 
-    private fun writeCompletionRecord(session: TransactionSession) {
+    private fun writeCompletionRecord(session: TransactionSession, leftTax: Double, rightTax: Double, leftNet: Double, rightNet: Double) {
         val leftIncoming = offeredItems(session.rightOffers)
         val rightIncoming = offeredItems(session.leftOffers)
         RecordService.append(
@@ -794,16 +799,16 @@ object TransactionModule : MatrixModule {
             type = "complete",
             actor = session.leftName,
             target = session.rightName,
-            moneyChange = session.rightMoney - session.leftMoney,
-            detail = "shop=${session.shopId};offer-money=${trimDouble(session.leftMoney)};offer-exp=${session.leftExp};offer-items=${itemSummary(session.leftOffers)};receive-money=${trimDouble(session.rightMoney)};receive-exp=${session.rightExp};receive-items=${itemSummary(rightIncoming)}"
+            moneyChange = rightNet - session.leftMoney,
+            detail = "shop=${session.shopId};offer-money=${trimDouble(session.leftMoney)};offer-exp=${session.leftExp};offer-items=${itemSummary(session.leftOffers)};receive-money=${trimDouble(rightNet)};receive-tax=${trimDouble(rightTax)};receive-exp=${session.rightExp};receive-items=${itemSummary(rightIncoming)}"
         )
         RecordService.append(
             module = "transaction",
             type = "complete",
             actor = session.rightName,
             target = session.leftName,
-            moneyChange = session.leftMoney - session.rightMoney,
-            detail = "shop=${session.shopId};offer-money=${trimDouble(session.rightMoney)};offer-exp=${session.rightExp};offer-items=${itemSummary(session.rightOffers)};receive-money=${trimDouble(session.leftMoney)};receive-exp=${session.leftExp};receive-items=${itemSummary(leftIncoming)}"
+            moneyChange = leftNet - session.rightMoney,
+            detail = "shop=${session.shopId};offer-money=${trimDouble(session.rightMoney)};offer-exp=${session.rightExp};offer-items=${itemSummary(session.rightOffers)};receive-money=${trimDouble(leftNet)};receive-tax=${trimDouble(leftTax)};receive-exp=${session.leftExp};receive-items=${itemSummary(leftIncoming)}"
         )
     }
 
@@ -949,6 +954,13 @@ object TransactionModule : MatrixModule {
             allowItems = yaml.getBoolean("Options.Trade.Allow-Items", true),
             allowMoney = yaml.getBoolean("Options.Trade.Allow-Money", true),
             allowExp = yaml.getBoolean("Options.Trade.Allow-Exp", true),
+            tax = ConditionalTaxEngine.parse(
+                root = yaml,
+                path = "Options.Trade.Tax",
+                defaultEnabled = false,
+                defaultMode = "percent",
+                defaultValue = 0.0
+            ),
             writeOnComplete = yaml.getBoolean("Options.Record.Write-On-Complete", true),
             writeOnCancel = yaml.getBoolean("Options.Record.Write-On-Cancel", false)
         )
@@ -1053,6 +1065,30 @@ object TransactionModule : MatrixModule {
     private fun offeredItems(offers: List<ItemStack?>): List<ItemStack> {
         return offers.filterNotNull().filter { it.type != Material.AIR && it.amount > 0 }
     }
+
+    private fun transactionTaxResult(
+        session: TransactionSession,
+        payer: Player,
+        receiver: Player,
+        amount: Double,
+        direction: String
+    ) = ConditionalTaxEngine.compute(
+        config = settings.tax,
+        amount = amount,
+        actor = payer,
+        moduleId = "transaction",
+        context = mapOf(
+            "module" to "transaction",
+            "shop_id" to session.shopId,
+            "currency" to session.moneyCurrencyKey,
+            "amount" to amount,
+            "direction" to direction,
+            "payer" to payer,
+            "payer_name" to payer.name,
+            "receiver" to receiver,
+            "receiver_name" to receiver.name
+        )
+    )
 
     private fun notifyPlayers(session: TransactionSession, message: String) {
         Bukkit.getPlayer(session.leftId)?.let { Texts.send(it, message) }

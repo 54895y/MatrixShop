@@ -1,6 +1,7 @@
 package com.y54895.matrixshop.module.transaction
 
 import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
+import com.y54895.matrixshop.core.economy.ConditionalTaxConfig
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.InventoryHolder
 import org.bukkit.inventory.ItemStack
@@ -58,6 +59,7 @@ data class TransactionSettings(
     val allowItems: Boolean,
     val allowMoney: Boolean,
     val allowExp: Boolean,
+    val tax: ConditionalTaxConfig,
     val writeOnComplete: Boolean,
     val writeOnCancel: Boolean
 )

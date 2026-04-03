@@ -24,7 +24,7 @@ icons:
     name: '&f当前规则'
     lore:
       - '&7默认上架时限: &f72 小时'
-      - '&7成交税率: &f3%'
+      - '&7成交税按模块税配置结算'
   'E':
     material: 'EMERALD'
     name: '&a示例'

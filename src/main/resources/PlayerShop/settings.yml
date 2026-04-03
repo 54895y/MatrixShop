@@ -15,6 +15,20 @@ Unlock:
   Base: 21
   Max: 100
 
+Listing:
+  Tax:
+    Enabled: false
+    Mode: percent
+    Value: 3.0
+    # Rules:
+    #   vip:
+    #     Enabled: true
+    #     Priority: 100
+    #     Mode: percent
+    #     Value: 1.0
+    #     Condition:
+    #       - "perm 'group.vip'"
+
 Search:
   enable: true
   condition: "perm shop.vip"

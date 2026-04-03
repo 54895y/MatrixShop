@@ -1,6 +1,7 @@
 package com.y54895.matrixshop.module.chestshop
 
 import com.y54895.matrixshop.core.menu.MenuDefinition
+import com.y54895.matrixshop.core.economy.ConditionalTaxConfig
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
@@ -57,7 +58,8 @@ data class ChestShopSettings(
     val doubleChestMode: String,
     val autoCreateSign: Boolean,
     val floatingItemEnabled: Boolean,
-    val floatingItemHeight: Double
+    val floatingItemHeight: Double,
+    val tax: ConditionalTaxConfig
 )
 
 enum class ChestShopMode {

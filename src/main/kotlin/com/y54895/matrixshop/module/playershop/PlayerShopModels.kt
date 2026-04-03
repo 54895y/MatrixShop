@@ -2,6 +2,7 @@ package com.y54895.matrixshop.module.playershop
 
 import com.y54895.matrixshop.core.menu.ConfiguredShopMenu
 import com.y54895.matrixshop.core.menu.MenuDefinition
+import com.y54895.matrixshop.core.economy.ConditionalTaxConfig
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
@@ -25,7 +26,8 @@ data class PlayerShopListing(
 data class PlayerShopSettings(
     val unlockedBase: Int,
     val unlockedMax: Int,
-    val currencyKey: String
+    val currencyKey: String,
+    val tax: ConditionalTaxConfig
 )
 
 data class PlayerShopMenus(
