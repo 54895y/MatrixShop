@@ -1,0 +1,37 @@
+name: MatrixShop
+main: com.y54895.matrixshop.taboolib.platform.BukkitPlugin
+version: 1.6.0
+authors:
+  - '54895y'
+depend:
+  - 'MatrixLib'
+api-version: 1.12
+folia-supported: true
+
+commands:
+  matrixshop:
+    description: MatrixShop player command
+    usage: /matrixshop
+    aliases: [shop, ms]
+  matrixshopadmin:
+    description: MatrixShop admin command
+    usage: /matrixshopadmin
+    aliases: [msa]
+  menu:
+    description: MatrixShop menu command
+    usage: /menu
+  cart:
+    description: MatrixShop cart command
+    usage: /cart
+  record:
+    description: MatrixShop record command
+    usage: /record
+  trade:
+    description: MatrixShop trade command
+    usage: /trade
+  auction:
+    description: MatrixShop auction command
+    usage: /auction
+  chestshop:
+    description: MatrixShop chest shop command
+    usage: /chestshop

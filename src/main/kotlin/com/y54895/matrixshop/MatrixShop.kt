@@ -37,7 +37,6 @@ object MatrixShop : Plugin() {
             LegacyDataMigrationService.migrateAll()
             CommerceWarehouseBridge.reload()
             ModuleRegistry.reload()
-            MatrixShopCommands.register()
             runCatching { BStatsMetrics.initialize(BukkitPlugin.getInstance()) }
                 .onFailure {
                     warning("Failed to initialize bStats metrics: ${it.message ?: it.javaClass.simpleName}")
@@ -55,6 +54,10 @@ object MatrixShop : Plugin() {
             severe(Texts.tr("@console.logs.start-failed", mapOf("reason" to (it.message ?: it.javaClass.simpleName))))
             throw it
         }
+    }
+
+    override fun onActive() {
+        MatrixShopCommands.register()
     }
 
     override fun onDisable() {
