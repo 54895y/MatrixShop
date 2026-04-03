@@ -10,6 +10,7 @@ internal object BukkitCommandRegistrar {
 
     fun register(command: Command) {
         commandMap()?.register(command.name.lowercase(), command)
+        syncCommands()
     }
 
     private fun commandMap(): CommandMap? {
@@ -33,6 +34,15 @@ internal object BukkitCommandRegistrar {
             }
         }
         throw NoSuchFieldException("commandMap")
+    }
+
+    private fun syncCommands() {
+        runCatching {
+            val method = Bukkit.getServer().javaClass.methods.firstOrNull {
+                it.name == "syncCommands" && it.parameterCount == 0
+            } ?: return
+            method.invoke(Bukkit.getServer())
+        }
     }
 }
 

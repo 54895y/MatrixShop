@@ -13,6 +13,7 @@ console:
     economy-label: "Economy"
     schema-label: "Schema Sync"
     modules-label: "Enabled Modules"
+    warehouse-label: "Warehouse"
   shutdown:
     backend-label: "Backend Snapshot"
   logs:
@@ -142,6 +143,8 @@ commands:
       schema-state: "Data schema state"
       redis-notify: "Redis notify"
       record-backend: "Record backend"
+      warehouse-provider: "Warehouse provider"
+      warehouse-state: "Warehouse state"
       pending-migrations: "Pending migrations"
       last-migration: "Last migration"
       last-migration-at: "Last migration at"

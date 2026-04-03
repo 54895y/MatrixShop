@@ -11,6 +11,7 @@ import com.y54895.matrixshop.core.record.RecordService
 import com.y54895.matrixshop.core.text.ConsoleVisuals
 import com.y54895.matrixshop.core.text.MatrixI18n
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.warehouse.CommerceWarehouseBridge
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.info
 import taboolib.common.platform.function.severe
@@ -34,6 +35,7 @@ object MatrixShop : Plugin() {
             RecordService.initialize()
             val schemaResult = DatabaseManager.syncSchema()
             LegacyDataMigrationService.migrateAll()
+            CommerceWarehouseBridge.reload()
             ModuleRegistry.reload()
             MatrixShopCommands.register()
             runCatching { BStatsMetrics.initialize(BukkitPlugin.getInstance()) }
@@ -45,7 +47,8 @@ object MatrixShop : Plugin() {
                 backend = DatabaseManager.backendName(),
                 economy = EconomyModule.providerSummary(),
                 schemaMessage = schemaResult.message,
-                modules = ModuleRegistry.enabledSummary()
+                modules = ModuleRegistry.enabledSummary(),
+                warehouse = "${CommerceWarehouseBridge.providerName()} (${CommerceWarehouseBridge.requirementSummary()})"
             )
         }.onFailure {
             ConsoleVisuals.renderFailure(it.message ?: it.javaClass.simpleName)
@@ -64,6 +67,7 @@ object MatrixShop : Plugin() {
         RecordService.initialize()
         DatabaseManager.syncSchema()
         LegacyDataMigrationService.migrateAll()
+        CommerceWarehouseBridge.reload()
         ModuleRegistry.reload()
     }
 }

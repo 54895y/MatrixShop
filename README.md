@@ -15,6 +15,7 @@ MatrixShop 是一款面向生存服、经济服和商业玩法场景的综合交
 当前主线重点包括：
 
 - 统一经济模块与货币优先级
+- 共享货币定义迁移到 `MatrixLib`
 - `SystemShop/goods/*.yml` 仓库式商品定义
 - `product` / `group` / `pool` 三种 SystemShop 资源模型
 - `SystemShop` 定时刷新区域与后台刷新管理
@@ -43,8 +44,7 @@ MatrixShop is a modular commerce plugin for survival and economy servers. It pro
 
 | 版本 | 兼容性 |
 | --- | --- |
-| `1.5.0` | `Paper 1.21.8` smoke boot 通过 |
-| `1.5.0` | `Paper 1.21.11` smoke boot 通过 |
+| `1.6.0` | `Paper 1.21.11` smoke boot 通过 |
 
 ## SystemShop 重点
 
@@ -141,10 +141,11 @@ Tax:
 ## 构建与运行信息
 
 - Build target: `Bukkit API 1.12.2`
-- Required dependency: `MatrixLib 1.0.1`
+- Required dependency: `MatrixLib 1.1.0`
 - Supported economy backends: `Vault` / `PlayerPoints` / Placeholder-based custom currencies
 - Database: `SQLite` / `MySQL`
 - Optional sync layer: `Redis`
+- Shared currency file: `plugins/MatrixLib/Economy/currency.yml`
 
 构建命令：
 
@@ -155,7 +156,7 @@ Tax:
 运行产物：
 
 ```text
-build/libs/MatrixShop-1.5.0-all.jar
+build/libs/MatrixShop-1.6.0-all.jar
 ```
 
 ## 文档入口

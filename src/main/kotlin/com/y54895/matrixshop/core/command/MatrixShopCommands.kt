@@ -11,6 +11,7 @@ import com.y54895.matrixshop.core.module.ModuleRegistry
 import com.y54895.matrixshop.core.permission.PermissionNodes
 import com.y54895.matrixshop.core.permission.Permissions
 import com.y54895.matrixshop.core.text.Texts
+import com.y54895.matrixshop.core.warehouse.CommerceWarehouseBridge
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import java.time.Instant
@@ -749,6 +750,8 @@ object MatrixShopCommands {
                 Texts.sendRaw(commandSender, statusLine("@commands.admin.status.schema-state", Texts.tr(if (diagnostics.schemaCurrent) "@commands.words.current" else "@commands.words.pending")) )
                 Texts.sendRaw(commandSender, statusLine("@commands.admin.status.redis-notify", Texts.tr(if (diagnostics.redisEnabled) "@commands.words.enabled" else "@commands.words.disabled")) )
                 Texts.sendRaw(commandSender, statusLine("@commands.admin.status.record-backend", com.y54895.matrixshop.core.record.RecordService.backendName()))
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.warehouse-provider", CommerceWarehouseBridge.providerName()))
+                Texts.sendRaw(commandSender, statusLine("@commands.admin.status.warehouse-state", CommerceWarehouseBridge.requirementSummary()))
                 if (diagnostics.pendingMigrations.isNotEmpty()) {
                     Texts.sendRaw(commandSender, statusLine("@commands.admin.status.pending-migrations", diagnostics.pendingMigrations.joinToString(", ")))
                 }

@@ -13,6 +13,7 @@ console:
     economy-label: "经济系统"
     schema-label: "结构同步"
     modules-label: "启用模块"
+    warehouse-label: "仓库"
   shutdown:
     backend-label: "数据后端快照"
   logs:
@@ -142,6 +143,8 @@ commands:
       schema-state: "数据结构状态"
       redis-notify: "Redis 通知"
       record-backend: "记录后端"
+      warehouse-provider: "仓库提供者"
+      warehouse-state: "仓库状态"
       pending-migrations: "待执行迁移"
       last-migration: "最近一次迁移"
       last-migration-at: "最近迁移时间"

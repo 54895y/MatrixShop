@@ -18,7 +18,7 @@ object ConsoleVisuals {
         )
     }
 
-    fun renderReady(backend: String, economy: String, schemaMessage: String, modules: String) {
+    fun renderReady(backend: String, economy: String, schemaMessage: String, modules: String, warehouse: String) {
         MatrixConsoleVisuals.renderReady(
             branding = branding,
             version = pluginVersion,
@@ -26,7 +26,8 @@ object ConsoleVisuals {
                 MatrixConsoleFact(Texts.tr("@console.ready.backend-label"), backend),
                 MatrixConsoleFact(Texts.tr("@console.ready.economy-label"), economy),
                 MatrixConsoleFact(Texts.tr("@console.ready.schema-label"), schemaMessage),
-                MatrixConsoleFact(Texts.tr("@console.ready.modules-label"), modules)
+                MatrixConsoleFact(Texts.tr("@console.ready.modules-label"), modules),
+                MatrixConsoleFact(Texts.tr("@console.ready.warehouse-label"), warehouse)
             )
         )
     }
